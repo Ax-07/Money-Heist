@@ -1,0 +1,34 @@
+Money Heist — Batch 14 — LIVE Broker sécurisé
+Base GitHub: 7ee699a893396c85ee575367e254a8ad2a146452
+
+MODIFIÉ
+.env.example
+
+AJOUTÉ
+app/trading/live/__init__.py
+app/trading/live/activation.py
+app/trading/live/auth.py
+app/trading/live/broker.py
+app/trading/live/errors.py
+app/trading/live/intent.py
+app/trading/live/kraken_private.py
+app/trading/live/models.py
+app/trading/live/ports.py
+app/trading/live/store.py
+tests/trading/live/__init__.py
+tests/trading/live/test_auth.py
+tests/trading/live/test_private_client.py
+tests/trading/live/test_broker.py
+tests/trading/live/test_security_boundaries.py
+tests/integration_private/test_kraken_private_readonly.py
+DECISION_BATCH_14_LIVE_MARKET.md
+SECURITY_BATCH_14_KRAKEN_PRIVATE.md
+INTEGRATION_BATCH_14.md
+MANIFEST_BATCH_14.txt
+CHANGELOG_BATCH.md
+
+AUCUN SECRET
+AUCUNE ACTIVATION LIVE
+AUCUNE FONCTION DE RETRAIT
+AUCUN ORDRE RÉEL DANS LES TESTS
+
