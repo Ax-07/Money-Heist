@@ -1,0 +1,31 @@
+Money Heist — Batch 02 Market Data Core
+Manifest généré le 2026-09-07
+
+CHANGELOG_BATCH.md
+README_BATCH_02.md
+app/market/__init__.py
+app/market/historical.py
+app/market/models.py
+app/market/provider.py
+app/market/quality.py
+app/market/snapshot.py
+sample_data/btcusdt_1m_example.csv
+tests/market/test_historical.py
+tests/market/test_models.py
+tests/market/test_provider.py
+tests/market/test_quality.py
+
+SHA-256:
+0be6197d762f4b49660f5c6d61e7cf7913d588430e29e934c8e815d7c2fda4bc  ./CHANGELOG_BATCH.md
+f4dd8437d5e6373c9e67754ed05b8df5f6b39f6bb8f00bc61727973ff95b6d01  ./README_BATCH_02.md
+f8e5147a220a6700c8ad88c30efad9f16832dd820a5da6e99b5f4745fcb1b25c  ./app/market/__init__.py
+bfce36c9f99efc967ffc937eff58d8889583e7f3741c12e31f8d95f57be45c05  ./app/market/historical.py
+11aecefe6f97af2e40f54c4dd93ce9a90431aea0b085b7b8528a925e2e7f9fdf  ./app/market/models.py
+e98af7ef6fe0832bd6e236a28b4d2716bac496fcf20750b114980777d04696c1  ./app/market/provider.py
+459faaf96ac26592fb804c6e3dd6fa474aedb0a8e825dde76847a6ac0fd1e3b8  ./app/market/quality.py
+e3a2c919a406e082dd752e7c603f9227fb679dab2359f485d4840c134e102654  ./app/market/snapshot.py
+f63cc5b69e7bdb632c0fc2a4be5a26a3a826f425b23f217a35ccbe6a661c2884  ./sample_data/btcusdt_1m_example.csv
+85877fc0cd62dc281b430a77b11ae3514a5f26c9d13e3729ebbf7c46a40d508b  ./tests/market/test_historical.py
+582c4fca1ea4da85d139564fb2c4791aeee19bbf7fbe763c0c5436ac26305942  ./tests/market/test_models.py
+1a34632651ee8638b2d084b6375114a16e076895e44d9c15a7425e153a92ecbc  ./tests/market/test_provider.py
+1f2fbc8a1a2b907c989d4c9a2db1630688243614e2598dd3ba1bd9cec0c2c500  ./tests/market/test_quality.py
