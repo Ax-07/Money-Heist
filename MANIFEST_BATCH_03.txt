@@ -1,0 +1,20 @@
+Money Heist — Batch 03 — Feature Engine et Scanner
+
+Fichiers du lot :
+- app/market/features/__init__.py
+- app/market/features/models.py
+- app/market/features/indicators.py
+- app/market/features/engine.py
+- app/market/scanner/__init__.py
+- app/market/scanner/models.py
+- app/market/scanner/service.py
+- app/market/replay.py
+- tests/test_feature_indicators.py
+- tests/test_feature_engine.py
+- tests/test_scanner.py
+- tests/test_scanner_replay.py
+- BATCH_03_INTEGRATION.md
+- CHANGELOG_BATCH.md
+- MANIFEST_BATCH_03.txt
+
+Validation locale du lot : 24 tests / 24 passent.
