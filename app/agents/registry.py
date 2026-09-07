@@ -53,3 +53,41 @@ CORE_AGENT_REGISTRY = AgentRegistry(
         ),
     )
 )
+
+
+SPECIALIST_AGENT_REGISTRY = AgentRegistry(
+    (
+        AgentRegistryEntry(
+            agent_id="berlin",
+            role=AgentRole.TREND_REGIME,
+            state=AgentState.ACTIVE,
+            prompt_version="v1",
+            model_route="core_reasoning",
+            allowed_tools=(),
+            core=False,
+        ),
+        AgentRegistryEntry(
+            agent_id="tokyo",
+            role=AgentRole.MOMENTUM,
+            state=AgentState.ACTIVE,
+            prompt_version="v1",
+            model_route="core_reasoning",
+            allowed_tools=(),
+            core=False,
+        ),
+        AgentRegistryEntry(
+            agent_id="nairobi",
+            role=AgentRole.MARKET_STRUCTURE,
+            state=AgentState.ACTIVE,
+            prompt_version="v1",
+            model_route="core_reasoning",
+            allowed_tools=(),
+            core=False,
+        ),
+    )
+)
+
+
+V1_AGENT_REGISTRY = AgentRegistry(
+    (*CORE_AGENT_REGISTRY.list(), *SPECIALIST_AGENT_REGISTRY.list())
+)

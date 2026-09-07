@@ -1,0 +1,51 @@
+Money Heist — Batch 07b — Spécialistes V1
+Base: main @ 6ab77a32b0b47b5691a184333bed3114c9ef3eed
+
+FICHIERS MODIFIES
+-----------------
+app/agents/__init__.py
+app/agents/models.py
+app/agents/prompts.py
+app/agents/registry.py
+CHANGELOG_BATCH.md
+
+FICHIERS AJOUTES
+----------------
+app/agents/specialists.py
+tests/agents/test_specialists_v1.py
+README_BATCH_07B.md
+MANIFEST_BATCH_07B.txt
+
+PERIMETRE
+---------
+Berlin  : tendance / regime de marche
+Tokyo   : momentum
+Nairobi : price action / structure / liquidite
+
+GARDE-FOUS
+-----------
+- premier tour independant
+- sorties structurees Pydantic strictes
+- preuves rattachees aux champs d'entree existants
+- aucune conclusion des autres specialistes au premier tour
+- allowed_tools=() pour les trois specialistes
+- aucun acces broker/exchange/secrets/Risk Engine
+- tous les appels IA passent par le StructuredGateway existant
+- aucune modification du budget IA
+
+DEPENDANCES
+-----------
+Aucune nouvelle dependance.
+
+VALIDATION CIBLEE
+-----------------
+15 tests agents passes dans le miroir local :
+- 5 tests Batch 07a existants
+- 10 cas Batch 07b (parametrage inclus)
+
+VALIDATION LOCALE A EFFECTUER APRES EXTRACTION
+----------------------------------------------
+uv sync
+uv run pytest -q
+
+Total attendu si la base est toujours a 125 tests : 135 tests.

@@ -18,6 +18,9 @@ class AgentRole(StrEnum):
     ORCHESTRATION = "orchestration"
     RED_TEAM = "red_team"
     AI_ECONOMICS = "ai_economics"
+    TREND_REGIME = "trend_regime"
+    MOMENTUM = "momentum"
+    MARKET_STRUCTURE = "market_structure"
 
 
 class Stance(StrEnum):
@@ -25,6 +28,12 @@ class Stance(StrEnum):
     SHORT = "SHORT"
     NEUTRAL = "NEUTRAL"
     NO_TRADE = "NO_TRADE"
+
+
+class SpecialistStance(StrEnum):
+    LONG = "LONG"
+    SHORT = "SHORT"
+    NEUTRAL = "NEUTRAL"
 
 
 class AgentRegistryEntry(BaseModel):
@@ -95,3 +104,60 @@ class LisbonReport(BaseModel):
     additional_analysis_justified: bool
     recommendations: list[LisbonRecommendation] = Field(default_factory=list)
     observations: list[str] = Field(default_factory=list)
+
+
+class EvidenceReference(BaseModel):
+    """Evidence tied to an exact field present in the specialist input."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_key: str = Field(min_length=1, max_length=300)
+    observation: str = Field(min_length=1, max_length=1000)
+
+
+class SpecialistAnalysis(BaseModel):
+    """Strict common contract for independent first-round specialists."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    stance: SpecialistStance
+    confidence: float = Field(ge=0, le=1)
+    evidence: list[EvidenceReference]
+    risks: list[str]
+    invalidation: list[str]
+    data_gaps: list[str]
+
+
+class BerlinAnalysis(SpecialistAnalysis):
+    agent: Literal["berlin"]
+    regime: Literal[
+        "BULLISH_TREND",
+        "BEARISH_TREND",
+        "RANGE",
+        "TRANSITION",
+        "HIGH_VOLATILITY",
+        "LOW_VOLATILITY",
+        "UNKNOWN",
+    ]
+    trend_maturity: Literal["EARLY", "MATURE", "EXHAUSTED", "UNCLEAR"]
+    multi_timeframe_alignment: Literal["BULLISH", "BEARISH", "MIXED", "UNKNOWN"]
+
+
+class TokyoAnalysis(SpecialistAnalysis):
+    agent: Literal["tokyo"]
+    momentum: Literal["BULLISH", "BEARISH", "NEUTRAL", "MIXED", "UNKNOWN"]
+    momentum_quality: Literal["STRONG", "MODERATE", "WEAK", "UNKNOWN"]
+    breakout_quality: Literal[
+        "CONFIRMED",
+        "UNCONFIRMED",
+        "FAILED",
+        "NOT_APPLICABLE",
+        "UNKNOWN",
+    ]
+
+
+class NairobiAnalysis(SpecialistAnalysis):
+    agent: Literal["nairobi"]
+    market_structure: Literal["HH_HL", "LH_LL", "RANGE", "TRANSITION", "UNKNOWN"]
+    liquidity_state: Literal["CLEAN", "AT_RISK", "SWEEP_SUSPECTED", "UNKNOWN"]
+    breakout_state: Literal["BREAKOUT", "RETEST", "FALSE_BREAKOUT", "NONE", "UNKNOWN"]
