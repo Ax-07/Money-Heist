@@ -1,95 +1,65 @@
-# Money Heist — Batch 07b — Spécialistes V1
+# CHANGELOG — Batch 08 — Orchestration complète
 
-## Base d'intégration
+## Ajouté
 
-- Dépôt : `Ax-07/Money-Heist`
-- Branche : `main`
-- Commit de référence : `6ab77a32b0b47b5691a184333bed3114c9ef3eed`
-- Batch précédent : `07a — Core Agents`
+- `app/services/orchestration/compute_gate.py`
+  - Compute Gate déterministe avant les appels IA ;
+  - niveaux `SKIP_AI`, `LEVEL_2_MINI_CREW`, `LEVEL_3_FULL_CREW` ;
+  - contrôle priorité, expiration et budget restant ;
+  - seuils de préflight configurables sans modifier le plafond dur du ledger.
 
-## Ajouts
+- `app/services/orchestration/models.py`
+  - décision finale stricte du Professor ;
+  - paramètres de trade structurés ;
+  - `TradeProposal` Batch 08 ;
+  - statuts/failures du pipeline ;
+  - audit des appels agents et des étapes ;
+  - conservation des IDs d’opportunité, snapshot et requêtes IA.
 
-### Berlin — tendance / régime
+- `app/services/orchestration/pipeline.py`
+  - pipeline `CandidateOpportunity -> Compute Gate -> Professor -> spécialistes -> Palermo -> Professor -> TradeProposal` ;
+  - sélection dynamique Berlin/Tokyo/Nairobi ;
+  - premier tour réellement indépendant et lancé en concurrence ;
+  - Palermo uniquement après la fin du tour indépendant ;
+  - arrêt sûr sur sortie invalide, preuve non fondée ou budget insuffisant ;
+  - `NO_ANALYSIS` et `NO_TRADE` comme sorties de premier niveau ;
+  - aucune connexion au Paper Broker, à un exchange ou au Risk Engine.
 
-- analyse indépendante de premier tour ;
-- contrat `BerlinAnalysis` strict ;
-- classification du régime, maturité de tendance et alignement multi-timeframes ;
-- preuves obligatoirement rattachées à des champs réellement fournis.
+## Adaptation rétrocompatible
 
-### Tokyo — momentum
+- `app/agents/core.py`
+  - ajout de `TheProfessor.finalize_with_schema(...)` pour permettre au Batch 08 d’imposer un schéma final plus strict ;
+  - `TheProfessor.finalize(...)` conserve son contrat et son comportement existants en déléguant au nouveau helper.
 
-- analyse indépendante de premier tour ;
-- contrat `TokyoAnalysis` strict ;
-- momentum, qualité du momentum et qualité de breakout ;
-- absence de données représentée explicitement par `UNKNOWN` / `data_gaps`.
+## Sécurité / intégrité
 
-### Nairobi — price action / structure / liquidité
-
-- analyse indépendante de premier tour ;
-- contrat `NairobiAnalysis` strict ;
-- structure de marché, état de liquidité et état de breakout ;
-- aucune donnée order-book/liquidation n'est supposée lorsqu'elle est absente.
-
-### Infrastructure réutilisée
-
-- `CoreAgent` et protocole `StructuredGateway` du Batch 07a ;
-- `AIGatewayRequest` / `AIGatewayResult` du Batch 06 ;
-- registre d'agents ;
-- prompts versionnés `v1` ;
-- route modèle existante `core_reasoning` ;
-- budget IA existant, sans chemin alternatif.
-
-## Garde-fous ajoutés
-
-- premier tour marqué `INDEPENDENT_1` ;
-- rejet déterministe d'un payload contenant des conclusions d'autres agents ;
-- validation déterministe des `source_key` de chaque preuve contre l'entrée réellement fournie ;
-- sorties Pydantic `extra="forbid"` ;
-- spécialistes limités à `LONG`, `SHORT` ou `NEUTRAL` : ils ne produisent pas de décision `NO_TRADE` ni d'ordre ;
-- `allowed_tools=()` pour Berlin, Tokyo et Nairobi ;
-- spécialistes marqués `core=False` ;
-- `CORE_AGENT_REGISTRY` inchangé ; ajout de `SPECIALIST_AGENT_REGISTRY` et `V1_AGENT_REGISTRY`.
+- Les champs `None` du `FeatureSnapshot` sont exclus du payload agentique afin qu’une donnée manquante ne puisse pas être citée comme preuve disponible.
+- Les références de preuves spécialistes restent contrôlées par les garde-fous du Batch 07b.
+- Les preuves de la décision finale du Professor sont elles aussi validées contre les entrées réellement transmises.
+- Le Compute Gate ne remplace pas le ledger : l’AI Gateway conserve l’autorité dure sur chaque réservation et chaque dépense.
+- Aucun secret, broker, exchange, shell, filesystem arbitraire ou Risk Engine n’est exposé aux agents.
 
 ## Tests ajoutés
 
-`tests/agents/test_specialists_v1.py` couvre notamment :
+Couverture notamment :
+- pipeline nominal ;
+- Compute Gate mini/full/skip ;
+- `NO_ANALYSIS` ;
+- `NO_TRADE` ;
+- sélection des spécialistes ;
+- indépendance, concurrence réelle et absence de contamination du premier tour ;
+- ordre spécialistes -> Palermo ;
+- sortie `TradeProposal` structurée ;
+- audit et rattachement des IDs ;
+- respect du budget / budget insuffisant / plafond dur ;
+- sortie spécialiste invalide ;
+- sortie Palermo invalide ;
+- sortie Professor invalide ;
+- preuve finale du Professor non fondée ;
+- preuve inexistante ou champ manquant ;
+- snapshot incohérent ;
+- absence de dépendance broker/exchange/secrets/Risk Engine.
 
-- Berlin / Tokyo / Nairobi via le gateway structuré ;
-- version de prompt et modèle de sortie attendus ;
-- indépendance du premier tour ;
-- rejet de contamination inter-agents avant appel IA ;
-- rejet d'une preuve non rattachée aux données fournies ;
-- comportement explicite en cas de données manquantes ;
-- rejet des champs de sortie supplémentaires ;
-- impossibilité pour un spécialiste d'émettre `NO_TRADE` ;
-- registre combiné V1 et absence d'outils privilégiés.
+## Dépendances
 
-## Validation effectuée sur le lot
-
-Dans un miroir local des modules agents du commit de référence :
-
-```text
-15 passed
-```
-
-Cela inclut les 5 tests agents existants du Batch 07a et les 10 cas de test supplémentaires du Batch 07b (paramétrage inclus).
-
-La suite complète du dépôt doit être confirmée après extraction avec :
-
-```powershell
-uv sync
-uv run pytest -q
-```
-
-Avec une base locale à 125 tests et sans autre changement, le total attendu est de 135 tests.
-
-## Hors périmètre respecté
-
-- Rio non implémenté ;
-- Denver non implémenté ;
-- aucune modification du broker ;
-- aucune modification de l'exchange ;
-- aucune modification du Risk Engine ;
-- aucune modification du plafond ou ledger IA ;
-- aucune nouvelle dépendance ;
-- aucun secret.
+Aucune nouvelle dépendance.

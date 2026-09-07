@@ -90,6 +90,32 @@ class TheProfessor(CoreAgent):
             phase="plan",
         )
 
+    async def finalize_with_schema(
+        self,
+        *,
+        system_id: str,
+        opportunity: dict[str, Any],
+        market_context: dict[str, Any],
+        specialist_analyses: list[dict[str, Any]],
+        palermo_review: dict[str, Any],
+        output_model: type[T],
+        opportunity_id: UUID | None = None,
+    ) -> AIGatewayResult[T]:
+        """Finalize through an explicit strict schema while preserving the existing API."""
+
+        return await self._run(
+            system_id=system_id,
+            payload={
+                "opportunity": opportunity,
+                "market_context": market_context,
+                "specialist_analyses": specialist_analyses,
+                "palermo_review": palermo_review,
+            },
+            output_model=output_model,
+            opportunity_id=opportunity_id,
+            phase="finalize",
+        )
+
     async def finalize(
         self,
         *,
@@ -100,17 +126,14 @@ class TheProfessor(CoreAgent):
         palermo_review: dict[str, Any],
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[ProfessorDecision]:
-        return await self._run(
+        return await self.finalize_with_schema(
             system_id=system_id,
-            payload={
-                "opportunity": opportunity,
-                "market_context": market_context,
-                "specialist_analyses": specialist_analyses,
-                "palermo_review": palermo_review,
-            },
+            opportunity=opportunity,
+            market_context=market_context,
+            specialist_analyses=specialist_analyses,
+            palermo_review=palermo_review,
             output_model=ProfessorDecision,
             opportunity_id=opportunity_id,
-            phase="finalize",
         )
 
 

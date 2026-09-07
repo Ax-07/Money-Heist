@@ -1,0 +1,33 @@
+Money Heist — Batch 08 — Orchestration complète
+Base attendue : commit e8ad3ab53c2930802f6e2eb0e06b225d1de57414 (Batch 07b)
+
+FICHIERS MODIFIÉS
+- app/agents/core.py
+
+FICHIERS AJOUTÉS
+- app/services/orchestration/__init__.py
+- app/services/orchestration/compute_gate.py
+- app/services/orchestration/models.py
+- app/services/orchestration/pipeline.py
+- tests/orchestration/test_compute_gate.py
+- tests/orchestration/test_pipeline.py
+- tests/orchestration/test_security_boundaries.py
+- README_BATCH_08.md
+- MANIFEST_BATCH_08.txt
+
+FICHIER RACINE REMPLACÉ PAR CONVENTION DE LOT
+- CHANGELOG_BATCH.md
+
+NON MODIFIÉ / HORS PÉRIMÈTRE
+- Paper Broker
+- Risk Engine
+- Rio
+- Denver
+- profils SHADOW
+- Dashboard
+- exchange/live execution
+- secrets/configuration sensible
+- pyproject.toml / uv.lock
+
+NOUVELLES DÉPENDANCES
+- aucune
