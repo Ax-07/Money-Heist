@@ -1,106 +1,128 @@
-# Money Heist — Batch 02 Market Data Core
+# Money Heist — Batch 06 — AI Gateway
 
 ## Objectif
 
-Ajouter la couche Market Data déterministe et exchange-agnostic par-dessus le Batch 01 validé.
+Ajouter une passerelle IA indépendante des agents et de l'exécution de trading, conforme à la roadmap :
 
-## Périmètre livré
-
-- `MarketDataProvider` sous forme de `Protocol` asynchrone ;
-- `InMemoryMarketDataProvider` pour tests/replay sans exchange réel ;
-- modèle normalisé `Candle` OHLCV ;
-- modèle `MarketSnapshot` et `SnapshotQuality` ;
-- timestamps obligatoirement timezone-aware et normalisés en UTC ;
-- validation OHLCV ;
-- validation chronologique et détection des doublons ;
-- politique de fraîcheur configurable ;
-- détection des trous de bougies quand l'intervalle attendu est fourni ;
-- construction déterministe d'un snapshot avec statut qualité ;
-- import historique CSV simple ;
-- exemple CSV ;
-- tests unitaires du Batch 02.
-
-## Hors périmètre volontaire
-
-- aucun exchange réel ;
-- aucun websocket/REST exchange ;
-- aucun indicateur technique ;
-- aucun Feature Engine ;
-- aucun Scanner ;
-- aucune `CandidateOpportunity` ;
-- aucune logique de trading ou de risque.
-
-Ces éléments restent dans les batches prévus par la roadmap.
+- client IA abstrait ;
+- routage de modèle configurable ;
+- fallback de route configurable ;
+- comptage des tokens ;
+- calcul centralisé du coût en EUR ;
+- retry borné ;
+- Structured Outputs validés par Pydantic ;
+- plafond budgétaire dur appliqué avant chaque appel ;
+- mock IA permettant les tests sans API et sans coût.
 
 ## Fichiers ajoutés
 
 ```text
-app/market/__init__.py
-app/market/models.py
-app/market/provider.py
-app/market/quality.py
-app/market/historical.py
-app/market/snapshot.py
+app/intelligence/ai_gateway/
+├── __init__.py
+├── budget.py
+├── client.py
+├── errors.py
+├── gateway.py
+├── mock_client.py
+├── models.py
+├── openai_client.py
+├── pricing.py
+└── routing.py
 
-tests/market/test_models.py
-tests/market/test_quality.py
-tests/market/test_historical.py
-tests/market/test_provider.py
-
-sample_data/btcusdt_1m_example.csv
-CHANGELOG_BATCH.md
+tests/intelligence/
+├── test_ai_gateway_budget.py
+├── test_ai_gateway_mock.py
+├── test_ai_gateway_pricing.py
+├── test_ai_gateway_routing.py
+└── test_openai_responses_client.py
 ```
 
-## Dépendances
+## Décision Batch 06 — Routage modèles
 
-Aucune nouvelle dépendance n'est requise au-delà des dépendances du Batch 01 : le code s'appuie sur Python standard + Pydantic déjà présent via le socle FastAPI.
+`OPEN-008` reste volontairement configurable : aucun modèle LIVE n'est codé en dur.
 
-## Intégration dans VS Code
+Une `ModelRoute` définit :
 
-1. Fermer le serveur de développement s'il tourne.
-2. Extraire le ZIP à la racine du projet Money Heist, de façon à fusionner `app/`, `tests/` et `sample_data/`.
-3. Ne pas supprimer les fichiers du Batch 01.
-4. Depuis PowerShell à la racine du projet :
+- `route_id` ;
+- provider (`openai` ou `mock`) ;
+- `model_id` ;
+- prix en EUR / million de tokens ;
+- maximum de tokens de sortie ;
+- timeout ;
+- route de fallback éventuelle.
+
+Ainsi, le choix de modèles et leur tarification peuvent être modifiés par configuration sans modifier la logique métier.
+
+## Sécurité / budget
+
+Le gateway réserve un coût maximal conservateur avant l'appel. La réservation utilise :
+
+- un majorant tokenizer-free du nombre de tokens d'entrée basé sur les octets UTF-8 ;
+- le prix d'entrée non-caché ;
+- `max_output_tokens` au complet.
+
+Si aucune route de la chaîne de fallback ne rentre dans le budget restant, **aucun appel fournisseur n'est effectué**.
+
+Le coût réel est ensuite recalculé à partir des compteurs du fournisseur et enregistré dans `AIUsageRecord`. Un `AIUsageRecorder` est appelé pour **chaque réponse facturée**, y compris une tentative dont la sortie structurée est ensuite rejetée.
+
+## OpenAI
+
+L'adaptateur utilise directement `POST /v1/responses` via `httpx` afin de ne pas imposer une nouvelle dépendance SDK au projet.
+
+- clé API confinée dans l'adaptateur infrastructure ;
+- `store=false` ;
+- Structured Outputs via JSON Schema strict ;
+- extraction de `input_tokens`, `cached_tokens` et `output_tokens` ;
+- erreurs 408/409/425/429/5xx considérées retryables ;
+- refus modèle non retryable ;
+- aucun secret n'entre dans les modèles métier ni les prompts automatiquement.
+
+## Intégration
+
+1. Extraire le ZIP à la racine du projet.
+2. Aucun paquet supplémentaire n'est requis si `httpx` et `pydantic` sont déjà présents (ils le sont dans la stack actuelle des Batchs précédents).
+3. Lancer :
 
 ```powershell
 uv sync
 uv run pytest -q
 ```
 
-Le Batch 01 comptait 11 tests validés. Ce lot ajoute 15 tests Market Data ; après intégration, la suite complète devrait donc afficher **26 tests** si le socle local n'a pas changé.
+4. Le Batch 07a pourra importer les contrats depuis :
 
-## Vérification optionnelle de l'import CSV
-
-```powershell
-uv run python -c "from datetime import timedelta; from app.market import import_candles_csv; r=import_candles_csv('sample_data/btcusdt_1m_example.csv', symbol='BTCUSDT', timeframe='1m', candle_interval=timedelta(minutes=1)); print(len(r.candles), r.quality.is_valid)"
+```python
+from app.intelligence.ai_gateway import AIGateway, AIGatewayRequest
 ```
 
-Résultat attendu :
+## Exemple minimal
 
-```text
-3 True
+```python
+from decimal import Decimal
+
+from app.intelligence.ai_gateway import (
+    AIBudgetLedger,
+    AIGateway,
+    ModelPricing,
+    ModelRoute,
+    ModelRouter,
+    OpenAIResponsesClient,
+)
+
+route = ModelRoute(
+    route_id="professor_default",
+    provider="openai",
+    model_id="<configured-model-id>",
+    pricing=ModelPricing(
+        input_per_million_eur=Decimal("<configured-price>"),
+        cached_input_per_million_eur=Decimal("<configured-price>"),
+        output_per_million_eur=Decimal("<configured-price>"),
+    ),
+)
+
+router = ModelRouter([route])
+budget = AIBudgetLedger("25.00")
+client = OpenAIResponsesClient(api_key="<read-from-secret-store-or-env>")
+gateway = AIGateway(router=router, clients={"openai": client}, budget=budget)
 ```
 
-## Compatibilité et décisions ouvertes
-
-Le Batch 02 ne fige volontairement pas :
-- l'exchange initial ;
-- les paires exactes ;
-- les timeframes de production.
-
-La durée attendue d'une bougie et le seuil de fraîcheur sont donc fournis explicitement par configuration/appel, plutôt qu'encodés en dur dans les modèles.
-
-## Critères d'acceptation du lot
-
-- modèles normalisés indépendants de tout payload exchange ;
-- données stale détectées ;
-- timestamps UTC cohérents ;
-- doublons rejetés ;
-- trous détectés ;
-- import historique reproductible ;
-- aucun accès LIVE ;
-- tests du lot au vert.
-
-## Note de fusion
-
-Le ZIP n'inclut volontairement pas `app/__init__.py`, `pyproject.toml`, la configuration FastAPI, la base SQLite ni les fichiers de bootstrap du Batch 01. Il ajoute uniquement la couche Market Data et ses tests afin de minimiser le risque de régression lors de l'extraction.
+Les valeurs de modèle et de prix sont laissées hors du code de production afin de respecter le routage configurable et d'éviter qu'un tarif périssable devienne une constante métier.
