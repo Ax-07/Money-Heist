@@ -1,0 +1,34 @@
+Money Heist — Batch 09 — Pipeline PAPER complet
+Base attendue : commit 00f57219bff261eb673defde1b9474c682e9e9ef (Batch 08)
+
+FICHIERS AJOUTÉS
+- app/services/paper_pipeline/__init__.py
+- app/services/paper_pipeline/adapters.py
+- app/services/paper_pipeline/journal.py
+- app/services/paper_pipeline/models.py
+- app/services/paper_pipeline/pipeline.py
+- app/services/paper_pipeline/ports.py
+- app/services/paper_pipeline/providers.py
+- tests/paper_pipeline/test_pipeline.py
+- tests/paper_pipeline/test_batch08_integration.py
+- tests/paper_pipeline/test_security_boundaries.py
+- README_BATCH_09.md
+- MANIFEST_BATCH_09.txt
+
+FICHIER RACINE REMPLACÉ PAR CONVENTION DE LOT
+- CHANGELOG_BATCH.md
+
+FICHIERS DES BATCHS PRÉCÉDENTS MODIFIÉS
+- aucun
+
+NOUVELLES DÉPENDANCES
+- aucune
+
+MIGRATIONS
+- aucune
+
+VARIABLES D’ENVIRONNEMENT
+- aucune
+
+SECRETS
+- aucun
