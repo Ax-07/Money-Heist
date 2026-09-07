@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Money Heist — Dashboard V1</title>
+  <link rel="stylesheet" href="/dashboard/assets/dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">MONEY HEIST / OBSERVABILITÉ</p>
+      <h1>Dashboard V1</h1>
+    </div>
+    <div class="badges">
+      <span class="badge badge-paper">PAPER</span>
+      <span class="badge badge-shadow">SHADOW</span>
+      <span class="badge badge-readonly">READ-ONLY</span>
+      <span class="badge badge-not-live">LIVE DÉSACTIVÉ</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero panel">
+      <div>
+        <p class="label">État global</p>
+        <div class="hero-line">
+          <strong id="system-state">Chargement…</strong>
+          <span id="generated-at" class="muted"></span>
+        </div>
+      </div>
+      <p class="disclaimer">
+        Cette interface observe des simulations PAPER exécutées par des systèmes SHADOW.
+        Les données contrefactuelles sont étiquetées séparément. Aucune donnée n'est présentée comme LIVE.
+      </p>
+    </section>
+
+    <section>
+      <div class="section-heading">
+        <div><p class="label">Fleet</p><h2>Systèmes SHADOW</h2></div>
+        <span class="muted">Conservative / Vault · Balanced · Aggressive / Tokyo</span>
+      </div>
+      <div id="systems" class="system-grid"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="label">Scanner / Batch 11</p><h2>Opportunités récentes</h2></div>
+        <span class="muted">Une opportunité n'est jamais une direction de trade.</span>
+      </div>
+      <div id="opportunities" class="opportunity-list"></div>
+    </section>
+
+    <section class="two-column">
+      <article class="panel">
+        <div class="section-heading"><div><p class="label">Batch 11</p><h2>Comparaison</h2></div></div>
+        <div id="comparison"></div>
+      </article>
+      <article class="panel">
+        <div class="section-heading"><div><p class="label">Historique borné</p><h2>Décisions récentes</h2></div></div>
+        <div id="decisions"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="label">Audit / sécurité</p><h2>Événements récents</h2></div>
+        <span id="event-count" class="muted"></span>
+      </div>
+      <div id="events" class="event-list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Money Heist — Dashboard V1</span>
+    <span>Aucune commande de trading n'est exposée par cette interface.</span>
+  </footer>
+
+  <script src="/dashboard/assets/dashboard.js" defer></script>
+</body>
+</html>

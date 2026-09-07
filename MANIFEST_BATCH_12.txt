@@ -1,0 +1,56 @@
+Money Heist — MANIFEST Batch 12 — Dashboard V1
+Generated: 2026-09-07
+Baseline commit: 8f6e3be28b2d987072897e5d90744f458cf40b4a
+Expected baseline tests: 264
+New Batch 12 tests: 48
+Expected local total after integration: 312
+New Python dependencies: none
+Migrations: none
+Environment variables: none
+Secrets: none
+
+Files:
+- CHANGELOG_BATCH.md
+- INTEGRATION_BATCH_12.md
+- README_BATCH_12.md
+- app/api/router.py
+- app/api/routes/dashboard.py
+- app/dashboard/__init__.py
+- app/dashboard/models.py
+- app/dashboard/observer.py
+- app/dashboard/projection.py
+- app/dashboard/static/dashboard.css
+- app/dashboard/static/dashboard.html
+- app/dashboard/static/dashboard.js
+- app/dashboard/store.py
+- tests/dashboard/__init__.py
+- tests/dashboard/_helpers.py
+- tests/dashboard/test_api.py
+- tests/dashboard/test_models.py
+- tests/dashboard/test_observer.py
+- tests/dashboard/test_projection.py
+- tests/dashboard/test_store.py
+- tests/dashboard/test_ui_contract.py
+
+SHA256 (excluding this manifest):
+9b5e4d8967c88df2f466f129240e681ad2735b8fb36fb96360eadfc8055234cc  ./CHANGELOG_BATCH.md
+8a6da9656c084c051878448c095fb8b995448a1d213057055b14a757d8a3345a  ./INTEGRATION_BATCH_12.md
+d66ef64a0a22af13e7e5c73b81438efdef8adf8daf3838975192aad0c27d75fa  ./README_BATCH_12.md
+329981b17b86affdd6861dd8d28a24b20bdde12a0276d352036aca8f2fc22e9b  ./app/api/router.py
+3c520412786f239743bf47e6ffd49b0af54be2fc928497b0d2b6e03fb1835f0b  ./app/api/routes/dashboard.py
+8d290fb051f2eb425b6b4fe984744fc749352abb850185e81792c5d02ddd4a96  ./app/dashboard/__init__.py
+84cd0affebafda0bcfda84053d20189bd1e8fc3899c6c84062593877b3462e71  ./app/dashboard/models.py
+e5a10e982f6b09048a9fc27546bc49fa0c83d465be8668331ecfa58660a04316  ./app/dashboard/observer.py
+779b73a1ace3f2d1a63b0716bf1706196b676528e0ed113a622f876660b088d5  ./app/dashboard/projection.py
+727632d25777eb0814513fa0a9d6c25d9b43785314d27d3fddf5b1b4e4f1eee5  ./app/dashboard/static/dashboard.css
+427ad7faa3b69993f469a500bfdebf39efab5f2fec38112260237044f2d53a0e  ./app/dashboard/static/dashboard.html
+e80b0d75eaddb0020a0b802dc9faee8e5db9d36427cd19cfb2d7e2815d14d470  ./app/dashboard/static/dashboard.js
+778ec1f67bdfc2d01f51251e659434c085a05d92f20ca1dffac2f471b730a255  ./app/dashboard/store.py
+ce67441a5a514527834d6951eebddef0443304f8a6829441b9fd25a07c7c87fe  ./tests/dashboard/__init__.py
+93c1a8394c4fd63c8e81972aa0dd3a8338ad6b1a56f870e488dc1f02ce1606f8  ./tests/dashboard/_helpers.py
+e08d406818b3adae45b2c4524b448518211e366df28667dca0896aaf5adb3746  ./tests/dashboard/test_api.py
+3f57420d1128329edad13f0228ddde72f83f88b8b43a2871415baccbc10d0834  ./tests/dashboard/test_models.py
+a9c4815f2e3f73291f02d1b2781132a6dda0b965349cc5a7f06434bdb07a59cc  ./tests/dashboard/test_observer.py
+02aeddc40566da45a4ee5193eddbb9224318ee752a779d67062c738f5e0a91ef  ./tests/dashboard/test_projection.py
+1c8545743da69de28b845a1de925f8d20b1dde70bfcad78ebb49248c19e3aba5  ./tests/dashboard/test_store.py
+b08f5ec94f5dde400a822d59603ea55634eeb2ad9b91fa8b9774de1f7aeb4cf5  ./tests/dashboard/test_ui_contract.py
