@@ -1,0 +1,52 @@
+Money Heist — MANIFEST Batch 11 — Systèmes SHADOW
+Generated: 2026-09-07
+Expected baseline tests: 215
+New Batch 11 tests: 49
+Expected local total after integration: 264
+New Python dependencies: none
+
+Files:
+- CHANGELOG_BATCH.md
+- INTEGRATION_BATCH_11.md
+- README_BATCH_11.md
+- app/services/shadow/__init__.py
+- app/services/shadow/evaluation.py
+- app/services/shadow/factory.py
+- app/services/shadow/identities.py
+- app/services/shadow/ids.py
+- app/services/shadow/models.py
+- app/services/shadow/providers.py
+- app/services/shadow/runtime.py
+- tests/shadow/__init__.py
+- tests/shadow/_helpers.py
+- tests/shadow/test_shadow_ai_and_isolation.py
+- tests/shadow/test_shadow_boundaries.py
+- tests/shadow/test_shadow_comparison.py
+- tests/shadow/test_shadow_evaluation.py
+- tests/shadow/test_shadow_ids.py
+- tests/shadow/test_shadow_paper_isolation.py
+- tests/shadow/test_shadow_risk_profiles.py
+- tests/shadow/test_shadow_runtime.py
+
+SHA256 (excluding this manifest):
+02f97da0202403056cdfe33a7ed575c58950e893d8f0a8027c9acdcbe3aeb3f1  ./CHANGELOG_BATCH.md
+83ecb1bceb13f702c113c61e6181b4a8d70e8faf4a2b5ac1e2c3a4eb39dd30f8  ./INTEGRATION_BATCH_11.md
+80609b646b95b102a5af67c9ae54e4966f20f6c8f48b8431f288c969bc1dd4d6  ./README_BATCH_11.md
+430cce095bb12665ebf3b4f40ed850b491e4cddca4be68e649816a037241c918  ./app/services/shadow/__init__.py
+b65cc7c858da160b019d6815c094494bac0efc5d8740538e62a5bdd6028dd176  ./app/services/shadow/evaluation.py
+c88243fecad266a97352a1b25ddd8399119ae689f765368686b1de8946d8c54c  ./app/services/shadow/factory.py
+1e4d8654307573e0e07fa372ee68a66e419b0fb15ca56691f21cbceb82860dad  ./app/services/shadow/identities.py
+740efb2f813b56cf78ed1e46a11d4adf6e2976b9128dcf9f9e66a9cdd6403a6f  ./app/services/shadow/ids.py
+73c04d44d6b2c5cb21408db02bfc2791f189954dbaa0e4f664a323a98e91e9a0  ./app/services/shadow/models.py
+06762193b553fa51028702734cb47c5e3bc193e084c1ccb23d34b3e361cdcd9c  ./app/services/shadow/providers.py
+b5ab7d06affd729e9a49446eeb27b1356a85325856d331bc76ceacacc12369cc  ./app/services/shadow/runtime.py
+0dadc99a41d7d011877ff7191370b0387c2b9b90626886d134120ab039f9d210  ./tests/shadow/__init__.py
+de783d7daaf92db1850e8a35ab27aea4c4b5eed4f1086a8ce5afd626c99ff471  ./tests/shadow/_helpers.py
+526ca7106a1ebb5442984b54bd114bf58c8aabd28e6b098cc2c141227467393e  ./tests/shadow/test_shadow_ai_and_isolation.py
+075e385b258aa98689fb5272a9fdfd72eaed47c8dd5ec0c3f44b46daa862cf14  ./tests/shadow/test_shadow_boundaries.py
+a70f4dd12c3eef5f9b21d44368e795e1515fe851aa6a4f76c236d84b3239d232  ./tests/shadow/test_shadow_comparison.py
+69f90b7bc63997b978c475a7aa8db9e18d336bbe90851cb6cf2a690c3ccff033  ./tests/shadow/test_shadow_evaluation.py
+9a78fb7b06e305d781f82a747daac1e901b08da726f3c2e42c5e057f8a393a64  ./tests/shadow/test_shadow_ids.py
+5b707cc9cbeba6d8048da45b1c8e9dab4f44f899ad29ba118daf809682b1b3cd  ./tests/shadow/test_shadow_paper_isolation.py
+c045c65fb6ce31a8fe88c720744c5cdd098b8fcc4cadaed92c9c7ac9472118ab  ./tests/shadow/test_shadow_risk_profiles.py
+41a968d226dfbeb0cc9e61ec6448ecb6f59a9759e155d3b0e372457968796bfd  ./tests/shadow/test_shadow_runtime.py

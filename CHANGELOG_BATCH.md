@@ -1,122 +1,101 @@
-# Money Heist — CHANGELOG Batch 10 — Evaluation
+# Money Heist — Batch 11 — Systèmes SHADOW
 
-## Base
+## Objectif
 
-- commit requis : `087183154dcd606f6e4977f6f738634fbc947112` ;
-- Batch 09 — Pipeline PAPER complet ;
-- 190 tests existants avant intégration.
+Ajouter la couche de systèmes SHADOW prévue par la roadmap sans modifier le Risk Engine déterministe, sans introduire de valeurs numériques de risque implicites et sans ajouter de capacité d’exécution autre que PAPER.
 
-## Ajouté
+Flux couvert :
 
-### Couche Evaluation déterministe
+```text
+même marché / même snapshot racine
+→ Conservative / Vault
+→ Balanced
+→ Aggressive / Tokyo
+→ orchestration isolée par système
+→ Risk Engine déterministe existant
+→ Paper Broker existant et isolé
+→ Evaluation Batch 10 via frontière explicite
+→ comparaison déterministe read-only
+```
 
-- `EvaluationSource` immutable et reconstruisible ;
-- `EvaluationService` sans dépendance FastAPI/dashboard ;
-- adaptateurs en lecture seule pour les contrats réels Batch 06 et Batch 09 ;
-- reconstruction de trace depuis `PaperPipelineResult` ou les événements d'audit Batch 09 ;
-- séparation forte `PAPER_EXECUTED` / `COUNTERFACTUAL` ;
-- conservation des IDs opportunité, proposition, décision risque, ordre et fill ;
-- conservation des `system_id`, prompt versions, modèles et routes disponibles.
+## Changements principaux
 
-### Métriques trading
+- ajout de trois identités SHADOW stables :
+  - `shadow_conservative_vault_v1` ;
+  - `shadow_balanced_v1` ;
+  - `shadow_aggressive_tokyo_v1` ;
+- aucune limite numérique de risque n'est attachée à ces identités ;
+- dérivation déterministe des IDs de corrélation racine, opportunités par système et clés d'idempotence ;
+- conservation du même `FeatureSnapshot` immuable pour les trois branches ;
+- création d'une copie dérivée de `CandidateOpportunity` par système sans mutation de l'objet racine ;
+- fan-out séquentiel dans un ordre stable afin de rendre les scénarios reproductibles ;
+- isolement obligatoire des objets stateful :
+  - orchestration ;
+  - Paper Broker ;
+  - journal/idempotence ;
+  - provider de portefeuille ;
+  - provider de RiskProfile ;
+  - kill switch logique ;
+  - comptabilité AI usage ;
+  - budget IA lorsque le contrat de l'orchestration l'expose ;
+  - gateway IA stateful lorsque le contrat de l'orchestration l'expose ;
+- partage autorisé uniquement pour un provider de contraintes de marché explicitement immuable ;
+- réutilisation du `RiskEngine` Batch 05 sans modification de ses règles ;
+- réutilisation du `PaperBroker` Batch 04 et du `PaperTradingPipeline` Batch 09 ;
+- lorsqu'aucun `RiskProfile` n'est injecté, utilisation de `unresolved_profile(...)` afin de conserver le comportement fail-closed existant ;
+- aucun preset Conservative/Balanced/Aggressive chiffré n'est créé ;
+- une erreur PAPER/orchestration d'une branche est contenue et n'arrête pas les branches suivantes ;
+- une erreur Evaluation reste distincte et n'annule pas un résultat PAPER déjà produit ;
+- conservation d'un historique PAPER séparé par `system_id` pour Evaluation ;
+- frontière `Batch10EvaluationPort` et adaptateur `CallableBatch10EvaluationAdapter` pour raccorder l'implémentation Batch 10 installée localement sans créer de dépendance inverse depuis le pipeline PAPER ;
+- projection explicite des métriques comparables :
+  - PnL réalisé ;
+  - Trading Net ;
+  - Economic Net ;
+  - coût IA ;
+  - SelfFundingRatio ;
+- les valeurs absentes ou impossibles à reconstruire restent `None` et produisent `UNAVAILABLE` ou `PARTIAL` ;
+- calcul de deltas pairwise uniquement lorsque deux valeurs existent ;
+- aucune notion de gagnant, promotion, modification automatique du risque ou transition d'agent n'est fournie par la comparaison ;
+- aucune nouvelle dépendance Python.
 
-- PnL réalisé aux prix de fill ;
-- frais ;
-- slippage séparé lorsqu’il est reconstructible ;
-- PnL brut avant coûts lorsqu’il est reconstructible ;
-- Trading Net réalisé ;
-- PnL non réalisé avec mark ;
-- Trading Net mark-to-market ;
-- exposition brute ;
-- nombre d’ordres/fills/trades clôturés/positions ;
-- LONG et SHORT ;
-- win rate ;
-- profit factor ;
-- expectancy ;
-- drawdown absolu et relatif sur historique d’equity suffisant ;
-- statuts explicites `UNAVAILABLE` / `UNBOUNDED` plutôt que valeurs inventées.
+## Tests Batch 11
 
-### Coûts IA
+49 nouveaux tests couvrent notamment :
 
-- coût total ;
-- coût par agent ;
-- coût par modèle ;
-- coût par route ;
-- coût par opportunité ;
-- coût par décision Risk Engine ;
-- coût par trade PAPER exécuté ;
-- coût moyen par opportunité/décision/trade lorsque calculable ;
-- conservation explicite des coûts non attribuables.
+- les trois systèmes recevant le même contexte marché immuable ;
+- l'identifiant racine commun ;
+- les `system_id` distincts ;
+- les opportunités dérivées stables et distinctes ;
+- l'idempotence indépendante ;
+- les brokers, journaux, portefeuilles et profils distincts ;
+- cash, equity, frais et exposition indépendants ;
+- LONG et SHORT simultanés sans compensation croisée ;
+- profils explicitement injectés ;
+- profil non résolu sans valeur inventée et rejet `PROFILE_INCOMPLETE` ;
+- réutilisation du `RiskEngine` existant ;
+- acceptation et rejet différents lorsque les contextes explicitement injectés le justifient ;
+- `NO_ANALYSIS`, `NO_TRADE`, `RISK_REJECTED` et erreur orchestration sans contamination des autres systèmes ;
+- isolation des budgets IA lorsque le contrat actuel les expose ;
+- rattachement des usages IA au bon `system_id` ;
+- Evaluation distincte par système ;
+- erreur Evaluation sans rollback PAPER ;
+- comparaison uniquement des métriques disponibles ;
+- absence d'autorité de promotion ou de modification du risque ;
+- absence de surface d'exécution autre que PAPER dans le module Batch 11.
 
-### Métriques agents V1
+## Validation effectuée dans l'environnement de livraison
 
-- appels logiques ;
-- tentatives ;
-- coût total/moyen ;
-- latence moyenne si disponible ;
-- fréquence de participation ;
-- stance ;
-- confiance si disponible ;
-- fréquence de désaccord lorsque comparable ;
-- décisions finales associées ;
-- prompt versions ;
-- modèles ;
-- routes.
+- compilation Python du module et des tests : OK ;
+- 12 tests purs IDs/comparaison exécutés directement : `12 passed` ;
+- 49 tests Batch 11 exécutés dans un environnement de compatibilité reproduisant les contrats Batch 09 accessibles : `49 passed`.
 
-### Economie IA et Lisbon
+### Limite de validation
 
-- `Economic Net = Trading Net - coût IA` ;
-- `SelfFundingRatio = Trading Net / coût IA` ;
-- cas coût IA nul géré par `ZERO_AI_COST` et `None`, sans infini artificiel ;
-- rapport Lisbon V1 déterministe et read-only ;
-- recommandations non contraignantes ;
-- aucun accès au Risk Engine, au broker, au budget dur ou à la mutation d’état agent.
+Au moment de la génération de ce lot, le connecteur GitHub expose `main` au commit Batch 09 `087183154dcd606f6e4977f6f738634fbc947112`. Le commit Batch 10 annoncé localement n'est pas visible sur le dépôt distant connecté. Le lot n'écrase donc aucun fichier `app/evaluation` et raccorde Batch 10 via une frontière explicite/adaptable.
 
-### Exports
+La validation autoritative reste votre dépôt local contenant Batch 10 : après extraction, exécuter `uv sync` puis `uv run pytest -q`. Avec 215 tests existants et les 49 tests Batch 11 de ce lot, le total attendu est **264 tests** si aucun autre test local n'a été ajouté entre-temps.
 
-- structures Python ;
-- JSON ;
-- CSV métriques agents ;
-- aucune nouvelle dépendance.
+## Hors périmètre confirmé
 
-## Frontières garanties
-
-- aucune nouvelle fonctionnalité LIVE ;
-- aucun exchange réel ;
-- aucune modification des règles Risk Engine ;
-- aucune dépendance du pipeline PAPER vers Evaluation ;
-- une erreur Evaluation ne détruit pas les données source déjà produites et le trading reste reconstruisible ;
-- aucune donnée contrefactuelle n’entre dans les métriques PAPER réalisées ;
-- aucun SelfFundingRatio ne peut modifier le risque ;
-- aucun changement automatique de budget ou d’état d’agent ;
-- aucun système SHADOW Batch 11 implémenté prématurément.
-
-## Tests
-
-25 tests Batch 10 ajoutés couvrant notamment :
-
-- PnL PAPER, frais, slippage et Trading Net ;
-- gagnants/perdants, plusieurs trades, LONG/SHORT ;
-- unrealized PnL et exposition avec mark ;
-- win rate, profit factor, expectancy et drawdown ;
-- métriques indisponibles ;
-- coûts IA total/par agent/par opportunité/par décision/par trade/modèle/route ;
-- Berlin/Tokyo/Nairobi/Palermo/Professor ;
-- versions de prompt, modèles et routes ;
-- chaîne opportunity → analyses → proposal → risk → execution → evaluation ;
-- séparation réalisé/contrefactuel ;
-- Economic Net et SelfFundingRatio >1, <1, coût nul ;
-- rapport Lisbon et frontières d’autorité ;
-- absence de dépendance inverse depuis le pipeline PAPER ;
-- reconstruction après erreur de reporting Evaluation ;
-- isolation des positions par `system_id` ;
-- absence de nouvelle capacité LIVE.
-
-Total attendu après intégration : **215 tests**.
-
-## Dépendances / migrations / configuration
-
-- nouvelle dépendance : aucune ;
-- migration : aucune ;
-- variable d’environnement : aucune ;
-- secret : aucun.
+Ce batch n'ajoute ni moteur d'exécution réel, ni connecteur d'exchange, ni recrutement, ni Rio/Denver, ni réputation multidimensionnelle complète, ni ablation complète, ni Dashboard. Il ne modifie ni le plafond de risque, ni le Risk Engine, ni le SelfFundingRatio pour influencer le risque.
