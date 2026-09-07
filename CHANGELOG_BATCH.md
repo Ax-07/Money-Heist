@@ -1,141 +1,122 @@
-# CHANGELOG — Batch 09 — Pipeline PAPER complet
+# Money Heist — CHANGELOG Batch 10 — Evaluation
 
-## Base d’intégration
+## Base
 
-- Dépôt : `Ax-07/Money-Heist`
-- Branche : `main`
-- Commit de référence : `00f57219bff261eb673defde1b9474c682e9e9ef`
-- Batch précédent : `08 — Orchestration complète`
+- commit requis : `087183154dcd606f6e4977f6f738634fbc947112` ;
+- Batch 09 — Pipeline PAPER complet ;
+- 190 tests existants avant intégration.
 
 ## Ajouté
 
-### `app/services/paper_pipeline/`
+### Couche Evaluation déterministe
 
-Nouveau service déterministe reliant les composants déjà présents :
+- `EvaluationSource` immutable et reconstruisible ;
+- `EvaluationService` sans dépendance FastAPI/dashboard ;
+- adaptateurs en lecture seule pour les contrats réels Batch 06 et Batch 09 ;
+- reconstruction de trace depuis `PaperPipelineResult` ou les événements d'audit Batch 09 ;
+- séparation forte `PAPER_EXECUTED` / `COUNTERFACTUAL` ;
+- conservation des IDs opportunité, proposition, décision risque, ordre et fill ;
+- conservation des `system_id`, prompt versions, modèles et routes disponibles.
 
-```text
-CandidateOpportunity
--> OrchestrationPipeline Batch 08
--> TradeProposal
--> TradeProposalRiskInput
--> Risk Engine
--> APPROVED / RESIZED / REJECTED
--> Paper Broker
--> BrokerOrder / Fill / Position
-```
+### Métriques trading
 
-Le module contient :
+- PnL réalisé aux prix de fill ;
+- frais ;
+- slippage séparé lorsqu’il est reconstructible ;
+- PnL brut avant coûts lorsqu’il est reconstructible ;
+- Trading Net réalisé ;
+- PnL non réalisé avec mark ;
+- Trading Net mark-to-market ;
+- exposition brute ;
+- nombre d’ordres/fills/trades clôturés/positions ;
+- LONG et SHORT ;
+- win rate ;
+- profit factor ;
+- expectancy ;
+- drawdown absolu et relatif sur historique d’equity suffisant ;
+- statuts explicites `UNAVAILABLE` / `UNBOUNDED` plutôt que valeurs inventées.
 
-- `models.py`
-  - statuts et erreurs du pipeline PAPER ;
-  - wrapper traçable de `RiskDecision` ;
-  - `PaperOrderIntent` exclusivement PAPER ;
-  - événements d’audit minimaux ;
-  - résultat end-to-end avec ordre, fill et positions avant/après.
+### Coûts IA
 
-- `ports.py`
-  - port d’orchestration Batch 08 ;
-  - providers explicites pour `PortfolioRiskState`, `RiskProfile`, `MarketConstraints` et `KillSwitchState` ;
-  - contrat de journal/audit/idempotence.
+- coût total ;
+- coût par agent ;
+- coût par modèle ;
+- coût par route ;
+- coût par opportunité ;
+- coût par décision Risk Engine ;
+- coût par trade PAPER exécuté ;
+- coût moyen par opportunité/décision/trade lorsque calculable ;
+- conservation explicite des coûts non attribuables.
 
-- `providers.py`
-  - providers déterministes en mémoire sans valeur implicite ;
-  - une donnée absente reste absente et fait échouer le pipeline avant le Risk Engine ou le broker selon le cas.
+### Métriques agents V1
 
-- `journal.py`
-  - journal en mémoire cohérent avec le `PaperBroker` V1 lui-même en mémoire ;
-  - preflight d’audit ;
-  - réservation atomique de `opportunity_id` et `proposal_id` avant exécution.
+- appels logiques ;
+- tentatives ;
+- coût total/moyen ;
+- latence moyenne si disponible ;
+- fréquence de participation ;
+- stance ;
+- confiance si disponible ;
+- fréquence de désaccord lorsque comparable ;
+- décisions finales associées ;
+- prompt versions ;
+- modèles ;
+- routes.
 
-- `adapters.py`
-  - adaptation stricte `TradeProposal -> TradeProposalRiskInput` ;
-  - aucune quantité n’est reprise de l’IA ;
-  - création d’intention uniquement à partir d’une décision `APPROVED`/`RESIZED` ;
-  - quantité exactement égale à `RiskDecision.approved_quantity` ;
-  - `client_order_id` déterministe au niveau de l’opportunité.
+### Economie IA et Lisbon
 
-- `pipeline.py`
-  - `NO_ANALYSIS` et `NO_TRADE` terminaux sans Risk Engine ni broker ;
-  - arrêt sûr sur orchestration `FAILED` ;
-  - validation des liens opportunity/snapshot/system/symbol/timeframe ;
-  - chargement obligatoire des quatre contextes de risque ;
-  - Risk Engine autoritatif ;
-  - `REJECTED` ne peut pas atteindre le broker ;
-  - `APPROVED` et `RESIZED` créent uniquement un ordre PAPER `MARKET` ;
-  - mark PAPER issu du `FeatureSnapshot.close` exact utilisé par l’orchestration ;
-  - frais, slippage, fill et position produits par le `PaperBroker` existant ;
-  - traçabilité `opportunity -> analyses -> proposal -> risk -> order -> fill -> position`.
+- `Economic Net = Trading Net - coût IA` ;
+- `SelfFundingRatio = Trading Net / coût IA` ;
+- cas coût IA nul géré par `ZERO_AI_COST` et `None`, sans infini artificiel ;
+- rapport Lisbon V1 déterministe et read-only ;
+- recommandations non contraignantes ;
+- aucun accès au Risk Engine, au broker, au budget dur ou à la mutation d’état agent.
 
-## Idempotence
+### Exports
 
-Deux niveaux complémentaires :
+- structures Python ;
+- JSON ;
+- CSV métriques agents ;
+- aucune nouvelle dépendance.
 
-1. le journal réserve simultanément `opportunity_id` et `proposal_id` avant l’ordre ;
-2. le `client_order_id` Paper Broker est dérivé de l’`opportunity_id`, ce qui conserve le garde-fou d’idempotence déjà fourni par le Batch 04.
+## Frontières garanties
 
-Une seconde exécution retourne `DUPLICATE_BLOCKED` et ne crée aucun fill supplémentaire.
+- aucune nouvelle fonctionnalité LIVE ;
+- aucun exchange réel ;
+- aucune modification des règles Risk Engine ;
+- aucune dépendance du pipeline PAPER vers Evaluation ;
+- une erreur Evaluation ne détruit pas les données source déjà produites et le trading reste reconstruisible ;
+- aucune donnée contrefactuelle n’entre dans les métriques PAPER réalisées ;
+- aucun SelfFundingRatio ne peut modifier le risque ;
+- aucun changement automatique de budget ou d’état d’agent ;
+- aucun système SHADOW Batch 11 implémenté prématurément.
 
-## Sécurité
+## Tests
 
-- PAPER uniquement ;
-- aucun `LiveBroker` ;
-- aucun exchange adapter ;
-- aucun secret ;
-- aucune clé API ;
-- aucun changement de permission ;
-- les agents et l’orchestration Batch 08 ne reçoivent toujours aucun accès au Risk Engine ou au Paper Broker ;
-- aucun fallback transformant `NO_TRADE`, une erreur IA ou une donnée manquante en trade ;
-- aucun profil/état portefeuille/contrainte marché par défaut n’est inventé.
+25 tests Batch 10 ajoutés couvrant notamment :
 
-## Evaluation
+- PnL PAPER, frais, slippage et Trading Net ;
+- gagnants/perdants, plusieurs trades, LONG/SHORT ;
+- unrealized PnL et exposition avec mark ;
+- win rate, profit factor, expectancy et drawdown ;
+- métriques indisponibles ;
+- coûts IA total/par agent/par opportunité/par décision/par trade/modèle/route ;
+- Berlin/Tokyo/Nairobi/Palermo/Professor ;
+- versions de prompt, modèles et routes ;
+- chaîne opportunity → analyses → proposal → risk → execution → evaluation ;
+- séparation réalisé/contrefactuel ;
+- Economic Net et SelfFundingRatio >1, <1, coût nul ;
+- rapport Lisbon et frontières d’autorité ;
+- absence de dépendance inverse depuis le pipeline PAPER ;
+- reconstruction après erreur de reporting Evaluation ;
+- isolation des positions par `system_id` ;
+- absence de nouvelle capacité LIVE.
 
-Batch 09 n’implémente aucune métrique complète du Batch 10.
+Total attendu après intégration : **215 tests**.
 
-Seuls les événements structurés minimaux nécessaires au futur branchement de l’évaluation sont ajoutés.
+## Dépendances / migrations / configuration
 
-## Tests ajoutés
-
-34 cas de test Batch 09 au total, couvrant notamment :
-
-- end-to-end réel Batch 08 -> Risk -> Paper Broker ;
-- LONG nominal ;
-- SHORT nominal avec le contrat Paper actuel ;
-- `NO_ANALYSIS` ;
-- `NO_TRADE` ;
-- erreur IA structurée en amont ;
-- budget IA insuffisant en amont ;
-- `APPROVED` ;
-- `RESIZED` et quantité strictement autorisée ;
-- `REJECTED` ;
-- expiration ;
-- stop invalide ;
-- daily loss ;
-- drawdown ;
-- kill switch ;
-- max positions ;
-- risque portefeuille/exposition/leverage ;
-- quantité minimale ;
-- notional minimal ;
-- portefeuille manquant ;
-- profil de risque manquant ;
-- contraintes marché manquantes ;
-- kill-switch state manquant ;
-- adaptation `TradeProposal -> TradeProposalRiskInput` ;
-- chaîne complète des identifiants ;
-- idempotence ;
-- erreur broker intermédiaire ;
-- indisponibilité du journal ;
-- frontières d’import agents / Risk / Broker ;
-- impossibilité de construire un `PaperOrderIntent` LIVE.
-
-## Validation effectuée sur le lot
-
-- compilation Python de tous les nouveaux fichiers : OK ;
-- 31 tests du cœur Batch 09 exécutés contre un miroir local des contrats Batch 04/05/08 : `31 passed` ;
-- les 3 tests d’intégration utilisant le vrai AI Gateway Batch 08 sont inclus dans le ZIP et doivent être confirmés avec la suite complète du dépôt.
-
-Avec les 156 tests existants, le total attendu après intégration est **190 tests**.
-
-## Dépendances
-
-Aucune nouvelle dépendance.
+- nouvelle dépendance : aucune ;
+- migration : aucune ;
+- variable d’environnement : aucune ;
+- secret : aucun.

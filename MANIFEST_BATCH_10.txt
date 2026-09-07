@@ -1,0 +1,46 @@
+Money Heist — Batch 10 — Evaluation
+Base attendue : commit 087183154dcd606f6e4977f6f738634fbc947112 (Batch 09)
+
+FICHIERS AJOUTÉS
+- app/evaluation/adapters.py
+- app/evaluation/agents.py
+- app/evaluation/ai_costs.py
+- app/evaluation/exports.py
+- app/evaluation/lisbon.py
+- app/evaluation/models.py
+- app/evaluation/service.py
+- app/evaluation/trading.py
+- tests/evaluation/test_adapters_and_exports.py
+- tests/evaluation/test_ai_and_agents.py
+- tests/evaluation/test_boundaries.py
+- tests/evaluation/test_economics_lisbon.py
+- tests/evaluation/test_trading_metrics.py
+- README_BATCH_10.md
+- MANIFEST_BATCH_10.txt
+
+FICHIER EXISTANT COMPLÉTÉ
+- app/evaluation/__init__.py
+
+FICHIER RACINE REMPLACÉ PAR CONVENTION DE LOT
+- CHANGELOG_BATCH.md
+
+FICHIERS DES BATCHS 01 À 09 MODIFIÉS HORS PLACEHOLDER EVALUATION
+- aucun
+
+NOUVELLES DÉPENDANCES
+- aucune
+
+MIGRATIONS
+- aucune
+
+VARIABLES D’ENVIRONNEMENT
+- aucune
+
+SECRETS
+- aucun
+
+TESTS AJOUTÉS
+- 25
+
+TOTAL ATTENDU APRÈS INTÉGRATION
+- 215 tests (190 existants + 25 Batch 10)
