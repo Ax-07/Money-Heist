@@ -1,7 +1,7 @@
 # Money Heist — Market Data et Exécution
 
 **Document :** Données de marché et exécution  
-**Version :** 0.1  
+**Version :** 0.2  
 **Statut :** Spécification initiale
 
 ---
@@ -16,7 +16,7 @@ Définir comment Money Heist :
 - simule des ordres ;
 - exécute des ordres réels à terme.
 
-Le choix de l’exchange initial reste ouvert.
+Le choix du Market Data initial est désormais **Kraken Spot public / EUR** (ADR-019).
 
 ---
 
@@ -290,12 +290,33 @@ Comportement :
 
 ## 21. Univers initial
 
-Direction actuelle :
-- BTC ;
-- ETH ;
-- SOL.
+Pour le Batch 13, l'adaptateur Kraken Spot utilise les symboles canoniques :
+- `BTC/EUR` ;
+- `ETH/EUR` ;
+- `SOL/EUR`.
 
-La paire quote et l’exchange restent à décider.
+Ce choix fixe le premier univers de **Market Data réel**. Il ne constitue pas une activation LIVE.
+
+### 21.1 Décision Batch 13 — Kraken Spot public
+
+Les endpoints REST publics sont utilisés sans clé API pour :
+- le dernier trade horodaté, utilisé comme prix courant et source de fraîcheur ;
+- les bougies OHLC ;
+- les métadonnées `AssetPairs`.
+
+La dernière bougie OHLC renvoyée par Kraken est considérée comme la bougie courante et reste explicitement `is_closed=False`.
+
+Les métadonnées disponibles sont normalisées vers un modèle interne distinct du payload Kraken. Elles incluent notamment :
+- `tick_size` ;
+- précision prix ;
+- précision quantité ;
+- `ordermin` → quantité minimale ;
+- `costmin` → notional minimal ;
+- pas de quantité dérivé de la précision quantité.
+
+La projection vers le `MarketConstraints` existant transmet uniquement les champs déjà supportés par le Risk Engine. `tick_size` et les précisions restent des métadonnées de marché destinées notamment au futur broker.
+
+Les timeframes de production et les seuils numériques de fraîcheur ne sont pas fixés ici : ils restent injectés explicitement par configuration.
 
 ---
 

@@ -1,0 +1,33 @@
+Money Heist — MANIFEST Batch 13 — Exchange Adapter PAPER / Market Data réel
+Generated: 2026-09-07
+Baseline commit: 703e322e105b870a1c99333569638094d550ffaa
+Expected baseline tests: 312
+New deterministic/offline tests: 62
+Optional network tests: 1 (skipped unless MONEY_HEIST_RUN_NETWORK_TESTS=1)
+Expected default local total: 374 passed, 1 skipped
+New Python dependencies: none
+Migrations: none
+Runtime environment variables: none
+Optional network-test variable: MONEY_HEIST_RUN_NETWORK_TESTS=1
+Secrets: none
+LIVE capability: none
+
+Files and SHA256:
+b88f0308f435a2bf2f03e488560a29c886509bce1849498d71ca02305d3ebc27  CHANGELOG_BATCH.md
+6fea7ca73468cb1da25a5add7cd4d7db3ac9060394ffe4217a94a4421eac0d6e  DECISION_BATCH_13_EXCHANGE.md
+b608d6668320c55b5de35c2c14ebee3c96860f5586527b30e59421719a754722  INTEGRATION_BATCH_13.md
+c548e69d73550317f8d31df43901ac1059db21a2509cec381d143c86bd6a4313  README_BATCH_13.md
+1f9f004fe053f237af5733e93e383f7aba12f747d0285a44a936b71bb3a27c2e  app/market/exchange/__init__.py
+1c80311d1c6d65f63aa6d53b2d5b08bda8f4ad9146f4cfffab8bb70c36d9eae7  app/market/exchange/feed.py
+94e5e85db2567b1868ef7666a248daf84f09173de08c4cf50a6f5a1d921cf3b6  app/market/exchange/kraken.py
+22031815aff81ef1b9f5d7a7024175deb213d161d74ea2efe12daae78be8df1d  app/market/exchange/models.py
+249ca0cdb09ffcbbfc648ea4c5119123a6619936a5eb18b99608b4972e3965cb  app/market/exchange/transport.py
+cb15ed820b76c1a6c2c1495157cea77144a852937fa467a45aa5e5ae7f069f62  docs/05_MARKET_DATA_ET_EXECUTION.md
+f76009f0b3a100979fc7b25bef3dce52183681dd1ff25bc313c84927d29b9b19  docs/10_DECISIONS_ET_CHANGELOG.md
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/integration_network/__init__.py
+f55c784220d53edbc772a1e21a21494aef1775aa8337fc74ce666bdb853b346a  tests/integration_network/test_kraken_public.py
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  tests/market/exchange/__init__.py
+a032651dc021a9cdc948929ac1f66913feb8b2272cb03a1f1ded125246b2837a  tests/market/exchange/_helpers.py
+d48ef77839de3085cba9b0467d4c846a9960ea533f747dbf485dd318fea09645  tests/market/exchange/test_feed.py
+ee6c552b14bb697f5c95a2d025306418d7da0f39b711f04672e355685bb9ae53  tests/market/exchange/test_kraken.py
+0a1843c7e87b41bc1d06466d33fbb5b6d68ee8cd19fe4f88f7bfc2e91023af79  tests/market/exchange/test_transport.py

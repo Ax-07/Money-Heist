@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation  
-**Version :** 0.2  
+**Version :** 0.3  
 **Statut :** Actif
 
 ---
@@ -272,6 +272,36 @@ plus tard grâce à la séparation `domain` / `storage`.
 
 ---
 
+### ADR-019 — Exchange initial Market Data : Kraken Spot public / EUR
+
+**Date :** 2026-09-07  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le premier adaptateur de données de marché réelles utilise les endpoints publics **Kraken Spot REST**, sans authentification. L'univers initial de l'adaptateur est `BTC/EUR`, `ETH/EUR` et `SOL/EUR`.
+
+Cette décision concerne le **Market Data du Batch 13**. Elle n'active aucun ordre réel et ne décide pas à elle seule du produit ou du mode du futur Batch 14/15.
+
+**Raison :**
+- endpoints publics pour trades horodatés, OHLC et métadonnées de paires ;
+- `AssetPairs` fournit les contraintes nécessaires au prototype (`tick_size`, précision prix/quantité, `ordermin`, `costmin`) ;
+- quote EUR cohérente avec le capital prototype exprimé en euros ;
+- aucune clé API ni SDK exchange requis pour le Batch 13 ;
+- séparation simple entre payload Kraken brut et modèles Money Heist existants.
+
+**Conséquences :**
+- le prix courant du Batch 13 provient du dernier trade public horodaté, et non du ticker non horodaté ;
+- la dernière ligne OHLC Kraken est conservée avec `is_closed=False` ;
+- les métadonnées sont projetées vers `MarketConstraints` sans modifier le Risk Engine ;
+- les timeframes et seuils de fraîcheur opérationnels restent explicitement injectés et ne sont pas figés par cette ADR ;
+- aucune capacité LIVE, clé de trading ou permission de retrait n'est ajoutée.
+
+**Alternatives considérées :**
+- Binance Spot : API publique riche et métadonnées détaillées, mais non retenue comme premier adaptateur du prototype ;
+- autres exchanges : restent compatibles avec l'architecture par ajout d'adaptateurs futurs.
+
+---
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -284,7 +314,7 @@ plus tard grâce à la séparation `domain` / `storage`.
 **Résolue par ADR-017.**
 
 ### OPEN-004 — Exchange initial
-À décider avant le connecteur de données réel.
+**Résolue par ADR-019 pour le Market Data initial : Kraken Spot public / EUR.**
 
 ### OPEN-005 — Spot ou dérivés
 À décider avant la finalisation du Risk Engine LIVE.
@@ -307,6 +337,12 @@ plus tard grâce à la séparation `domain` / `storage`.
 ---
 
 ## 5. Changelog documentation
+
+### v0.3 — 2026-09-07
+- démarrage du Batch 13 — Exchange Adapter PAPER / Market Data réel ;
+- ADR-019 : Kraken Spot public / EUR retenu pour le premier adaptateur Market Data ;
+- OPEN-004 marquée comme résolue pour le Market Data initial ;
+- OPEN-005 reste ouverte pour la décision finale spot/dérivés avant LIVE.
 
 ### v0.2 — 2026-09-07
 - démarrage du Batch 01 — Fondations ;

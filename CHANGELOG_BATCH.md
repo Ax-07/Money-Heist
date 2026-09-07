@@ -1,85 +1,101 @@
-# CHANGELOG — Batch 12 — Dashboard V1
+# CHANGELOG — Batch 13 — Exchange Adapter PAPER / Market Data réel
 
 **Date :** 2026-09-07  
-**Baseline Git :** `8f6e3be28b2d987072897e5d90744f458cf40b4a`  
-**Baseline tests :** 264  
-**Tests Batch 12 :** 48  
-**Total attendu :** 312
+**Baseline Git :** `703e322e105b870a1c99333569638094d550ffaa`  
+**Baseline tests :** 312  
+**Tests Batch 13 hors réseau :** 62  
+**Test réseau opt-in :** 1  
+**Total attendu par défaut :** 374 passed, 1 skipped
+
+## Décision d'architecture
+
+- exchange Market Data initial : **Kraken Spot public REST** ;
+- quote initiale : **EUR** ;
+- univers initial : `BTC/EUR`, `ETH/EUR`, `SOL/EUR` ;
+- aucune authentification ni capacité d'ordre ;
+- `OPEN-004` documentée comme résolue pour le Market Data initial via ADR-019 ;
+- la décision finale spot/dérivés pour le LIVE reste hors Batch 13.
 
 ## Ajouté
 
-### Read models Dashboard
+### Couche exchange publique
 
-- modèles Pydantic figés pour l'état global, comptes PAPER, positions, ordres,
-  fills, opportunités, décisions, propositions, risque, coûts IA, métriques Batch 10,
-  comparaison Batch 11, contrefactuels et événements ;
-- provenance explicite `SHADOW_PAPER`, `PAPER_EXECUTED`, `COUNTERFACTUAL`,
-  `UNAVAILABLE` ;
-- disponibilité explicite `AVAILABLE`, `PARTIAL`, `UNAVAILABLE`, `UNBOUNDED` ;
-- état initial seedé avec les trois identités Batch 11 mais aucune valeur runtime inventée.
+- package `app.market.exchange` séparant strictement payload HTTP/exchange et modèles métier ;
+- transport JSON HTTPS basé uniquement sur la bibliothèque standard ;
+- timeout explicite ;
+- pacing local ;
+- retries bornés ;
+- backoff exponentiel borné ;
+- prise en compte de `Retry-After` ;
+- classification réseau / HTTP / rate limit / payload invalide ;
+- aucun header d'authentification ni support de secret.
 
-### Projection PAPER/SHADOW
+### Adaptateur Kraken Spot
 
-- `ShadowDashboardProjector` lit les résultats Batch 11 et les méthodes publiques
-  `get_account_state`, `get_positions`, `get_orders`, `get_fills` du Paper Broker ;
-- séparation Professor / proposition / Risk Engine ;
-- reason codes risque conservés ;
-- coûts IA scindés par système, agent et modèle ;
-- métriques Batch 10 conservées avec leur disponibilité ;
-- contrefactuels explicitement marqués comme simulations ;
-- comparaison Batch 11 projetée sans winner, promotion ni modification du risque ;
-- événements audit, risque, sécurité et évaluation projetés.
+- lecture `AssetPairs` ;
+- lecture `Trades` avec `count=1` pour obtenir un prix **horodaté** ;
+- lecture `OHLC` ;
+- symboles canoniques avec `assetVersion=1` ;
+- timestamps UTC ;
+- `Decimal` pour prix, quantités et contraintes ;
+- dernière bougie Kraken marquée `is_closed=False` ;
+- validation du caractère courant de la bougie ouverte ;
+- métadonnées symbole normalisées : tick size, step size, min qty, min notional, précisions, statut ;
+- cache de métadonnées borné par une durée explicitement injectée ;
+- projection vers le `MarketConstraints` existant sans modifier le Risk Engine ;
+- données stale, incomplètes, incohérentes ou symbole non online => fail closed.
 
-### Store d'observabilité
+### Frontière PAPER/SHADOW
 
-- `DashboardStore` en mémoire, thread-safe et borné ;
-- historique récent des opportunités, décisions et événements ;
-- rejet backend de toute projection LIVE/non-SHADOW/non-PAPER ;
-- aucune méthode de trading, promotion ou modification du risque.
+- `PaperShadowMarketFeed` :
+  - obtient un `MarketSnapshot` réel via le port existant ;
+  - passe ses candles au Feature Engine existant ;
+  - passe le `FeatureSnapshot` au Scanner déterministe existant ;
+  - retourne le contexte et l'opportunité sans appeler Risk Engine, broker ou orchestration ;
+- le passage dans le pipeline PAPER/SHADOW reste un acte explicite du caller.
 
-### Observateur non autoritaire
+### Tests
 
-- `DashboardShadowObserver` décore un runner Batch 11 ;
-- publication du snapshot uniquement après retour du runner ;
-- une panne Dashboard ne modifie jamais le résultat SHADOW/PAPER.
+- 62 tests hors réseau couvrent transport, retries, backoff, pacing, normalisation, métadonnées, contraintes, timestamps, stale data, OHLC, erreurs Kraken et frontière PAPER/SHADOW ;
+- 1 smoke test réseau séparé sous `tests/integration_network/`, ignoré par défaut ;
+- fakes injectables : aucun test unitaire ne dépend d'Internet.
 
-### API et interface
+## Documentation
 
-- routes GET-only sous `/api/dashboard/*` ;
-- page `/dashboard` et assets statiques sans nouvelle dépendance ;
-- affichage responsive des trois systèmes, capital/cash/equity PAPER, positions,
-  ordres/fills, opportunités, décisions, coûts IA, Batch 10, comparaison et audit ;
-- labels explicites PAPER, SHADOW, READ-ONLY, LIVE DÉSACTIVÉ et COUNTERFACTUAL ;
-- rendu `Indisponible` lorsque la donnée n'existe pas.
-
-## Modifié
-
-- `app/api/router.py` inclut le routeur Dashboard en plus du routeur health existant.
+- `DECISION_BATCH_13_EXCHANGE.md` ;
+- `INTEGRATION_BATCH_13.md` ;
+- `README_BATCH_13.md` ;
+- `MANIFEST_BATCH_13.txt` ;
+- mise à jour de `docs/05_MARKET_DATA_ET_EXECUTION.md` ;
+- mise à jour de `docs/10_DECISIONS_ET_CHANGELOG.md` avec ADR-019.
 
 ## Non modifié intentionnellement
 
-- Risk Engine et ses règles ;
-- profils de risque ;
+- Risk Engine et ses modèles ;
+- profils Conservative / Balanced / Aggressive ;
 - Paper Broker ;
 - orchestration IA ;
-- logique SHADOW Batch 11 ;
-- Evaluation Batch 10 ;
-- configuration des limites constitutionnelles.
+- systèmes SHADOW ;
+- Dashboard V1 ;
+- SelfFundingRatio et logique Evaluation.
 
 ## Hors périmètre maintenu
 
-- LIVE / Live Broker / exchange réel ;
-- promotion automatique ;
-- changement automatique du risque ;
-- utilisation du SelfFundingRatio par le Risk Engine ;
+- ordres réels ;
+- Live Broker ;
+- clé API exchange ;
+- authentification exchange ;
+- retrait ;
+- réconciliation d'ordres LIVE ;
+- WebSocket temps réel ;
 - Rio / Denver ;
 - Recruitment Engine ;
-- réputation multidimensionnelle complète ;
-- tests d'ablation complets.
+- Batchs 14+.
 
 ## Dépendances / migrations / secrets
 
-- nouvelles dépendances : aucune ;
-- migrations : aucune ;
-- nouvelles variables d'environnement : aucune ;
-- secrets : aucun.
+- nouvelle dépendance Python : **aucune** ;
+- migration : **aucune** ;
+- secret : **aucun** ;
+- variable runtime obligatoire : **aucune** ;
+- variable optionnelle de test réseau : `MONEY_HEIST_RUN_NETWORK_TESTS=1`.
