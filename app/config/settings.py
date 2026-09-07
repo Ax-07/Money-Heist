@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, ge=1, le=65535)
     default_system_id: str = Field(default="balanced_v1", min_length=1, max_length=100)
 
+    # Batch 15 — configuration d'éligibilité uniquement.
+    # Aucune de ces valeurs n'arme le LIVE et aucune variable d'environnement
+    # n'est transformée en autorisation opérateur.
+    live_environment: Literal["disabled", "kraken_spot_eur"] = "disabled"
+    live_system_id: str | None = Field(default=None, min_length=1, max_length=100)
+    live_risk_profile_file: str | None = None
+    live_market_max_age_seconds: float | None = Field(default=None, gt=0)
+    live_metadata_max_age_seconds: float | None = Field(default=None, gt=0)
+    live_timeframes: str | None = None
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
@@ -34,14 +44,40 @@ class Settings(BaseSettings):
             raise ValueError("Batch 01 supporte uniquement une base SQLite locale.")
         return value
 
+    @field_validator("live_system_id", "live_risk_profile_file", "live_timeframes", mode="before")
+    @classmethod
+    def empty_live_values_are_none(cls, value):
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @model_validator(mode="after")
-    def forbid_live_mode_in_foundation(self) -> "Settings":
-        if self.runtime_mode is SystemMode.LIVE:
+    def gate_live_configuration(self) -> "Settings":
+        if self.runtime_mode is not SystemMode.LIVE:
+            return self
+
+        # Preserve the historical fail-closed behaviour for a plain
+        # runtime_mode=LIVE. Batch 15 only makes LIVE *configurable* when an
+        # independent production environment and target system are explicit.
+        # Submission still requires the ephemeral operator arm + preflight.
+        if (
+            self.app_env != "production"
+            or self.live_environment != "kraken_spot_eur"
+            or self.live_system_id is None
+        ):
             raise ValueError(
-                "Le mode LIVE est désactivé dans Batch 01. "
-                "PAPER/SHADOW doivent être validés avant toute activation LIVE."
+                "Le mode LIVE est désactivé tant que Batch 15 n'a pas une "
+                "configuration production explicite (live_environment=kraken_spot_eur "
+                "et live_system_id)."
             )
         return self
+
+    @property
+    def live_timeframe_values(self) -> tuple[str, ...] | None:
+        if self.live_timeframes is None:
+            return None
+        values = tuple(part.strip() for part in self.live_timeframes.split(",") if part.strip())
+        return values or None
 
     @property
     def sqlite_path(self) -> Path | None:

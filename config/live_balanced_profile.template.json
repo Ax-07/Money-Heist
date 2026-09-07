@@ -1,0 +1,11 @@
+{
+  "risk_profile_id": "balanced",
+  "max_risk_per_trade_pct": null,
+  "max_daily_loss_pct": null,
+  "max_drawdown_pct": null,
+  "max_portfolio_risk_pct": null,
+  "max_positions": null,
+  "max_leverage": null,
+  "max_correlated_exposure_pct": null,
+  "min_expected_rr": null
+}
