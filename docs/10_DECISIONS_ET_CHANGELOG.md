@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation  
-**Version :** 0.3  
+**Version :** 0.4  
 **Statut :** Actif
 
 ---
@@ -302,6 +302,99 @@ Cette décision concerne le **Market Data du Batch 13**. Elle n'active aucun ord
 
 ---
 
+### ADR-020 — Premier marché LIVE : Kraken Spot / EUR
+
+**Date :** 2026-09-07  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le premier chemin d’exécution LIVE cible **Kraken Spot / EUR**, avec l’univers initial `BTC/EUR`, `ETH/EUR`, `SOL/EUR` et le système `balanced_v1`.
+
+Le premier LIVE n’ajoute pas de marge, dérivés ou levier et refuse les entrées SHORT.
+
+**Raison :**
+Réduire la surface de risque du prototype et rester cohérent avec le Market Data Kraken/EUR déjà livré.
+
+**Conséquence :**
+`OPEN-005` est résolue pour le premier LIVE. Les dérivés restent une extension future, notamment pour Rio.
+
+---
+
+### ADR-021 — Activation LIVE Batch 15 fail-closed
+
+**Date :** 2026-09-07  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Batch 15 fournit la couche d’activation opérationnelle sans envoyer d’ordre réel pendant le développement/tests.
+
+Le cycle est :
+
+```text
+LIVE_DISABLED → LIVE_PREFLIGHT → LIVE_ARMED
+```
+
+L’armement est explicite, éphémère et perdu au redémarrage. Les credentials seuls sont insuffisants. Les paramètres Balanced incomplets, timeframes inconnus ou seuils de fraîcheur inconnus restent bloquants au lieu d’être inventés.
+
+**Conséquence :**
+La livraison du Batch 15 ne doit jamais être interprétée comme « le système peut maintenant trader automatiquement les 100 € ».
+
+---
+
+### ADR-022 — Backtesting & Historical Replay avant premier ordre réel
+
+**Date :** 2026-09-07  
+**Statut :** ACCEPTED
+
+**Décision :**
+Insérer **Batch 16 — Backtesting & Historical Replay** avant tout premier ordre LIVE réel.
+
+La gate de validation devient :
+
+```text
+Replay historique
+→ Backtest end-to-end
+→ Validation hors échantillon
+→ Walk-forward
+→ PAPER / SHADOW
+→ Preflight LIVE
+→ Petit capital réel
+```
+
+Le précédent Batch 16 Rio/Denver est décalé en Batch 17 ; les anciens Batchs 17 à 20 deviennent respectivement 18 à 21.
+
+**Raison :**
+Le code post-Batch 15 possède l’import historique, le replay scanner, le Paper Broker, le pipeline PAPER et Evaluation, mais pas encore la boucle historique end-to-end avec capital évolutif, cycle de vie des positions, OOS et walk-forward.
+
+**Conséquences :**
+- le LIVE reste non armé pendant Batch 16 ;
+- Denver avancé pourra consommer de vraies statistiques produites par le moteur historique ;
+- toute validation de prompts/agents devra identifier dataset, versions et mode IA ;
+- l’ablation avancée reste dans le batch suivant Rio/Denver conformément à la roadmap réalignée.
+
+---
+
+### ADR-023 — GitHub comme référence intégrée et synchronisation des sources projet
+
+**Date :** 2026-09-07  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le dépôt GitHub **`Ax-07/Money-Heist`**, branche `main`, constitue la référence de l’état intégré du code et des dix documents permanents.
+
+Les copies de ces documents chargées comme sources du projet ChatGPT doivent être remplacées après une révision documentaire approuvée afin d’éviter qu’une nouvelle conversation reparte d’une spécification obsolète.
+
+**Raison :**
+Après les Batchs 01 à 15, certaines sources initiales décrivaient encore le projet comme pré-développement et conservaient une roadmap devenue obsolète.
+
+**Conséquences :**
+- une mise à jour documentaire significative est commitée dans GitHub ;
+- les dix sources ChatGPT sont ensuite rafraîchies avec les mêmes versions ;
+- en cas de divergence temporaire, GitHub `main` prévaut pour l’état intégré ;
+- les ZIP restent un moyen de livraison possible mais ne remplacent pas l’historique Git intégré.
+
+---
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -317,19 +410,19 @@ Cette décision concerne le **Market Data du Batch 13**. Elle n'active aucun ord
 **Résolue par ADR-019 pour le Market Data initial : Kraken Spot public / EUR.**
 
 ### OPEN-005 — Spot ou dérivés
-À décider avant la finalisation du Risk Engine LIVE.
+**Résolue pour le premier LIVE par ADR-020 : Kraken Spot / EUR.** Les dérivés restent hors périmètre initial.
 
 ### OPEN-006 — Timeframes initiaux
-À décider avant scanner production.
+Toujours ouverte. **Bloque le preflight/premier LIVE** tant que les timeframes de production ne sont pas validés explicitement.
 
 ### OPEN-007 — Limites numériques Balanced
-À décider avant Risk Engine final.
+Toujours ouverte. **Bloque le preflight/premier LIVE** tant qu’un profil Balanced complet et validé n’est pas fourni explicitement.
 
 ### OPEN-008 — Routage modèles IA
-À décider avant AI Gateway final.
+L’infrastructure de routage a été livrée au Batch 06. La configuration de modèles utilisée pour les expériences/backtests reste versionnée et explicite ; ce point n’est plus un prérequis de construction du Gateway.
 
 ### OPEN-009 — Stack dashboard
-À décider avant Dashboard V1.
+Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est désormais porté par l’implémentation ; ce point n’est plus un bloqueur de roadmap.
 
 ### OPEN-010 — Environnement 24/7
 À décider avant exploitation continue.
@@ -337,6 +430,16 @@ Cette décision concerne le **Market Data du Batch 13**. Elle n'active aucun ord
 ---
 
 ## 5. Changelog documentation
+
+### v0.4 — 2026-09-07 — Alignement post-Batch 15
+- documentation source réalignée sur l’état réel des Batchs 01 à 15 ;
+- ADR-020 : premier LIVE Kraken Spot / EUR, sans dérivés/marge/levier et sans entrée SHORT ;
+- ADR-021 : activation Batch 15 fail-closed, armement opérateur éphémère ;
+- ADR-022 : Batch 16 Backtesting & Historical Replay inséré avant tout premier ordre réel ;
+- roadmap décalée : Rio/Denver → 17, Réputation/Ablation → 18, Recruitment → 19, Task Force → 20, Master Portfolio → 21 ;
+- OPEN-005 résolue pour le premier LIVE ;
+- OPEN-006 et OPEN-007 explicitement conservées comme bloqueurs LIVE ;
+- ADR-023 : GitHub `main` devient la référence intégrée et les sources ChatGPT doivent être synchronisées après les mises à jour documentaires.
 
 ### v0.3 — 2026-09-07
 - démarrage du Batch 13 — Exchange Adapter PAPER / Market Data réel ;
