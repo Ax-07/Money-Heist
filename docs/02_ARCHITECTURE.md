@@ -544,3 +544,39 @@ L’architecture est considérée correctement appliquée si :
 - chaque ordre est lié à une décision autorisée ;
 - une panne critique bloque les nouvelles positions ;
 - un nouveau spécialiste peut être ajouté sans modifier le Risk Engine.
+
+
+---
+
+## 16. Addendum Batch 16 — frontière Backtest / Historical Replay
+
+Le package `app/services/backtest` est une couche de service historique distincte de l’exécution LIVE.
+
+Flux :
+
+```text
+HistoricalReplayRunner
+→ FeatureEngine
+→ DeterministicScanner
+→ PaperTradingPipeline
+→ RiskEngine
+→ PaperBroker
+```
+
+Le runner contrôle uniquement la chronologie et l’adaptation historique. Il ne réimplémente pas les décisions des agents, le Risk Engine ni la logique d’ordre PAPER.
+
+Les dépendances LIVE sont interdites depuis le package backtest. `LIVE_EVAL` ne concerne que le choix du client IA du Batch 06 ; le broker reste PAPER.
+
+Les composants Batch 16 principaux sont :
+- `DatasetRef` ;
+- `ReplayClock` / `ReplayIdFactory` ;
+- `HistoricalReplayRunner` ;
+- `BacktestPortfolioStateProvider` ;
+- `HistoricalPositionLifecycle` ;
+- résolution intrabar STOP_FIRST ;
+- `BacktestAIClient` et cache ;
+- adaptateur Evaluation ;
+- fingerprint business ;
+- splits DESIGN/VALIDATION/OOS ;
+- walk-forward V1 ;
+- exports déterministes.

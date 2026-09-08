@@ -418,3 +418,24 @@ Prévoir :
 - chaque analyse référence sa version de prompt ;
 - chaque coût IA est lié à une exécution ;
 - chaque décision peut être reliée à son snapshot.
+
+
+---
+
+## 18. Addendum Batch 16 — modèles de backtest
+
+Contrats principaux ajoutés :
+- `DatasetRef` : identité/version/hash du dataset ;
+- `BacktestConfig` : système, versions, mode IA, coûts d’exécution, policy intrabar, `code_version`, `execution_model_version`, `random_seed` ;
+- `BacktestRun` / `BacktestResult` ;
+- `HistoricalReplayPoint` / `HistoricalReplayResult` ;
+- `HistoricalTradeProtection` / `HistoricalExitEvent` ;
+- `BacktestAIContext` / `BacktestResponseCache` ;
+- `BacktestBusinessFingerprint` ;
+- `BacktestPeriodRole` (`DESIGN`, `VALIDATION`, `OOS`) ;
+- `BacktestSplitPlan` / `BacktestRunSet` ;
+- `BacktestPeriodReport` / `BacktestSplitReport` ;
+- `WalkForwardPlan` / `WalkForwardWindow` / `WalkForwardReport` ;
+- `BacktestRunManifest`.
+
+Les exports JSON destinés à la reproductibilité utilisent une canonicalisation stable des datetimes UTC, Decimal, enums, dataclasses et mappings triés.

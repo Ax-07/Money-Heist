@@ -1,4 +1,4 @@
-"""Batch 16 deterministic historical replay foundations."""
+"""Batch 16 deterministic historical replay and validation toolkit."""
 
 from .ai_modes import BacktestAIClient
 from .cache import BacktestAIContext, BacktestCacheMissError, BacktestResponseCache
@@ -9,6 +9,15 @@ from .evaluation import (
     equity_points_from_replay,
     evaluate_historical_replay,
     final_marks_from_replay,
+)
+from .exports import (
+    BacktestRunManifest,
+    build_run_manifest,
+    closed_trades_to_csv,
+    equity_curve_to_csv,
+    manifest_to_json,
+    split_report_to_json,
+    walk_forward_report_to_json,
 )
 from .ids import ReplayIdFactory, canonical_json, stable_digest, stable_uuid
 from .intrabar import HistoricalExitReason, IntrabarResolution, resolve_intrabar
@@ -26,6 +35,12 @@ from .models import (
     IntrabarPolicy,
 )
 from .portfolio import BacktestPortfolioStateProvider
+from .reports import (
+    BacktestMetricSnapshot,
+    BacktestPeriodReport,
+    BacktestSplitReport,
+    WalkForwardReport,
+)
 from .reproducibility import (
     BacktestBusinessFingerprint,
     assert_reproducible,
@@ -33,6 +48,14 @@ from .reproducibility import (
     fingerprint_backtest,
 )
 from .runner import HistoricalReplayPoint, HistoricalReplayResult, HistoricalReplayRunner
+from .splits import BacktestPeriod, BacktestPeriodRole, BacktestRunSet, BacktestSplitPlan
+from .walk_forward import (
+    WalkForwardPlan,
+    WalkForwardSplitExecutor,
+    WalkForwardWindow,
+    build_walk_forward_plan,
+    execute_walk_forward,
+)
 
 __all__ = [
     "BacktestAIClient",
@@ -42,11 +65,19 @@ __all__ = [
     "BacktestCacheMissError",
     "BacktestConfig",
     "BacktestEvaluationBundle",
+    "BacktestMetricSnapshot",
+    "BacktestPeriod",
+    "BacktestPeriodReport",
+    "BacktestPeriodRole",
     "BacktestPortfolioStateProvider",
     "BacktestResponseCache",
     "BacktestResult",
     "BacktestRun",
+    "BacktestRunManifest",
+    "BacktestRunSet",
     "BacktestRunStatus",
+    "BacktestSplitPlan",
+    "BacktestSplitReport",
     "DatasetRef",
     "HistoricalExitEvent",
     "HistoricalExitReason",
@@ -59,16 +90,28 @@ __all__ = [
     "IntrabarResolution",
     "ReplayClock",
     "ReplayIdFactory",
+    "WalkForwardPlan",
+    "WalkForwardReport",
+    "WalkForwardSplitExecutor",
+    "WalkForwardWindow",
     "as_utc",
     "assert_reproducible",
+    "build_run_manifest",
+    "build_walk_forward_plan",
     "business_payload",
     "canonical_candle_rows",
     "canonical_json",
+    "closed_trades_to_csv",
+    "equity_curve_to_csv",
     "equity_points_from_replay",
     "evaluate_historical_replay",
+    "execute_walk_forward",
     "final_marks_from_replay",
     "fingerprint_backtest",
+    "manifest_to_json",
     "resolve_intrabar",
+    "split_report_to_json",
     "stable_digest",
     "stable_uuid",
+    "walk_forward_report_to_json",
 ]

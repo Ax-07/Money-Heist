@@ -286,31 +286,34 @@ Avant activation :
 
 ## 19. Batch 16 — Backtesting & Historical Replay
 
-### Objectif
-Construire le banc d’essai historique end-to-end avant tout premier ordre LIVE réel.
+**État : livré après validation du lot final.**
 
-### Contenu
+### Objectif atteint
+Fournir le banc d’essai historique end-to-end exigé avant tout premier ordre LIVE réel.
+
+### Contenu livré
 - `HistoricalReplayRunner` et `ReplayClock` ;
-- datasets historiques versionnés/référencés ;
-- réutilisation Feature Engine + Scanner de production ;
-- orchestration agents sur données as-of ;
+- datasets historiques content-addressed/versionnés ;
+- Feature Engine + Scanner de production réutilisés sans logique parallèle ;
+- orchestration agents as-of ;
 - Risk Engine identique au chemin PAPER ;
-- capital/PortfolioRiskState évolutifs ;
-- cycle de vie des positions avec stops/targets ;
-- modèle de fills historique avec frais/slippage ;
-- politique déterministe d’ambiguïté intrabar ;
-- equity curve et résultats Evaluation ;
+- `PortfolioRiskState` dynamique ;
+- cycle de vie positions, stops/targets, fees/slippage ;
+- policy intrabar conservatrice STOP_FIRST et gestion des gaps ;
+- equity curve + Batch 10 Evaluation ;
 - modes IA MOCK/CACHED/LIVE_EVAL ;
-- out-of-sample ;
-- walk-forward V1 ;
-- exports de runs reproductibles ;
-- tests anti-look-ahead.
+- fingerprint business et manifeste de run ;
+- `code_version`, `execution_model_version`, seed dans l’identité du run ;
+- périodes DESIGN / VALIDATION / OOS ;
+- walk-forward V1 sans optimiseur ;
+- exports JSON/CSV déterministes ;
+- tests anti-look-ahead et frontière anti-LIVE.
 
-### Critère
-Une période historique peut être rejouée de bout en bout de façon reproductible sans donnée future, avec résultats, coûts, positions et métriques audités.
+### Critère d’infrastructure
+Une période historique peut être rejouée de bout en bout de manière reproductible sans donnée future, en conservant les décisions Risk, positions, coûts, equity et métriques.
 
-### Gate
-Le LIVE reste non armé tant que ce batch et les validations associées ne sont pas satisfaits.
+### Gate opérationnelle
+Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiquement réussie**. Les datasets réels, critères d’acceptation OOS/walk-forward et campagnes PAPER/SHADOW doivent encore être exécutés/validés avant un premier ordre réel.
 
 ---
 
@@ -409,7 +412,7 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-1. Fusionner l’alignement documentaire post-Batch 15.
-2. Démarrer **Batch 16 — Backtesting & Historical Replay** sur la baseline `40c4144` (ou son descendant documentaire uniquement).
-3. Garder le LIVE non armé pendant le développement et la validation du Batch 16.
-4. Après Batch 16, exécuter les gates historiques puis poursuivre PAPER/SHADOW avant toute décision de premier ordre réel.
+1. Exécuter des campagnes Batch 16 sur des datasets historiques réels et versionnés.
+2. Définir avant observation finale les critères quantitatifs DESIGN/VALIDATION/OOS/walk-forward.
+3. Poursuivre PAPER/SHADOW et conserver le LIVE non armé tant que la gate n’est pas satisfaite.
+4. Démarrer **Batch 17 — Rio / Denver avancés** en utilisant les statistiques réellement produites par Batch 16.

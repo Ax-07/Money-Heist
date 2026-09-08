@@ -327,3 +327,22 @@ Aucun passage LIVE si :
 - absence de réconciliation ;
 - Risk Engine contournable ;
 - agent capable d’obtenir des permissions arbitraires.
+
+
+---
+
+## 22. Addendum Batch 16 — sécurité du replay historique
+
+Le backtest est une frontière PAPER-only.
+
+Le package `app/services/backtest` ne doit importer ni appeler :
+- `app.trading.live` ;
+- le broker LIVE Kraken ;
+- le service d’activation/exécution LIVE ;
+- les endpoints privés d’ordre exchange.
+
+Des tests statiques de frontière empêchent l’introduction accidentelle de ces dépendances.
+
+`LIVE_EVAL` est un mode d’évaluation IA et non un mode d’exécution. Il peut consommer une API modèle réelle dans le respect du budget AI Gateway, mais ne change pas le broker PAPER du replay.
+
+La gate Batch 15 reste indépendante et fail-closed. Aucun résultat de backtest ne peut armer automatiquement le LIVE.

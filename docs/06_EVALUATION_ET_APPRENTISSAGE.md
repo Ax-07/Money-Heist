@@ -398,3 +398,28 @@ La couche Evaluation est correcte si :
 - tests d’ablation sont possibles ;
 - promotion SHADOW → LIVE est contrôlée ;
 - aucune métrique unique ne suffit automatiquement à contourner le risque.
+
+
+---
+
+## 26. Addendum Batch 16 — Evaluation historique, OOS et walk-forward
+
+Le moteur Batch 16 réutilise `EvaluationService` du Batch 10. Il reconstruit une `EvaluationSource` depuis les ordres/fills PAPER, l’equity curve, les traces d’orchestration et les `AIUsageRecord` disponibles.
+
+Les métriques incluent notamment PnL net, frais, slippage, win rate, expectancy, profit factor, drawdown, exposition, coûts IA, métriques agents, Economic Net et Self-Funding Ratio.
+
+Les périodes sont explicitement séparées :
+- `DESIGN` : conception/hypothèses ;
+- `VALIDATION` : vérification avant gel ;
+- `OOS` : évaluation hors échantillon.
+
+Le rapport OOS reste distinct des métriques DESIGN/VALIDATION.
+
+Le walk-forward V1 génère des fenêtres roulantes DESIGN → VALIDATION → OOS à configuration figée. Il n’intègre pas d’optimiseur automatique.
+
+Les modes IA sont :
+- `MOCK` : déterministe ;
+- `CACHED` : cache-only fail-closed ;
+- `LIVE_EVAL` : fournisseur IA réel autorisé via AI Gateway/budgets, mais trading PAPER uniquement.
+
+Un fingerprint business compare les sorties économiques et décisions déterministes sans dépendre d’identifiants techniques volatils sans impact business.

@@ -1,18 +1,25 @@
-# Money Heist — État actuel post-Batch 15
+# Money Heist — État actuel post-Batch 16
 
 **Statut :** Référence d’alignement active  
-**Date :** 2026-09-07  
-**Baseline code :** `40c4144e0880300a7910cbdb14f27d6764b34b84` — `feat(live): complete Batch 15 LIVE activation guardrails`
+**Date :** 2026-09-08  
+**Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références existantes  
+**Baseline d’entrée de la finalisation :** `8db98a4` — `feat(backtest): add evaluation ai modes and reproducibility`
 
 ---
 
 ## 1. Rôle de ce document
 
-Ce document corrige le décalage entre la documentation initiale créée avant le développement et l’état réel du dépôt après les Batchs 01 à 15.
+Ce document décrit l’état intégré du projet après la finalisation du **Batch 16 — Backtesting & Historical Replay**.
 
-En cas de contradiction entre une formulation historique des documents `01_...` à `08_...` et l’état décrit ici, **ce document, `09_ROADMAP_DEVELOPPEMENT.md`, `10_DECISIONS_ET_CHANGELOG.md` et le code intégré sur GitHub `main` prévalent pour décrire l’état actuel**.
+En cas de contradiction avec une formulation historique des documents `01_...` à `08_...`, les références suivantes prévalent pour l’état courant :
 
-Les documents historiques restent utiles pour les principes, invariants et intentions architecturales qui n’ont pas été explicitement superseded.
+1. le code intégré sur GitHub `main` ;
+2. ce document ;
+3. `09_ROADMAP_DEVELOPPEMENT.md` ;
+4. `10_DECISIONS_ET_CHANGELOG.md` ;
+5. `11_BACKTESTING_ET_REPLAY_HISTORIQUE.md` pour le contrat détaillé du Batch 16.
+
+Les documents initiaux restent des références de domaine lorsque leurs principes n’ont pas été explicitement remplacés.
 
 ---
 
@@ -37,22 +44,179 @@ Les Batchs suivants sont livrés :
 13 — Exchange Adapter / Market Data réel Kraken
 14 — LIVE Broker sécurisé Kraken Spot / EUR
 15 — Activation LIVE / garde-fous fail-closed
+16 — Backtesting & Historical Replay
 ```
 
-Le Batch 15 ne signifie pas qu’un premier ordre réel a été envoyé ni qu’il doit l’être immédiatement.
+Le Batch 16 ajoute un banc d’essai historique end-to-end mais **n’arme pas le LIVE** et ne constitue pas, à lui seul, une autorisation de premier ordre réel.
 
 ---
 
-## 3. État LIVE
+## 3. Pipeline historique disponible
 
-Le premier chemin LIVE cible :
-- Kraken Spot / EUR ;
-- `balanced_v1` ;
-- `BTC/EUR`, `ETH/EUR`, `SOL/EUR` ;
-- sans marge, dérivés ou levier pour le premier LIVE ;
-- sans entrée SHORT LIVE.
+Le chemin historique réutilise les composants de production au lieu de dupliquer la logique métier :
 
-Le mécanisme Batch 15 est fail-closed :
+```text
+Dataset OHLCV historique immuable
+→ ReplayClock
+→ Feature Engine
+→ DeterministicScanner
+→ CandidateOpportunity
+→ Compute Gate / Orchestration agents
+→ TradeProposal
+→ Risk Engine déterministe
+→ PaperTradingPipeline
+→ PaperBroker
+→ cycle de vie historique des positions
+→ PortfolioRiskState dynamique
+→ equity curve
+→ Batch 10 Evaluation
+```
+
+Les invariants principaux sont :
+- aucune bougie future visible à l’étape courante ;
+- une décision prise à la clôture N ne peut pas utiliser le high/low de N pour gérer la position nouvellement ouverte ;
+- Risk Engine identique au chemin PAPER ;
+- exécution historique exclusivement via PaperBroker ;
+- frais et slippage explicites ;
+- stop prioritaire si stop et target sont touchés dans une même bougie sans ordre intrabar observable ;
+- gap défavorable au stop exécuté depuis l’open puis slippage PAPER ;
+- gap favorable au target plafonné au target ;
+- target V1 : premier target atteint, fermeture complète ;
+- aucune dépendance du package backtest vers l’exécution LIVE.
+
+---
+
+## 4. Données et reproductibilité
+
+Chaque dataset historique est identifié par contenu avec :
+- symbole ;
+- timeframe ;
+- source ;
+- période ;
+- nombre de bougies ;
+- hash SHA-256 ;
+- identifiant/version stables ;
+- métadonnées explicites.
+
+Chaque `BacktestRun` référence notamment :
+- dataset/version ;
+- période ;
+- système ;
+- version Risk ;
+- version Feature Engine ;
+- version Scanner ;
+- versions de prompts ;
+- versions de modèles ;
+- mode IA ;
+- version du code ;
+- version du modèle d’exécution historique ;
+- seed ;
+- frais/slippage ;
+- politique intrabar ;
+- hypothèses d’exécution additionnelles.
+
+Un fingerprint business permet de comparer deux runs sans dépendre d’identifiants techniques volatils qui ne changent pas le résultat économique.
+
+---
+
+## 5. Modes IA du backtest
+
+Trois modes sont séparés :
+
+### MOCK
+Client IA déterministe de test. Aucun fournisseur réel requis.
+
+### CACHED
+Réponses provenant exclusivement d’un cache déterministe. Un cache miss échoue sans appel upstream.
+
+### LIVE_EVAL
+Le vrai AI Gateway peut appeler un fournisseur réel et appliquer ses budgets, mais **l’exécution de trading reste PAPER uniquement**.
+
+`LIVE_EVAL` signifie « IA réelle pour évaluation historique » et ne signifie jamais « ordre LIVE ».
+
+---
+
+## 6. Evaluation et rapports
+
+Le Batch 16 alimente le Batch 10 Evaluation avec :
+- ordres/fills PAPER ;
+- frais ;
+- slippage ;
+- PnL réalisé/non réalisé ;
+- equity curve ;
+- win rate ;
+- expectancy ;
+- profit factor ;
+- drawdown ;
+- exposition ;
+- coûts IA ;
+- métriques agents ;
+- Economic Net ;
+- Self-Funding Ratio.
+
+MAE/MFE restent optionnels lorsqu’ils ne sont pas reconstructibles de manière fiable à partir du niveau de granularité historique disponible. Ils ne doivent pas être inventés.
+
+---
+
+## 7. DESIGN, VALIDATION et OOS
+
+Le Batch 16 fournit des périodes explicitement typées :
+
+```text
+DESIGN
+→ VALIDATION
+→ OOS
+```
+
+Elles sont non chevauchantes et restent à l’intérieur des bornes du dataset.
+
+Les métriques OOS sont conservées séparément. Elles ne doivent pas être fusionnées avec DESIGN/VALIDATION pour masquer une dégradation hors échantillon.
+
+Le « test final » OOS ne doit pas être réutilisé indéfiniment pour ajuster les paramètres.
+
+---
+
+## 8. Walk-forward V1
+
+Le walk-forward V1 construit des fenêtres roulantes :
+
+```text
+DESIGN window
+→ VALIDATION window
+→ OOS window
+→ roll
+```
+
+V1 n’intègre **aucun optimiseur automatique**. Une même `BacktestConfig` figée est utilisée pour les trois périodes d’une fenêtre et pour les fenêtres générées par un plan donné.
+
+Toute future optimisation devra être un composant séparé, explicitement versionné et soumis à des protections contre l’overfitting/data snooping.
+
+---
+
+## 9. Exports
+
+Les exports déterministes incluent :
+- manifeste de run JSON canonique ;
+- fingerprint business ;
+- rapport DESIGN/VALIDATION/OOS JSON ;
+- rapport walk-forward JSON ;
+- equity curve CSV ;
+- closed trades CSV ;
+- exports Batch 10 existants.
+
+---
+
+## 10. Sécurité LIVE
+
+Le Batch 16 n’ajoute aucun chemin vers :
+- `app.trading.live` ;
+- `KrakenSpotLiveBroker` ;
+- `ControlledLiveExecutionService` ;
+- API privée d’ordre LIVE.
+
+Des tests de frontière inspectent le package backtest pour préserver cette isolation.
+
+Le mécanisme Batch 15 reste fail-closed :
 
 ```text
 LIVE_DISABLED
@@ -60,96 +224,54 @@ LIVE_DISABLED
 → LIVE_ARMED
 ```
 
-L’armement est opérateur, explicite, éphémère et perdu au redémarrage.
-
-La présence de credentials Kraken ne suffit jamais à armer le LIVE.
-
-Restent notamment bloquants avant tout premier ordre réel :
-- profil Balanced numérique complet et validé ;
-- timeframes de production validés ;
-- seuils de fraîcheur Market Data validés ;
-- validation historique end-to-end définie ci-dessous.
+La présence de credentials ne suffit jamais à armer le LIVE.
 
 ---
 
-## 4. Écart identifié après Batch 15
+## 11. Gate avant premier ordre réel
 
-Le dépôt possède déjà :
-- import OHLCV historique ;
-- Feature Engine replay-safe ;
-- `replay_scanner()` sans look-ahead ;
-- Paper Broker avec capital virtuel, frais, slippage, stops et replay de prix ;
-- pipeline `Opportunity → AI → Risk → Paper Broker` ;
-- Evaluation ;
-- SHADOW multi-systèmes.
+La disponibilité du moteur historique ne signifie pas que la validation historique est automatiquement réussie.
 
-Mais il ne possède pas encore un moteur historique end-to-end qui boucle chronologiquement :
+La gate opérationnelle reste :
 
 ```text
-candles
-→ Feature Engine
-→ Scanner
-→ Opportunity
-→ Agents
-→ Risk Engine
-→ Paper Broker
-→ cycle de vie de position
-→ equity / PortfolioRiskState évolutif
-→ Evaluation
-```
-
-L’out-of-sample et le walk-forward sont spécifiés, mais pas encore implémentés end-to-end.
-
----
-
-## 5. Nouvelle gate avant premier LIVE réel
-
-La séquence obligatoire devient :
-
-```text
-Replay historique
-→ Backtest end-to-end
-→ Validation hors échantillon
+Datasets historiques sélectionnés et contrôlés
+→ Backtests DESIGN
+→ Validation
+→ OOS
 → Walk-forward
-→ PAPER / SHADOW
+→ analyse des métriques / coûts / drawdown
+→ PAPER / SHADOW suffisamment observé
+→ profil Balanced numérique validé
+→ timeframes et freshness validés
 → Preflight LIVE
-→ décision opérateur
-→ Petit capital réel
+→ décision opérateur explicite
+→ petit capital réel
 ```
 
-Le LIVE doit rester **non armé** tant que cette gate n’est pas satisfaite.
+Les seuils numériques de promotion doivent être définis avant de juger le test correspondant afin de limiter le cherry-picking.
 
 ---
 
-## 6. Batch 16 — Backtesting & Historical Replay
+## 12. Bloqueurs LIVE encore ouverts
 
-Le nouveau Batch 16 doit notamment fournir :
-- `HistoricalReplayRunner` ;
-- `ReplayClock` ;
-- datasets historiques identifiables/versionnés ;
-- réutilisation du Feature Engine et Scanner de production ;
-- orchestration agents sur données disponibles au timestamp simulé uniquement ;
-- Risk Engine identique au chemin PAPER ;
-- capital, equity, exposition et `PortfolioRiskState` évolutifs ;
-- cycle de vie complet des positions, stops et targets ;
-- modèle de fills historique avec frais/slippage ;
-- politique déterministe et conservatrice pour ambiguïtés intrabar ;
-- equity curve ;
-- résultats Evaluation ;
-- modes IA explicitement séparés : `MOCK`, `CACHED`, `LIVE_EVAL` ;
-- out-of-sample ;
-- walk-forward V1 ;
-- exports reproductibles ;
-- tests anti-look-ahead.
+Même après Batch 16, restent notamment à décider/valider avant un premier ordre réel :
+- profil Balanced numérique complet ;
+- timeframes de production ;
+- seuils de fraîcheur Market Data ;
+- datasets historiques retenus pour la gate ;
+- critères quantitatifs d’acceptation OOS/walk-forward ;
+- durée/volume minimal d’observation PAPER/SHADOW ;
+- environnement 24/7.
 
-Un run doit identifier son dataset, sa période, ses versions Feature/Scanner/Risk/Prompts/Models, son mode IA et ses hypothèses d’exécution.
+Aucune valeur ne doit être inventée pour fermer artificiellement ces points.
 
 ---
 
-## 7. Roadmap réalignée
+## 13. Roadmap active
 
 ```text
-Batch 16 — Backtesting & Historical Replay
+Batch 16 — Backtesting & Historical Replay — livré
 Batch 17 — Rio / Denver avancés
 Batch 18 — Réputation et ablation
 Batch 19 — Recruitment Engine
@@ -157,25 +279,14 @@ Batch 20 — Task Force Agents
 Batch 21 — Master Portfolio Layer
 ```
 
-Denver avancé vient volontairement après Batch 16 afin de consommer des statistiques historiques réellement produites par le système plutôt que des probabilités inventées.
+Denver avancé peut désormais consommer les statistiques réellement produites par le moteur Batch 16.
 
 ---
 
-## 8. Source de vérité documentaire
+## 14. Prochaine étape
 
-À partir de cette révision :
-
-1. GitHub `Ax-07/Money-Heist`, branche `main`, représente l’état intégré du projet.
-2. `00_ETAT_ACTUEL_POST_BATCH_15.md` décrit l’alignement courant.
-3. `09_ROADMAP_DEVELOPPEMENT.md` porte la roadmap active.
-4. `10_DECISIONS_ET_CHANGELOG.md` porte les ADR et décisions ouvertes.
-5. Les documents `01_...` à `08_...` restent des références de domaine ; toute formulation historique devenue contradictoire avec les points 1 à 4 est considérée comme superseded jusqu’à sa prochaine consolidation éditoriale.
-6. Les copies chargées comme sources du projet ChatGPT doivent être resynchronisées avec GitHub après une révision documentaire approuvée.
-
----
-
-## 9. Prochaine étape
-
-Après fusion de cet alignement documentaire :
-
-**Démarrer Batch 16 — Backtesting & Historical Replay, avec LIVE non armé.**
+1. intégrer et valider le lot final Batch 16 ;
+2. exécuter des campagnes historiques réelles avec datasets/version/config figés ;
+3. définir avant test les critères de passage OOS/walk-forward ;
+4. poursuivre PAPER/SHADOW avec LIVE non armé ;
+5. démarrer Batch 17 sans interpréter ce démarrage comme une autorisation LIVE.

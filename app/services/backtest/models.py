@@ -55,6 +55,9 @@ class BacktestConfig:
 
     system_id: str
     risk_version: str
+    code_version: str = "batch16-v1"
+    execution_model_version: str = "historical-ohlc-v1"
+    random_seed: int = 0
     ai_mode: BacktestAIMode = BacktestAIMode.MOCK
     initial_balance: Decimal = Decimal("100")
     maker_fee_bps: Decimal = Decimal("10")
@@ -68,9 +71,20 @@ class BacktestConfig:
     execution_assumptions: Mapping[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for field_name in ("system_id", "risk_version", "feature_version", "scanner_version"):
+        for field_name in (
+            "system_id",
+            "risk_version",
+            "code_version",
+            "execution_model_version",
+            "feature_version",
+            "scanner_version",
+        ):
             if not str(getattr(self, field_name)).strip():
                 raise ValueError(f"{field_name} must not be empty")
+        if isinstance(self.random_seed, bool) or not isinstance(self.random_seed, int):
+            raise ValueError("random_seed must be an integer")
+        if self.random_seed < 0:
+            raise ValueError("random_seed must be >= 0")
         if not self.initial_balance.is_finite() or self.initial_balance <= 0:
             raise ValueError("initial_balance must be finite and > 0")
         for field_name in ("maker_fee_bps", "taker_fee_bps", "market_slippage_bps"):
@@ -95,6 +109,9 @@ class BacktestConfig:
         return {
             "system_id": self.system_id,
             "risk_version": self.risk_version,
+            "code_version": self.code_version,
+            "execution_model_version": self.execution_model_version,
+            "random_seed": self.random_seed,
             "ai_mode": self.ai_mode,
             "initial_balance": self.initial_balance,
             "maker_fee_bps": self.maker_fee_bps,
@@ -143,7 +160,7 @@ class BacktestRun:
         if end < start:
             raise ValueError("period_end cannot precede period_start")
         payload = {
-            "schema": "money-heist.backtest-run.v1",
+            "schema": "money-heist.backtest-run.v2",
             "dataset": dataset.canonical_payload(),
             "config": config.canonical_payload(),
             "period_start": start,

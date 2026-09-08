@@ -1286,3 +1286,28 @@ Il devra définir :
 - la forme générale du déploiement.
 
 Ensuite, nous pourrons commencer le **Lot de développement 01 — Fondations**.
+
+
+---
+
+## 41. Addendum post-Batch 16 — état implémenté
+
+Les sections historiques décrivant le projet comme « pré-développement » sont superseded pour l’état courant par `00_ETAT_ACTUEL_POST_BATCH_15.md`, `09_ROADMAP_DEVELOPPEMENT.md`, `10_DECISIONS_ET_CHANGELOG.md` et le code sur `main`.
+
+Le Batch 16 implémente désormais le chemin de validation décrit en section 24 :
+
+```text
+Dataset historique versionné
+→ replay chronologique sans look-ahead
+→ Feature Engine / Scanner de production
+→ agents / Risk Engine
+→ PaperBroker
+→ cycle de vie positions / equity
+→ Evaluation
+→ DESIGN / VALIDATION / OOS
+→ walk-forward V1
+```
+
+Un run historique doit identifier sa période, son dataset, les versions Feature/Scanner/Risk/Prompts/Models, sa version de code, sa version du modèle d’exécution, son seed et son mode IA.
+
+Le moteur est une infrastructure de preuve. Sa présence ne constitue pas une preuve de profitabilité ni une autorisation LIVE. Les critères de promotion doivent être définis avant les campagnes finales et les résultats OOS doivent rester séparés des données de conception.

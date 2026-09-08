@@ -366,3 +366,20 @@ Avant LIVE :
 - double ordre impossible dans les tests ;
 - réconciliation fonctionnelle ;
 - erreur exchange bloque proprement l’entrée.
+
+
+---
+
+## 26. Addendum Batch 16 — données historiques et modèle d’exécution
+
+Les datasets utilisés par le backtest sont content-addressed : tri chronologique, timestamps UTC, contrôle des doublons, cohérence OHLCV et hash stable.
+
+La politique d’exécution historique V1 est déterministe et conservatrice :
+- décision à la clôture N, protection active seulement sur les bougies futures ;
+- stop + target touchés dans la même bougie : STOP_FIRST ;
+- gap défavorable au-delà du stop : référence = open, puis slippage market PaperBroker ;
+- gap favorable au-delà du target : fill plafonné au target ;
+- target V1 : premier target, sortie complète ;
+- frais maker/taker et slippage proviennent de la configuration PaperBroker/backtest.
+
+Le modèle d’exécution possède une version explicite dans `BacktestConfig`. Une modification matérielle des hypothèses d’exécution doit changer cette version ou les `execution_assumptions` afin de modifier le `run_id`.

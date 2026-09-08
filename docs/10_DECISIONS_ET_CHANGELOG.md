@@ -380,7 +380,7 @@ Le code post-Batch 15 possède l’import historique, le replay scanner, le Pape
 **Statut :** ACCEPTED
 
 **Décision :**
-Le dépôt GitHub **`Ax-07/Money-Heist`**, branche `main`, constitue la référence de l’état intégré du code et des dix documents permanents.
+Le dépôt GitHub **`Ax-07/Money-Heist`**, branche `main`, constitue la référence de l’état intégré du code et des onze documents permanents.
 
 Les copies de ces documents chargées comme sources du projet ChatGPT doivent être remplacées après une révision documentaire approuvée afin d’éviter qu’une nouvelle conversation reparte d’une spécification obsolète.
 
@@ -389,9 +389,45 @@ Après les Batchs 01 à 15, certaines sources initiales décrivaient encore le p
 
 **Conséquences :**
 - une mise à jour documentaire significative est commitée dans GitHub ;
-- les dix sources ChatGPT sont ensuite rafraîchies avec les mêmes versions ;
+- les onze sources ChatGPT sont ensuite rafraîchies avec les mêmes versions ;
 - en cas de divergence temporaire, GitHub `main` prévaut pour l’état intégré ;
 - les ZIP restent un moyen de livraison possible mais ne remplacent pas l’historique Git intégré.
+
+---
+
+### ADR-024 — Contrat de reproductibilité et validation historique Batch 16
+
+**Date :** 2026-09-08  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le moteur historique Batch 16 est PAPER-only et ses expériences doivent être identifiables/reproductibles.
+
+Un `BacktestRun` inclut dans son identité :
+- dataset/version/hash ;
+- période ;
+- configuration de risque et d’exécution ;
+- versions Feature/Scanner/Risk/Prompts/Models ;
+- `code_version` ;
+- `execution_model_version` ;
+- `random_seed` ;
+- mode IA.
+
+Les validations finales séparent explicitement `DESIGN`, `VALIDATION` et `OOS`. Le walk-forward V1 roule ces trois fenêtres avec une configuration figée et ne contient pas d’optimiseur automatique.
+
+Les ambiguïtés intrabar sans données plus fines utilisent `STOP_FIRST`. Les gaps défavorables au stop partent du prix d’ouverture avec slippage PAPER ; les gaps favorables au target sont plafonnés au target. Le target V1 ferme la position entière au premier target atteint.
+
+`LIVE_EVAL` autorise uniquement un fournisseur IA réel via Batch 06 ; l’exécution reste `PaperTradingPipeline`/`PaperBroker`. Le package backtest ne dépend pas de `app.trading.live`.
+
+**Raison :**
+Une comparaison historique n’est exploitable que si dataset, code, modèles, prompts, hypothèses d’exécution et seed sont explicitement traçables. La séparation OOS et l’absence d’optimiseur V1 limitent le risque d’overfitting implicite.
+
+**Conséquences :**
+- changer une version matérielle ou le seed change le `run_id` ;
+- les rapports OOS restent séparés ;
+- les exports incluent un manifeste et un fingerprint business ;
+- le moteur historique ne peut jamais armer le LIVE ;
+- les critères numériques de promotion restent une décision opérateur/projet à définir avant les tests finaux.
 
 ---
 
@@ -430,6 +466,17 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+### v0.5 — 2026-09-08 — Finalisation Batch 16
+- Batch 16 Backtesting & Historical Replay livré ;
+- replay end-to-end PAPER avec PortfolioRiskState dynamique et cycle de vie OHLC ;
+- policy intrabar STOP_FIRST, gaps, fees/slippage et targets déterministes ;
+- intégration Batch 10 Evaluation et modes IA MOCK/CACHED/LIVE_EVAL ;
+- fingerprint business, `code_version`, `execution_model_version` et seed ;
+- périodes DESIGN/VALIDATION/OOS et walk-forward V1 sans optimiseur ;
+- exports déterministes et tests de frontière anti-LIVE ;
+- ADR-024 ajouté ;
+- documentation réalignée post-Batch 16.
 
 ### v0.4 — 2026-09-07 — Alignement post-Batch 15
 - documentation source réalignée sur l’état réel des Batchs 01 à 15 ;
