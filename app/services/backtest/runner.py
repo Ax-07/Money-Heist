@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Protocol
 
 from .clock import ReplayClock, as_utc
@@ -46,6 +47,51 @@ class PaperPipelinePort(Protocol):
     ) -> Any: ...
 
 
+class DynamicPortfolioProviderPort(Protocol):
+    system_id: str
+    initial_balance: Decimal
+    last_account_state: Any | None
+
+    def get_portfolio_state(self, *, system_id: str) -> Any | None: ...
+
+    async def refresh_from_broker(
+        self,
+        broker: Any,
+        *,
+        observed_at: datetime,
+        open_risk_amount: Decimal,
+        correlated_risk_amount: Decimal | None = None,
+    ) -> Any: ...
+
+
+class PositionLifecyclePort(Protocol):
+    broker: Any
+    system_id: str
+
+    async def process_candle_open(
+        self,
+        row: dict[str, Any],
+        *,
+        observed_at: datetime,
+    ) -> tuple[Any, ...]: ...
+
+    async def process_candle_close(
+        self,
+        row: dict[str, Any],
+        *,
+        observed_at: datetime,
+    ) -> tuple[Any, ...]: ...
+
+    async def register_execution(
+        self,
+        pipeline_result: Any,
+        *,
+        observed_at: datetime,
+    ) -> Any | None: ...
+
+    async def open_risk_amount(self) -> Decimal: ...
+
+
 @dataclass(frozen=True, slots=True)
 class HistoricalReplayPoint:
     observed_at: datetime
@@ -53,6 +99,8 @@ class HistoricalReplayPoint:
     feature_snapshot: Any
     scan_result: Any
     pipeline_result: Any | None = None
+    portfolio_state: Any | None = None
+    account_state: Any | None = None
 
     @property
     def opportunity(self) -> Any | None:
@@ -78,10 +126,11 @@ class HistoricalReplayResult:
 class HistoricalReplayRunner:
     """Chronological bridge from historical candles to the existing PAPER pipeline.
 
-    The runner owns chronology only. Trading decisions remain in the existing
-    Feature Engine, Scanner, orchestration, Risk Engine and Paper Broker stack.
-    Historical position lifecycle, intrabar stop/target handling and dynamic
-    portfolio accounting are intentionally deferred to later Batch 16 stages.
+    Batch 16.3 optionally couples the runner to a dynamic portfolio provider and
+    historical position lifecycle. When enabled, OPEN/CLOSE marks are processed
+    before the close-time decision, the Risk Engine sees the refreshed portfolio
+    state, and newly executed entries receive protection only after the entry
+    candle has fully completed. Intrabar high/low resolution remains Batch 16.4.
     """
 
     def __init__(
@@ -92,6 +141,8 @@ class HistoricalReplayRunner:
         scanner: ScannerPort | None = None,
         clock: ReplayClock | None = None,
         min_history: int | None = None,
+        portfolio_provider: DynamicPortfolioProviderPort | None = None,
+        position_lifecycle: PositionLifecyclePort | None = None,
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -102,11 +153,27 @@ class HistoricalReplayRunner:
 
             scanner = DeterministicScanner()
 
+        if (portfolio_provider is None) != (position_lifecycle is None):
+            raise ValueError(
+                "portfolio_provider and position_lifecycle must be injected together"
+            )
+        if (
+            portfolio_provider is None
+            and hasattr(paper_pipeline, "paper_broker")
+            and hasattr(paper_pipeline, "portfolio_provider")
+        ):
+            raise ValueError(
+                "historical replay with PaperTradingPipeline requires the dynamic "
+                "backtest portfolio provider and position lifecycle"
+            )
+
         self.paper_pipeline = paper_pipeline
         self.feature_engine = feature_engine
         self.scanner = scanner
         self.clock = clock
         self.min_history = min_history
+        self.portfolio_provider = portfolio_provider
+        self.position_lifecycle = position_lifecycle
 
     async def run(
         self,
@@ -116,6 +183,7 @@ class HistoricalReplayRunner:
     ) -> HistoricalReplayResult:
         rows = self._validated_rows(candles, run)
         self._validate_component_versions(run)
+        self._validate_dynamic_stack(run)
 
         min_history = (
             self.min_history if self.min_history is not None else self._default_min_history()
@@ -132,7 +200,9 @@ class HistoricalReplayRunner:
         executed_order_count = 0
 
         for row in rows:
-            observed_at = self._row_close_time(row)
+            lifecycle_row = self._lifecycle_row(row, run)
+            open_at = self._row_time(row, "open_time")
+            observed_at = self._row_time(row, "close_time")
             if observed_at > run.period_end:
                 break
 
@@ -140,10 +210,29 @@ class HistoricalReplayRunner:
             if observed_at >= run.period_start:
                 processed_candles += 1
 
+            if self.position_lifecycle is not None and open_at < clock.now():
+                raise ValueError(
+                    "dynamic historical replay requires non-overlapping chronological candles"
+                )
+            if self.position_lifecycle is not None:
+                clock.advance_to(open_at)
+                await self.position_lifecycle.process_candle_open(
+                    lifecycle_row,
+                    observed_at=clock.now(),
+                )
+                await self._refresh_dynamic_portfolio(clock.now())
+
+            clock.advance_to(observed_at)
+            if self.position_lifecycle is not None:
+                await self.position_lifecycle.process_candle_close(
+                    lifecycle_row,
+                    observed_at=clock.now(),
+                )
+                await self._refresh_dynamic_portfolio(clock.now())
+
             if len(visible) < min_history:
                 continue
 
-            clock.advance_to(observed_at)
             feature = self.feature_engine.compute(
                 tuple(visible),
                 symbol=run.dataset.symbol,
@@ -171,6 +260,12 @@ class HistoricalReplayRunner:
                 )
                 if self._is_executed(pipeline_result):
                     executed_order_count += 1
+                    if self.position_lifecycle is not None:
+                        await self.position_lifecycle.register_execution(
+                            pipeline_result,
+                            observed_at=clock.now(),
+                        )
+                        await self._refresh_dynamic_portfolio(clock.now())
 
             points.append(
                 HistoricalReplayPoint(
@@ -179,6 +274,8 @@ class HistoricalReplayRunner:
                     feature_snapshot=feature,
                     scan_result=scan_result,
                     pipeline_result=pipeline_result,
+                    portfolio_state=self._current_portfolio_state(run.config.system_id),
+                    account_state=self._current_account_state(),
                 )
             )
 
@@ -192,6 +289,26 @@ class HistoricalReplayRunner:
             ),
             points=tuple(points),
         )
+
+    async def _refresh_dynamic_portfolio(self, observed_at: datetime) -> Any | None:
+        if self.portfolio_provider is None or self.position_lifecycle is None:
+            return None
+        open_risk = await self.position_lifecycle.open_risk_amount()
+        return await self.portfolio_provider.refresh_from_broker(
+            self.position_lifecycle.broker,
+            observed_at=observed_at,
+            open_risk_amount=open_risk,
+        )
+
+    def _current_portfolio_state(self, system_id: str) -> Any | None:
+        if self.portfolio_provider is None:
+            return None
+        return self.portfolio_provider.get_portfolio_state(system_id=system_id)
+
+    def _current_account_state(self) -> Any | None:
+        if self.portfolio_provider is None:
+            return None
+        return self.portfolio_provider.last_account_state
 
     def _clock_for_run(self, run: BacktestRun) -> ReplayClock:
         if self.clock is None:
@@ -238,6 +355,41 @@ class HistoricalReplayRunner:
         if scanner_version != run.config.scanner_version:
             raise ValueError("Scanner version does not match BacktestConfig.scanner_version")
 
+    def _validate_dynamic_stack(self, run: BacktestRun) -> None:
+        if self.portfolio_provider is None or self.position_lifecycle is None:
+            return
+        if self.portfolio_provider.system_id != run.config.system_id:
+            raise ValueError("portfolio provider system_id does not match BacktestConfig")
+        if self.position_lifecycle.system_id != run.config.system_id:
+            raise ValueError("position lifecycle system_id does not match BacktestConfig")
+
+        pipeline_provider = getattr(self.paper_pipeline, "portfolio_provider", None)
+        if pipeline_provider is not None and pipeline_provider is not self.portfolio_provider:
+            raise ValueError(
+                "PaperTradingPipeline must use the injected backtest portfolio provider"
+            )
+        pipeline_broker = getattr(self.paper_pipeline, "paper_broker", None)
+        if pipeline_broker is not None and pipeline_broker is not self.position_lifecycle.broker:
+            raise ValueError("PaperTradingPipeline and lifecycle must share one PaperBroker")
+
+        broker_config = getattr(self.position_lifecycle.broker, "config", None)
+        if broker_config is None:
+            return
+        expected = {
+            "system_id": run.config.system_id,
+            "initial_balance": run.config.initial_balance,
+            "maker_fee_bps": run.config.maker_fee_bps,
+            "taker_fee_bps": run.config.taker_fee_bps,
+            "market_slippage_bps": run.config.market_slippage_bps,
+        }
+        for field_name, expected_value in expected.items():
+            if getattr(broker_config, field_name, None) != expected_value:
+                raise ValueError(
+                    f"PaperBroker config {field_name} does not match BacktestConfig"
+                )
+        if self.portfolio_provider.initial_balance != run.config.initial_balance:
+            raise ValueError("portfolio initial_balance does not match BacktestConfig")
+
     def _default_min_history(self) -> int:
         warmup_bars = getattr(getattr(self.feature_engine, "config", None), "warmup_bars", None)
         if warmup_bars is None:
@@ -246,17 +398,25 @@ class HistoricalReplayRunner:
             )
         return int(warmup_bars)
 
+
     @staticmethod
-    def _row_close_time(row: dict[str, Any]) -> datetime:
-        value = row["close_time"]
+    def _lifecycle_row(row: dict[str, Any], run: BacktestRun) -> dict[str, Any]:
+        enriched = dict(row)
+        enriched["symbol"] = run.dataset.symbol
+        enriched["timeframe"] = run.dataset.timeframe
+        return enriched
+
+    @staticmethod
+    def _row_time(row: dict[str, Any], field_name: str) -> datetime:
+        value = row[field_name]
         if isinstance(value, datetime):
-            return as_utc(value, field="close_time")
+            return as_utc(value, field=field_name)
         if isinstance(value, str):
             return as_utc(
                 datetime.fromisoformat(value.replace("Z", "+00:00")),
-                field="close_time",
+                field=field_name,
             )
-        raise ValueError("canonical close_time must be datetime or ISO-8601 string")
+        raise ValueError(f"canonical {field_name} must be datetime or ISO-8601 string")
 
     @staticmethod
     def _is_executed(pipeline_result: Any) -> bool:
