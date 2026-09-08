@@ -73,6 +73,7 @@ class PositionLifecyclePort(Protocol):
         row: dict[str, Any],
         *,
         observed_at: datetime,
+        policy: Any,
     ) -> tuple[Any, ...]: ...
 
     async def process_candle_close(
@@ -80,6 +81,7 @@ class PositionLifecyclePort(Protocol):
         row: dict[str, Any],
         *,
         observed_at: datetime,
+        policy: Any,
     ) -> tuple[Any, ...]: ...
 
     async def register_execution(
@@ -101,6 +103,7 @@ class HistoricalReplayPoint:
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
+    exit_events: tuple[Any, ...] = ()
 
     @property
     def opportunity(self) -> Any | None:
@@ -122,15 +125,19 @@ class HistoricalReplayResult:
             point.pipeline_result for point in self.points if point.pipeline_result is not None
         )
 
+    @property
+    def exit_events(self) -> tuple[Any, ...]:
+        return tuple(event for point in self.points for event in point.exit_events)
+
 
 class HistoricalReplayRunner:
     """Chronological bridge from historical candles to the existing PAPER pipeline.
 
-    Batch 16.3 optionally couples the runner to a dynamic portfolio provider and
-    historical position lifecycle. When enabled, OPEN/CLOSE marks are processed
-    before the close-time decision, the Risk Engine sees the refreshed portfolio
-    state, and newly executed entries receive protection only after the entry
-    candle has fully completed. Intrabar high/low resolution remains Batch 16.4.
+    Batch 16.4 couples the dynamic lifecycle to deterministic OHLC resolution.
+    Gaps are resolved at candle OPEN, non-gap stop/target touches at candle CLOSE,
+    and every lifecycle exit occurs before the current close-time trading decision.
+    Newly executed entries are protected only after their entry candle completed,
+    preserving the no-look-ahead boundary.
     """
 
     def __init__(
@@ -214,19 +221,26 @@ class HistoricalReplayRunner:
                 raise ValueError(
                     "dynamic historical replay requires non-overlapping chronological candles"
                 )
+            candle_exit_events: list[Any] = []
             if self.position_lifecycle is not None:
                 clock.advance_to(open_at)
-                await self.position_lifecycle.process_candle_open(
-                    lifecycle_row,
-                    observed_at=clock.now(),
+                candle_exit_events.extend(
+                    await self.position_lifecycle.process_candle_open(
+                        lifecycle_row,
+                        observed_at=clock.now(),
+                        policy=run.config.intrabar_policy,
+                    )
                 )
                 await self._refresh_dynamic_portfolio(clock.now())
 
             clock.advance_to(observed_at)
             if self.position_lifecycle is not None:
-                await self.position_lifecycle.process_candle_close(
-                    lifecycle_row,
-                    observed_at=clock.now(),
+                candle_exit_events.extend(
+                    await self.position_lifecycle.process_candle_close(
+                        lifecycle_row,
+                        observed_at=clock.now(),
+                        policy=run.config.intrabar_policy,
+                    )
                 )
                 await self._refresh_dynamic_portfolio(clock.now())
 
@@ -276,6 +290,7 @@ class HistoricalReplayRunner:
                     pipeline_result=pipeline_result,
                     portfolio_state=self._current_portfolio_state(run.config.system_id),
                     account_state=self._current_account_state(),
+                    exit_events=tuple(candle_exit_events),
                 )
             )
 
