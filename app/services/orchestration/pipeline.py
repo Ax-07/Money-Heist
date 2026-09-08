@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import copy
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from collections.abc import Mapping
+from datetime import datetime
+from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.agents.core import Palermo, StructuredGateway, TheProfessor
 from app.agents.models import AgentState, EvidenceReference, ProfessorPlan
 from app.agents.specialists import (
     Berlin,
+    Denver,
     Nairobi,
+    Rio,
     SpecialistAgent,
     Tokyo,
     UngroundedEvidenceError,
@@ -39,6 +42,7 @@ from .models import (
     SpecialistRunRecord,
     TradeProposal,
 )
+from .specialist_contexts import SpecialistContextProvider
 
 
 class InvalidProfessorPlanError(ValueError):
@@ -88,7 +92,7 @@ def _assert_grounded_final_evidence(
 
 
 class OrchestrationPipeline:
-    """Batch 08 ends at TradeProposal; it owns no broker/exchange/risk capability."""
+    """Ends at TradeProposal; owns no broker/exchange/risk execution capability."""
 
     def __init__(
         self,
@@ -99,17 +103,21 @@ class OrchestrationPipeline:
         professor: TheProfessor | None = None,
         palermo: Palermo | None = None,
         specialists: Mapping[str, SpecialistAgent] | None = None,
+        specialist_context_provider: SpecialistContextProvider | None = None,
     ) -> None:
         self._budget = budget
         self.compute_gate = compute_gate or ComputeGate(budget)
         self.professor = professor or TheProfessor(gateway)
         self.palermo = palermo or Palermo(gateway)
+        self.specialist_context_provider = specialist_context_provider
         self.specialists: dict[str, SpecialistAgent] = dict(
             specialists
             or {
                 "berlin": Berlin(gateway),
                 "tokyo": Tokyo(gateway),
                 "nairobi": Nairobi(gateway),
+                "rio": Rio(gateway),
+                "denver": Denver(gateway),
             }
         )
 
@@ -119,6 +127,7 @@ class OrchestrationPipeline:
         opportunity: CandidateOpportunity,
         market_context: FeatureSnapshot,
         now: datetime | None = None,
+        specialist_contexts: Mapping[str, Any] | None = None,
     ) -> OrchestrationResult:
         events: list[PipelineAuditEvent] = []
         calls: list[AgentCallAudit] = []
@@ -195,7 +204,44 @@ class OrchestrationPipeline:
                 events=events,
             )
 
-        available_agents = self._available_specialists()
+        try:
+            provider_contexts = self._provider_specialist_contexts(
+                opportunity=opportunity,
+                market_context=market_context,
+            )
+            combined_contexts = self._merge_specialist_contexts(
+                provider_contexts,
+                specialist_contexts,
+            )
+            prepared_contexts = self._prepare_specialist_contexts(
+                combined_contexts,
+                observed_at=market_context.observed_at,
+            )
+        except Exception as exc:
+            if specialist_contexts or self.specialist_context_provider is not None:
+                event("specialist_contexts", "FAILED", reason=str(exc))
+            return self._failed(
+                opportunity=opportunity,
+                gate_decision=gate_decision,
+                professor_plan=None,
+                specialist_runs=(),
+                palermo_run=None,
+                final_decision=None,
+                code=PipelineFailureCode.INVALID_CONTEXT,
+                stage="specialist_contexts",
+                message=str(exc),
+                agent_id=None,
+                calls=calls,
+                events=events,
+            )
+        if combined_contexts:
+            event(
+                "specialist_contexts",
+                "COMPLETED",
+                available_agents=sorted(prepared_contexts),
+            )
+
+        available_agents = self._available_specialists(prepared_contexts)
         try:
             plan_result = await self.professor.plan(
                 system_id=opportunity.system_id,
@@ -301,6 +347,7 @@ class OrchestrationPipeline:
                     system_id=opportunity.system_id,
                     opportunity=copy.deepcopy(opportunity_payload),
                     market_context=copy.deepcopy(market_payload),
+                    specialist_context=copy.deepcopy(prepared_contexts.get(agent_id)),
                     opportunity_id=opportunity_uuid,
                 )
                 for agent_id in selected
@@ -626,7 +673,9 @@ class OrchestrationPipeline:
         except ValueError as exc:
             raise InvalidPipelineContextError("opportunity_id must be a UUID") from exc
         if opportunity.snapshot_id != market_context.snapshot_id:
-            raise InvalidPipelineContextError("opportunity snapshot_id does not match market context")
+            raise InvalidPipelineContextError(
+                "opportunity snapshot_id does not match market context"
+            )
         if opportunity.symbol != market_context.symbol:
             raise InvalidPipelineContextError("opportunity symbol does not match market context")
         if opportunity.timeframe != market_context.timeframe:
@@ -635,12 +684,70 @@ class OrchestrationPipeline:
             raise InvalidPipelineContextError("feature warmup is incomplete")
         return opportunity_uuid
 
-    def _available_specialists(self) -> list[str]:
+    def _provider_specialist_contexts(
+        self,
+        *,
+        opportunity: CandidateOpportunity,
+        market_context: FeatureSnapshot,
+    ) -> dict[str, Any]:
+        provider = self.specialist_context_provider
+        if provider is None:
+            return {}
+        contexts = provider.contexts_for(
+            opportunity=opportunity,
+            market_context=market_context,
+        )
+        if not isinstance(contexts, Mapping):
+            raise TypeError("specialist context provider must return a mapping")
+        return dict(contexts)
+
+    @staticmethod
+    def _merge_specialist_contexts(
+        provider_contexts: Mapping[str, Any],
+        explicit_contexts: Mapping[str, Any] | None,
+    ) -> dict[str, Any]:
+        explicit = dict(explicit_contexts or {})
+        duplicates = sorted(set(provider_contexts) & set(explicit))
+        if duplicates:
+            raise InvalidPipelineContextError(
+                "specialist context supplied both by provider and caller: "
+                + ", ".join(duplicates)
+            )
+        return {**provider_contexts, **explicit}
+
+    def _prepare_specialist_contexts(
+        self,
+        specialist_contexts: Mapping[str, Any] | None,
+        *,
+        observed_at: datetime,
+    ) -> dict[str, Any]:
+        supplied = dict(specialist_contexts or {})
+        unknown = sorted(set(supplied) - set(self.specialists))
+        if unknown:
+            raise InvalidPipelineContextError(
+                "specialist contexts supplied for unknown agents: " + ", ".join(unknown)
+            )
+
+        prepared: dict[str, Any] = {}
+        for agent_id, raw_context in supplied.items():
+            agent = self.specialists[agent_id]
+            context = agent.prepare_context(raw_context, observed_at=observed_at)
+            if context is None:
+                continue
+            prepared[agent_id] = context
+        return prepared
+
+    def _available_specialists(
+        self,
+        specialist_contexts: Mapping[str, Any] | None = None,
+    ) -> list[str]:
         allowed_states = {AgentState.ACTIVE, AgentState.ON_DEMAND}
+        contexts = specialist_contexts or {}
         return sorted(
             agent_id
             for agent_id, agent in self.specialists.items()
             if agent.entry.state in allowed_states
+            and (agent.context_model is None or agent_id in contexts)
         )
 
     @staticmethod

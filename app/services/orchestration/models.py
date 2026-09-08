@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
@@ -10,10 +10,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.agents.models import (
     BerlinAnalysis,
+    DenverAnalysis,
     EvidenceReference,
     NairobiAnalysis,
     PalermoReview,
     ProfessorPlan,
+    RioAnalysis,
     TokyoAnalysis,
 )
 
@@ -135,15 +137,20 @@ class TradeProposal(BaseModel):
     expires_at: datetime
 
 
+SpecialistAnalysisModel = (
+    BerlinAnalysis | TokyoAnalysis | NairobiAnalysis | RioAnalysis | DenverAnalysis
+)
+
+
 class SpecialistRunRecord(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    agent_id: Literal["berlin", "tokyo", "nairobi"]
+    agent_id: Literal["berlin", "tokyo", "nairobi", "rio", "denver"]
     request_id: UUID
     prompt_version: str
     route_id: str
     model_id: str
-    analysis: BerlinAnalysis | TokyoAnalysis | NairobiAnalysis
+    analysis: SpecialistAnalysisModel
 
     @model_validator(mode="after")
     def matching_agent(self) -> SpecialistRunRecord:
@@ -182,7 +189,7 @@ class PipelineAuditEvent(BaseModel):
     stage: str
     status: Literal["STARTED", "COMPLETED", "SKIPPED", "FAILED"]
     details: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PipelineFailureCode(StrEnum):

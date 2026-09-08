@@ -1,0 +1,20 @@
+Batch 17a finalisation overlay
+
+Code:
+- app/services/backtest/__init__.py
+- app/services/backtest/advanced_mock.py
+- tests/backtest/test_advanced_mock.py
+
+Documentation:
+- 00_ETAT_ACTUEL_POST_BATCH_15.md
+- 03_SYSTEME_AGENTS.md
+- 05_MARKET_DATA_ET_EXECUTION.md
+- 06_EVALUATION_ET_APPRENTISSAGE.md
+- 08_API_ET_MODELES_DE_DONNEES.md
+- 09_ROADMAP_DEVELOPPEMENT.md
+- 10_DECISIONS_ET_CHANGELOG.md
+- 11_BACKTESTING_ET_REPLAY_HISTORIQUE.md
+
+Metadata:
+- CHANGELOG_BATCH.md
+- MANIFEST_BATCH_17A_FINAL.txt

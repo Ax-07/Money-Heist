@@ -1,5 +1,9 @@
 """Batch 16 deterministic historical replay and validation toolkit."""
 
+from .advanced_mock import (
+    DeterministicAdvancedSpecialistMockProvider,
+    MockProviderPort,
+)
 from .ai_modes import BacktestAIClient
 from .cache import BacktestAIContext, BacktestCacheMissError, BacktestResponseCache
 from .clock import ReplayClock, as_utc
@@ -48,6 +52,17 @@ from .reproducibility import (
     fingerprint_backtest,
 )
 from .runner import HistoricalReplayPoint, HistoricalReplayResult, HistoricalReplayRunner
+from .setup_stats import (
+    CATALOG_SCHEMA,
+    SETUP_DEFINITION_VERSION,
+    DenverSetupStatsContextProvider,
+    HistoricalSetupKey,
+    HistoricalSetupObservation,
+    HistoricalSetupStats,
+    HistoricalSetupStatsCatalog,
+    catalog_from_historical_runs,
+    observations_from_historical_replay,
+)
 from .splits import BacktestPeriod, BacktestPeriodRole, BacktestRunSet, BacktestSplitPlan
 from .walk_forward import (
     WalkForwardPlan,
@@ -78,18 +93,27 @@ __all__ = [
     "BacktestRunStatus",
     "BacktestSplitPlan",
     "BacktestSplitReport",
+    "CATALOG_SCHEMA",
     "DatasetRef",
+    "DeterministicAdvancedSpecialistMockProvider",
+    "DenverSetupStatsContextProvider",
     "HistoricalExitEvent",
     "HistoricalExitReason",
     "HistoricalPositionLifecycle",
     "HistoricalReplayPoint",
     "HistoricalReplayResult",
     "HistoricalReplayRunner",
+    "HistoricalSetupKey",
+    "HistoricalSetupObservation",
+    "HistoricalSetupStats",
+    "HistoricalSetupStatsCatalog",
     "HistoricalTradeProtection",
     "IntrabarPolicy",
     "IntrabarResolution",
+    "MockProviderPort",
     "ReplayClock",
     "ReplayIdFactory",
+    "SETUP_DEFINITION_VERSION",
     "WalkForwardPlan",
     "WalkForwardReport",
     "WalkForwardSplitExecutor",
@@ -101,6 +125,7 @@ __all__ = [
     "business_payload",
     "canonical_candle_rows",
     "canonical_json",
+    "catalog_from_historical_runs",
     "closed_trades_to_csv",
     "equity_curve_to_csv",
     "equity_points_from_replay",
@@ -109,6 +134,7 @@ __all__ = [
     "final_marks_from_replay",
     "fingerprint_backtest",
     "manifest_to_json",
+    "observations_from_historical_replay",
     "resolve_intrabar",
     "split_report_to_json",
     "stable_digest",

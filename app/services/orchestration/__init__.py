@@ -13,6 +13,7 @@ from .models import (
     TradeProposal,
 )
 from .pipeline import InvalidPipelineContextError, InvalidProfessorPlanError, OrchestrationPipeline
+from .specialist_contexts import SpecialistContextProvider
 
 __all__ = [
     "AgentCallAudit",
@@ -30,5 +31,6 @@ __all__ = [
     "PipelineStatus",
     "ProfessorFinalDecision",
     "ProfessorTradeParameters",
+    "SpecialistContextProvider",
     "TradeProposal",
 ]

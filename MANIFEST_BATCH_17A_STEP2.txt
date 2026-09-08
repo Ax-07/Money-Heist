@@ -1,0 +1,21 @@
+Money Heist — Batch 17a Step 2 — Denver Historical Setup Stats
+
+Pré-requis : Batch 17a Step 1 installé et validé.
+
+Fichiers de l'overlay :
+- app/services/backtest/__init__.py
+- app/services/backtest/setup_stats.py
+- app/services/orchestration/__init__.py
+- app/services/orchestration/pipeline.py
+- app/services/orchestration/specialist_contexts.py
+- tests/backtest/test_setup_stats.py
+- tests/orchestration/test_advanced_specialists.py
+- CHANGELOG_BATCH.md
+- MANIFEST_BATCH_17A_STEP2.txt
+
+Validation recommandée :
+1. uv run pytest -q tests/backtest/test_setup_stats.py tests/orchestration/test_advanced_specialists.py
+2. Ruff ciblé sur les fichiers du sous-lot (commande fournie dans CHANGELOG_BATCH.md)
+3. uv run pytest -qq --disable-warnings
+
+Aucun fichier Risk Engine, PaperBroker, Live Broker, secret, sizing ou kill-switch n'est modifié.

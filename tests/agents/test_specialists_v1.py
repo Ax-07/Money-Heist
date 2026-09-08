@@ -247,8 +247,17 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
     specialist_ids = {entry.agent_id for entry in SPECIALIST_AGENT_REGISTRY.list()}
     v1_ids = {entry.agent_id for entry in V1_AGENT_REGISTRY.list()}
 
-    assert specialist_ids == {"berlin", "tokyo", "nairobi"}
-    assert v1_ids == {"professor", "palermo", "lisbon", "berlin", "tokyo", "nairobi"}
+    assert specialist_ids == {"berlin", "tokyo", "nairobi", "rio", "denver"}
+    assert v1_ids == {
+        "professor",
+        "palermo",
+        "lisbon",
+        "berlin",
+        "tokyo",
+        "nairobi",
+        "rio",
+        "denver",
+    }
 
     for entry in SPECIALIST_AGENT_REGISTRY.list():
         assert entry.core is False

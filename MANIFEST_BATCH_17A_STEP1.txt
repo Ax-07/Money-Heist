@@ -1,0 +1,50 @@
+Money Heist — Batch 17a / Step 1
+Rio / Denver advanced specialist contracts + orchestration integration
+
+Base audited:
+f3d8ebbb5ddfd55bf1488af989fdc9ddd8348755
+feat(backtest): add Batch 16.8 controls and observability
+
+Files replaced:
+app/agents/__init__.py
+app/agents/models.py
+app/agents/prompts.py
+app/agents/registry.py
+app/agents/specialists.py
+app/services/orchestration/models.py
+app/services/orchestration/pipeline.py
+tests/agents/test_specialists_v1.py
+
+Files added:
+tests/agents/test_specialists_advanced.py
+tests/orchestration/test_advanced_specialists.py
+
+Scope:
+- Rio = derivatives positioning/crowding specialist, ON_DEMAND and context-gated.
+- Denver = historical statistics/robustness specialist, ON_DEMAND and context-gated.
+- Rio requires a usable RioContext. Missing/stale derivatives data => Rio is not advertised.
+- Denver requires a usable DenverContext. as_of later than market observed_at => fail closed.
+- Existing Berlin/Tokyo/Nairobi request payloads remain unchanged without specialist contexts.
+- MINI_CREW remains max 2.
+- FULL_CREW can run all five specialists in parallel.
+- All specialists remain analysis-only with allowed_tools=().
+- No broker, LIVE broker, Risk Engine, sizing, portfolio, secret or kill-switch capability added.
+- Dashboard traces need no change because they already iterate specialist_runs generically.
+- Default backtest MOCK selection remains unchanged because Rio/Denver are not advertised
+  without specialist contexts.
+
+Local validation performed in scaffold:
+- existing + advanced specialist tests: 16 passed
+- advanced orchestration tests: 5 passed
+- compileall: OK
+- security boundary smoke-check: OK
+- Ruff binary unavailable in the execution container; run Ruff locally as requested.
+
+Run locally after extraction:
+uv sync
+uv run pytest -q tests/agents/test_specialists_v1.py tests/agents/test_specialists_advanced.py
+uv run pytest -q tests/orchestration/test_advanced_specialists.py tests/orchestration/test_pipeline.py tests/orchestration/test_orchestration_security_boundaries.py
+uv run pytest -q
+uv run ruff check .
+
+Ruff correction overlay: datetime.UTC, import ordering, collections.abc Mapping; no business logic changes.

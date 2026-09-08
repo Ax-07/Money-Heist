@@ -84,6 +84,24 @@ SPECIALIST_AGENT_REGISTRY = AgentRegistry(
             allowed_tools=(),
             core=False,
         ),
+        AgentRegistryEntry(
+            agent_id="rio",
+            role=AgentRole.DERIVATIVES_POSITIONING,
+            state=AgentState.ON_DEMAND,
+            prompt_version="v1",
+            model_route="core_reasoning",
+            allowed_tools=(),
+            core=False,
+        ),
+        AgentRegistryEntry(
+            agent_id="denver",
+            role=AgentRole.HISTORICAL_STATISTICS,
+            state=AgentState.ON_DEMAND,
+            prompt_version="v1",
+            model_route="core_reasoning",
+            allowed_tools=(),
+            core=False,
+        ),
     )
 )
 
