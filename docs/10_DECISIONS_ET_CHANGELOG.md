@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation  
-**Version :** 0.4  
+**Version :** 0.6  
 **Statut :** Actif
 
 ---
@@ -431,6 +431,27 @@ Une comparaison historique n’est exploitable que si dataset, code, modèles, p
 
 ---
 
+
+### ADR-025 — Backtest Dashboard PAPER-only et cache IA V2
+
+**Date :** 2026-09-08  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Batch 16.7 expose le moteur historique via `/dashboard/backtest`. Le Dashboard construit des runtimes historiques isolés utilisant `PaperTradingPipeline`, `RiskEngine` et `PaperBroker`; il n'introduit aucun chemin d'ordre LIVE.
+
+La clé OpenAI éventuelle de `LIVE_EVAL` est fournie uniquement via `OPENAI_API_KEY` dans l'environnement backend. Aucun secret fournisseur n'est accepté par le formulaire ou les modèles API du Dashboard.
+
+Le cache IA passe au schéma `money-heist.backtest-ai-cache.v2`. La clé exclut le `request_id` volatil et son scope d'expérience ignore le seul champ `ai_mode`, afin de permettre `LIVE_EVAL → CACHED` pour la même expérience matérielle.
+
+**Conséquences :**
+- le Dashboard V1 SHADOW reste read-only ;
+- la nouvelle UI peut lancer des simulations mais jamais armer le LIVE ;
+- les contraintes marché et limites Risk restent explicites ;
+- un cache miss `CACHED` échoue fail-closed ;
+- les campagnes officielles doivent remplacer `batch16.7-working-tree` par un `code_version` immuable.
+
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -466,6 +487,14 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+### v0.6 — 2026-09-08 — Batch 16.7 Backtest Dashboard
+- interface `/dashboard/backtest` reliée au moteur Batch 16 ;
+- campagnes DESIGN/VALIDATION/OOS et walk-forward optionnel ;
+- runtime PAPER/Risk réel depuis l'interface ;
+- cache IA V2 compatible `LIVE_EVAL → CACHED` ;
+- secrets fournisseur conservés côté backend ;
+- ADR-025 ajouté.
 
 ### v0.5 — 2026-09-08 — Finalisation Batch 16
 - Batch 16 Backtesting & Historical Replay livré ;

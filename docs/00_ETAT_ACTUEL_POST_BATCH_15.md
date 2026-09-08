@@ -290,3 +290,12 @@ Denver avancé peut désormais consommer les statistiques réellement produites 
 3. définir avant test les critères de passage OOS/walk-forward ;
 4. poursuivre PAPER/SHADOW avec LIVE non armé ;
 5. démarrer Batch 17 sans interpréter ce démarrage comme une autorisation LIVE.
+
+---
+
+## 15. Extension Batch 16.7 — interface opérateur de backtest
+
+Le moteur Batch 16 est désormais exposé par `/dashboard/backtest` pour lancer des campagnes historiques sans ligne de commande. L'interface couvre import CSV, configuration PAPER/Risk/IA, DESIGN/VALIDATION/OOS, walk-forward optionnel, résultats et exports.
+
+Cette extension ne change pas la gate LIVE : elle facilite l'exécution des preuves historiques mais ne transforme aucun résultat en autorisation automatique. `LIVE_EVAL` reste IA réelle + trading PAPER.
+

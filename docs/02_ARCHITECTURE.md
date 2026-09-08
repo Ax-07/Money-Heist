@@ -580,3 +580,20 @@ Les composants Batch 16 principaux sont :
 - splits DESIGN/VALIDATION/OOS ;
 - walk-forward V1 ;
 - exports déterministes.
+
+---
+
+## 17. Addendum Batch 16.7 — frontière Dashboard / Backtest
+
+L'API expose une couche opérateur distincte :
+
+```text
+Browser /dashboard/backtest
+→ FastAPI backtest-dashboard
+→ BacktestDashboardService
+→ Batch 16 Historical Replay
+→ PaperTradingPipeline / RiskEngine / PaperBroker
+```
+
+`BacktestDashboardService` orchestre les composants existants mais ne possède aucune dépendance vers `app.trading.live`. Les secrets fournisseurs ne transitent ni dans les modèles métier ni dans le navigateur.
+

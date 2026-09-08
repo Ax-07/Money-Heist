@@ -1,7 +1,7 @@
 # Money Heist — Backtesting & Historical Replay
 
 **Document :** Contrat détaillé Batch 16  
-**Version :** 1.0  
+**Version :** 1.1  
 **Date :** 2026-09-08  
 **Statut :** Référence technique active
 
@@ -312,3 +312,40 @@ Backtest reproductible
 + sécurité/preflight
 + décision opérateur
 ```
+
+---
+
+## 18. Extension Batch 16.7 — Backtest Dashboard
+
+Le Batch 16.7 ajoute une interface opérateur au moteur historique sans créer un second moteur de backtest.
+
+Chemin :
+
+```text
+/dashboard/backtest
+→ validation CSV / DatasetRef
+→ configuration BacktestConfig + RiskProfile + MarketConstraints
+→ DESIGN / VALIDATION / OOS
+→ HistoricalReplayRunner
+→ PaperTradingPipeline / RiskEngine / PaperBroker
+→ Evaluation / exports
+```
+
+Principes :
+- le Dashboard V1 SHADOW existant reste read-only ;
+- le Backtest Dashboard peut déclencher uniquement des simulations historiques PAPER ;
+- aucune route du Dashboard backtest n'importe l'exécution LIVE ;
+- `LIVE_EVAL` ne rend réel que le fournisseur IA ;
+- `OPENAI_API_KEY` est lue uniquement dans l'environnement backend et n'est jamais saisie dans le navigateur ;
+- les contraintes marché restent explicites et ne sont pas inventées par l'interface ;
+- les valeurs Risk, MarketConstraints, budget/pricing IA sont injectées dans les hypothèses versionnées du run Dashboard afin de modifier son identité si elles changent ;
+- le profil de risque prérempli est un exemple DEV, pas un profil LIVE approuvé ;
+- l'historique des campagnes est en mémoire et borné pour cette V1 ;
+- les exports JSON/CSV Batch 16 sont téléchargeables depuis l'interface.
+
+### Cache IA V2
+
+Le cache `money-heist.backtest-ai-cache.v2` exclut le `request_id` fournisseur de sa clé et utilise un scope d'expérience qui ignore uniquement le choix `ai_mode`. Cela permet à un run `LIVE_EVAL` de remplir un cache ensuite rejouable en `CACHED` avec le même dataset, la même période et la même configuration matérielle.
+
+Les versions prompts/modèles et le contenu de requête restent dans la clé. Un cache miss en mode `CACHED` reste fail-closed.
+

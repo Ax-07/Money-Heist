@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Money Heist — Backtest Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/assets/backtest.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">MONEY HEIST / BATCH 16.7</p>
+      <h1>Backtest Dashboard</h1>
+      <p class="lead">Historical Replay · Risk Engine réel · PaperBroker uniquement</p>
+    </div>
+    <nav class="badges">
+      <a class="badge" href="/dashboard">Dashboard V1</a>
+      <span class="badge paper">PAPER ONLY</span>
+      <span class="badge danger">LIVE TRADING INTERDIT</span>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel hero">
+      <div>
+        <p class="label">Sécurité</p>
+        <h2>Un backtest n'arme jamais le LIVE</h2>
+      </div>
+      <p>
+        Même en <strong>LIVE_EVAL</strong>, seuls les appels IA peuvent être réels.
+        Les ordres restent exclusivement simulés par le PaperBroker. La clé OpenAI,
+        lorsqu'elle est utilisée, doit être fournie au backend via
+        <code>OPENAI_API_KEY</code> et n'est jamais saisie dans cette page.
+      </p>
+    </section>
+
+    <section class="layout">
+      <form id="campaign-form" class="panel form-panel">
+        <div class="section-title">
+          <div><p class="label">1 · Dataset</p><h2>OHLCV historique</h2></div>
+          <button type="button" id="preview-button" class="secondary">Prévisualiser</button>
+        </div>
+        <div class="grid three">
+          <label>CSV OHLCV
+            <input id="csv-file" type="file" accept=".csv,text/csv" required>
+          </label>
+          <label>Symbole
+            <input id="symbol" value="BTC/EUR" required>
+          </label>
+          <label>Timeframe
+            <select id="timeframe">
+              <option>1m</option><option selected>5m</option><option>15m</option>
+              <option>30m</option><option>1h</option><option>4h</option><option>1d</option>
+            </select>
+          </label>
+          <label>Source
+            <input id="source" value="dashboard_csv" required>
+          </label>
+          <label>Intervalle secondes (optionnel)
+            <input id="interval-seconds" type="number" min="1" placeholder="inféré du timeframe">
+          </label>
+        </div>
+        <div id="dataset-preview" class="preview empty">Aucun dataset validé.</div>
+
+        <div class="section-title spaced">
+          <div><p class="label">2 · Périodes</p><h2>DESIGN / VALIDATION / OOS</h2></div>
+        </div>
+        <div class="grid three">
+          <label>DESIGN début<input id="design-start" type="datetime-local" step="1" required></label>
+          <label>DESIGN fin<input id="design-end" type="datetime-local" step="1" required></label>
+          <span></span>
+          <label>VALIDATION début<input id="validation-start" type="datetime-local" step="1" required></label>
+          <label>VALIDATION fin<input id="validation-end" type="datetime-local" step="1" required></label>
+          <span></span>
+          <label>OOS début<input id="oos-start" type="datetime-local" step="1" required></label>
+          <label>OOS fin<input id="oos-end" type="datetime-local" step="1" required></label>
+        </div>
+
+        <div class="section-title spaced">
+          <div><p class="label">3 · PAPER</p><h2>Capital et exécution</h2></div>
+        </div>
+        <div class="grid four">
+          <label>Capital initial €<input id="initial-balance" type="number" step="0.01" value="100"></label>
+          <label>Maker fee bps<input id="maker-fee" type="number" step="0.01" value="10"></label>
+          <label>Taker fee bps<input id="taker-fee" type="number" step="0.01" value="20"></label>
+          <label>Slippage market bps<input id="slippage" type="number" step="0.01" value="5"></label>
+          <label>Code version<input id="code-version" value="batch16.7-working-tree"></label>
+          <label>Execution model<input id="execution-version" value="historical-ohlc-v1"></label>
+          <label>Seed<input id="random-seed" type="number" min="0" value="0"></label>
+        </div>
+
+        <div class="section-title spaced">
+          <div><p class="label">4 · Risk Engine</p><h2>Profil explicite</h2></div>
+        </div>
+        <p class="notice">
+          Valeurs préremplies = exemple DEV conservateur, pas profil LIVE validé.
+          Modifie-les avant une campagne officielle et journalise ton choix.
+        </p>
+        <div class="grid four">
+          <label>Risk / trade<input id="risk-trade" type="number" step="0.001" value="0.01"></label>
+          <label>Daily loss<input id="daily-loss" type="number" step="0.001" value="0.03"></label>
+          <label>Max drawdown<input id="risk-drawdown" type="number" step="0.001" value="0.10"></label>
+          <label>Portfolio risk<input id="portfolio-risk" type="number" step="0.001" value="0.03"></label>
+          <label>Max positions<input id="max-positions" type="number" min="1" value="3"></label>
+          <label>Max leverage<input id="risk-leverage" type="number" step="0.1" value="1"></label>
+          <label>Correlated exposure<input id="correlated-risk" type="number" step="0.001" value="0.02"></label>
+          <label>Min expected R/R<input id="min-rr" type="number" step="0.1" value="1.5"></label>
+        </div>
+
+        <div class="section-title spaced">
+          <div><p class="label">5 · Marché</p><h2>Contraintes d'ordre</h2></div>
+        </div>
+        <p class="notice">
+          Ces valeurs doivent venir de la configuration ou des métadonnées exchange.
+          Elles ne sont volontairement pas inventées par le Dashboard.
+        </p>
+        <div class="grid four">
+          <label>qty_step<input id="qty-step" type="number" step="any" placeholder="ex. 0.00000001" required></label>
+          <label>min_qty<input id="min-qty" type="number" step="any" required></label>
+          <label>min_notional €<input id="min-notional" type="number" step="any" required></label>
+          <label>max_qty (optionnel)<input id="max-qty" type="number" step="any"></label>
+          <label>max_leverage<input id="market-leverage" type="number" step="0.1" value="1"></label>
+        </div>
+
+        <div class="section-title spaced">
+          <div><p class="label">6 · IA</p><h2>Mode d'évaluation</h2></div>
+          <span id="live-eval-state" class="pill">Chargement…</span>
+        </div>
+        <div class="grid four">
+          <label>Mode IA
+            <select id="ai-mode">
+              <option selected>MOCK</option><option>CACHED</option><option>LIVE_EVAL</option>
+            </select>
+          </label>
+          <label>Budget dur €<input id="ai-budget" type="number" step="0.01" value="1"></label>
+          <label>Model ID<input id="model-id" value="mock-backtest-v1"></label>
+          <label>Input €/1M<input id="input-price" type="number" step="0.0001" value="0"></label>
+          <label>Output €/1M<input id="output-price" type="number" step="0.0001" value="0"></label>
+          <label>Cached input €/1M<input id="cached-price" type="number" step="0.0001"></label>
+        </div>
+        <div class="cache-tools">
+          <button type="button" id="cache-export" class="secondary">Exporter cache IA</button>
+          <label class="file-button">Importer cache IA<input id="cache-import" type="file" accept="application/json,.json"></label>
+          <span id="cache-count" class="muted"></span>
+        </div>
+
+        <div class="section-title spaced">
+          <div><p class="label">7 · Walk-forward</p><h2>Optionnel</h2></div>
+          <label class="toggle"><input id="wf-enabled" type="checkbox"> Activer</label>
+        </div>
+        <div class="grid four">
+          <label>DESIGN bars<input id="wf-design" type="number" min="1" value="300"></label>
+          <label>VALIDATION bars<input id="wf-validation" type="number" min="1" value="100"></label>
+          <label>OOS bars<input id="wf-oos" type="number" min="1" value="100"></label>
+          <label>Step bars<input id="wf-step" type="number" min="1" value="100"></label>
+        </div>
+
+        <div class="launch-row">
+          <div>
+            <strong>Le lancement peut être coûteux en LIVE_EVAL.</strong>
+            <div class="muted">Commence par MOCK pour valider toute la mécanique.</div>
+          </div>
+          <button id="run-button" type="submit">Lancer la campagne</button>
+        </div>
+      </form>
+
+      <aside class="panel results-panel">
+        <div class="section-title">
+          <div><p class="label">Résultats</p><h2>Dernière campagne</h2></div>
+          <span id="run-status" class="pill">IDLE</span>
+        </div>
+        <div id="error-box" class="error hidden"></div>
+        <div id="results" class="empty">Aucune campagne exécutée.</div>
+      </aside>
+    </section>
+
+    <section class="panel history-panel">
+      <div class="section-title">
+        <div><p class="label">Session backend</p><h2>Historique des campagnes</h2></div>
+        <button type="button" id="refresh-history" class="secondary">Actualiser</button>
+      </div>
+      <div id="history" class="empty">Aucune campagne dans cette session.</div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Money Heist — Batch 16.7 Backtest Dashboard</span>
+    <span>DESIGN → VALIDATION → OOS → Walk-forward → PAPER/SHADOW → décision opérateur</span>
+  </footer>
+
+  <script src="/dashboard/assets/backtest.js" defer></script>
+</body>
+</html>

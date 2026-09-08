@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -36,9 +38,13 @@ class RecordingClient:
         return self.response
 
 
-def provider_request(*, input_text: str = "market=btc") -> ProviderRequest:
+def provider_request(
+    *,
+    input_text: str = "market=btc",
+    request_id: str = "10000000-0000-0000-0000-000000000001",
+) -> ProviderRequest:
     return ProviderRequest(
-        request_id=UUID("10000000-0000-0000-0000-000000000001"),
+        request_id=UUID(request_id),
         system_id="balanced_v1",
         agent_id="professor",
         model_id="model-v1",
@@ -69,9 +75,10 @@ def provider_response() -> ProviderResponse:
     )
 
 
-def context(run_id: str = "run-1") -> BacktestAIContext:
+def context(run_id: str = "run-1", *, cache_scope_id: str | None = None) -> BacktestAIContext:
     return BacktestAIContext(
         run_id=run_id,
+        cache_scope_id=cache_scope_id,
         prompt_versions={"professor": "professor-v1"},
         model_versions={"professor": "model-v1"},
     )
@@ -130,7 +137,7 @@ async def test_live_eval_delegates_and_can_seed_future_cached_replay() -> None:
 
     live_eval = BacktestAIClient(
         mode=BacktestAIMode.LIVE_EVAL,
-        context=context(),
+        context=context(cache_scope_id="experiment-a"),
         cache=cache,
         live_client=live,
     )
@@ -140,27 +147,80 @@ async def test_live_eval_delegates_and_can_seed_future_cached_replay() -> None:
 
     cached = BacktestAIClient(
         mode=BacktestAIMode.CACHED,
-        context=context(),
+        context=context("another-run", cache_scope_id="experiment-a"),
         cache=cache,
     )
     assert await cached.complete(request) == response
     assert live.calls == 1
 
 
-def test_cache_key_changes_with_run_or_request_and_roundtrips_json() -> None:
+def test_cache_key_ignores_volatile_request_id_but_tracks_material_request() -> None:
+    cache = BacktestResponseCache()
+    stable_context = context(cache_scope_id="experiment-a")
+    first = provider_request(request_id="10000000-0000-0000-0000-000000000001")
+    same_business = provider_request(request_id="20000000-0000-0000-0000-000000000002")
+    changed = provider_request(input_text="changed")
+
+    assert cache.key_for(first, context=stable_context) == cache.key_for(
+        same_business,
+        context=stable_context,
+    )
+    assert cache.key_for(first, context=stable_context) != cache.key_for(
+        changed,
+        context=stable_context,
+    )
+
+
+def test_cache_roundtrips_v2_json() -> None:
     cache = BacktestResponseCache()
     request = provider_request()
     response = provider_response()
+    cache.put(request, response, context=context(cache_scope_id="experiment-a"))
 
-    first_key = cache.put(request, response, context=context("run-a"))
-    second_key = cache.key_for(request, context=context("run-b"))
-    third_key = cache.key_for(
-        provider_request(input_text="changed"),
-        context=context("run-a"),
+    payload = cache.export_json()
+    assert "money-heist.backtest-ai-cache.v2" in payload
+    restored = BacktestResponseCache.import_json(payload)
+    assert restored.require(
+        request,
+        context=context("new-run", cache_scope_id="experiment-a"),
+    ) == response
+
+
+def test_from_run_cache_scope_ignores_ai_mode_but_keeps_run_id_for_audit() -> None:
+    class Config:
+        def __init__(self, mode: BacktestAIMode):
+            self.ai_mode = mode
+            self.prompt_versions = {"professor": "v1"}
+            self.model_versions = {"professor": "model-v1"}
+
+        def canonical_payload(self):
+            return {
+                "system_id": "balanced_v1",
+                "ai_mode": self.ai_mode,
+                "code_version": "commit-a",
+            }
+
+    dataset = SimpleNamespace(
+        canonical_payload=lambda: {"dataset_id": "dataset-a", "version": "sha256:a"}
+    )
+    period_start = datetime(2026, 1, 1, tzinfo=UTC)
+    period_end = datetime(2026, 2, 1, tzinfo=UTC)
+    live = SimpleNamespace(
+        run_id="run-live",
+        dataset=dataset,
+        period_start=period_start,
+        period_end=period_end,
+        config=Config(BacktestAIMode.LIVE_EVAL),
+    )
+    cached = SimpleNamespace(
+        run_id="run-cached",
+        dataset=dataset,
+        period_start=period_start,
+        period_end=period_end,
+        config=Config(BacktestAIMode.CACHED),
     )
 
-    assert first_key != second_key
-    assert first_key != third_key
-
-    restored = BacktestResponseCache.import_json(cache.export_json())
-    assert restored.require(request, context=context("run-a")) == response
+    live_context = BacktestAIContext.from_run(live)
+    cached_context = BacktestAIContext.from_run(cached)
+    assert live_context.run_id != cached_context.run_id
+    assert live_context.cache_scope_id == cached_context.cache_scope_id

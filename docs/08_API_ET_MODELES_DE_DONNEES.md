@@ -439,3 +439,24 @@ Contrats principaux ajoutés :
 - `BacktestRunManifest`.
 
 Les exports JSON destinés à la reproductibilité utilisent une canonicalisation stable des datetimes UTC, Decimal, enums, dataclasses et mappings triés.
+
+---
+
+## 19. Addendum Batch 16.7 — API Backtest Dashboard
+
+Endpoints opérateur :
+
+```text
+GET  /dashboard/backtest
+GET  /api/dashboard/backtest/capabilities
+POST /api/dashboard/backtest/dataset/preview
+POST /api/dashboard/backtest/runs
+GET  /api/dashboard/backtest/runs
+GET  /api/dashboard/backtest/runs/{campaign_id}
+GET  /api/dashboard/backtest/runs/{campaign_id}/exports/{name}
+GET  /api/dashboard/backtest/ai-cache
+POST /api/dashboard/backtest/ai-cache
+```
+
+Le payload de campagne contient dataset CSV, splits, `RiskProfile`, `MarketConstraints`, paramètres PAPER, mode IA et walk-forward optionnel. Aucun champ de clé API fournisseur n'est accepté.
+

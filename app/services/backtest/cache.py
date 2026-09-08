@@ -10,7 +10,7 @@ from app.intelligence.ai_gateway.models import ProviderRequest, ProviderResponse
 
 from .ids import canonical_json, stable_digest
 
-CACHE_SCHEMA_VERSION = "money-heist.backtest-ai-cache.v1"
+CACHE_SCHEMA_VERSION = "money-heist.backtest-ai-cache.v2"
 
 
 def _freeze(values: Mapping[str, str]) -> Mapping[str, str]:
@@ -24,13 +24,33 @@ def _freeze(values: Mapping[str, str]) -> Mapping[str, str]:
     )
 
 
+def _cache_scope_from_run(run: Any) -> str:
+    config = dict(run.config.canonical_payload())
+    config.pop("ai_mode", None)
+    return stable_digest(
+        {
+            "schema": "money-heist.backtest-ai-cache-scope.v2",
+            "dataset": run.dataset.canonical_payload(),
+            "period_start": run.period_start,
+            "period_end": run.period_end,
+            "config_without_ai_mode": config,
+        }
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class BacktestAIContext:
-    """Stable experiment identity used to scope deterministic AI cache entries."""
+    """Stable experiment identity used to scope deterministic AI cache entries.
+
+    ``run_id`` remains available for audit compatibility. ``cache_scope_id`` is
+    the cache authority in V2 and intentionally excludes the selected AI mode so
+    a LIVE_EVAL run can seed a later CACHED replay of the same experiment.
+    """
 
     run_id: str
     prompt_versions: Mapping[str, str]
     model_versions: Mapping[str, str]
+    cache_scope_id: str | None = None
     schema_version: str = CACHE_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -38,6 +58,10 @@ class BacktestAIContext:
             raise ValueError("run_id must not be empty")
         if not self.schema_version.strip():
             raise ValueError("schema_version must not be empty")
+        scope = (self.cache_scope_id or self.run_id).strip()
+        if not scope:
+            raise ValueError("cache_scope_id must not be empty")
+        object.__setattr__(self, "cache_scope_id", scope)
         object.__setattr__(self, "prompt_versions", _freeze(self.prompt_versions))
         object.__setattr__(self, "model_versions", _freeze(self.model_versions))
 
@@ -45,13 +69,14 @@ class BacktestAIContext:
     def from_run(cls, run: Any) -> BacktestAIContext:
         return cls(
             run_id=str(run.run_id),
+            cache_scope_id=_cache_scope_from_run(run),
             prompt_versions=run.config.prompt_versions,
             model_versions=run.config.model_versions,
         )
 
     def canonical_payload(self) -> dict[str, Any]:
         return {
-            "run_id": self.run_id,
+            "cache_scope_id": self.cache_scope_id,
             "prompt_versions": self.prompt_versions,
             "model_versions": self.model_versions,
             "schema_version": self.schema_version,
@@ -69,10 +94,11 @@ class BacktestResponseCache:
         self._responses: dict[str, ProviderResponse] = {}
 
     def key_for(self, request: ProviderRequest, *, context: BacktestAIContext) -> str:
+        request_payload = request.model_dump(mode="json", exclude={"request_id"})
         payload = {
             "schema": CACHE_SCHEMA_VERSION,
             "context": context.canonical_payload(),
-            "request": request.model_dump(mode="json"),
+            "request": request_payload,
         }
         return stable_digest(payload)
 
@@ -104,7 +130,7 @@ class BacktestResponseCache:
         response = self.get(request, context=context)
         if response is None:
             raise BacktestCacheMissError(
-                "deterministic AI cache miss for current run/config/request"
+                "deterministic AI cache miss for current experiment/request"
             )
         return response
 
@@ -131,9 +157,9 @@ class BacktestResponseCache:
         cache = cls()
         for entry in raw.get("entries", []):
             key = str(entry["key"])
-            if len(key) != 64:
+            if len(key) != 64 or any(char not in "0123456789abcdef" for char in key.lower()):
                 raise ValueError("invalid backtest AI cache key")
-            cache._responses[key] = ProviderResponse.model_validate(entry["response"])
+            cache._responses[key.lower()] = ProviderResponse.model_validate(entry["response"])
         return cache
 
     def __len__(self) -> int:

@@ -317,6 +317,21 @@ Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiq
 
 ---
 
+
+### Extension 16.7 — Backtest Dashboard
+
+**État : livré après validation de l'overlay 16.7.**
+
+- page `/dashboard/backtest` ;
+- import/preview CSV historique ;
+- lancement DESIGN/VALIDATION/OOS ;
+- walk-forward V1 optionnel ;
+- configuration PAPER, Risk et modes IA ;
+- cache IA V2 exportable/importable ;
+- résultats et exports Batch 16 ;
+- aucune capacité de trading LIVE.
+
+
 ## 20. Batch 17 — Rio / Denver avancés
 
 Selon disponibilité des données :
