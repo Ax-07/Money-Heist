@@ -11,6 +11,7 @@ from .models import (
     BacktestRunStatus,
     IntrabarPolicy,
 )
+from .runner import HistoricalReplayPoint, HistoricalReplayResult, HistoricalReplayRunner
 
 __all__ = [
     "BacktestAIMode",
@@ -20,6 +21,9 @@ __all__ = [
     "BacktestRunStatus",
     "DatasetRef",
     "IntrabarPolicy",
+    "HistoricalReplayPoint",
+    "HistoricalReplayResult",
+    "HistoricalReplayRunner",
     "ReplayClock",
     "ReplayIdFactory",
     "as_utc",
