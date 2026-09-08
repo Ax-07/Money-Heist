@@ -12,6 +12,7 @@ from app.dashboard.backtest import (
     BacktestCapabilities,
     BacktestDashboardError,
     BacktestDashboardService,
+    CampaignProgressView,
     CampaignRequest,
     CampaignSummary,
     DatasetInput,
@@ -80,15 +81,47 @@ def preview_dataset(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
-@router.post("/api/dashboard/backtest/runs", response_model=CampaignSummary)
+@router.post(
+    "/api/dashboard/backtest/runs",
+    response_model=CampaignProgressView,
+    status_code=202,
+)
 async def run_campaign(
     payload: CampaignRequest,
     service: BacktestService,
-) -> CampaignSummary:
+) -> CampaignProgressView:
     try:
-        return await service.run_campaign(payload)
+        return await service.start_campaign(payload)
     except (BacktestDashboardError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get(
+    "/api/dashboard/backtest/runs/{campaign_id}/progress",
+    response_model=CampaignProgressView,
+)
+def campaign_progress(
+    campaign_id: str,
+    service: BacktestService,
+) -> CampaignProgressView:
+    result = service.get_campaign_progress(campaign_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Unknown backtest campaign_id")
+    return result
+
+
+@router.post(
+    "/api/dashboard/backtest/runs/{campaign_id}/cancel",
+    response_model=CampaignProgressView,
+)
+def cancel_campaign(
+    campaign_id: str,
+    service: BacktestService,
+) -> CampaignProgressView:
+    result = service.cancel_campaign(campaign_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Unknown backtest campaign_id")
+    return result
 
 
 @router.get("/api/dashboard/backtest/runs", response_model=tuple[CampaignSummary, ...])

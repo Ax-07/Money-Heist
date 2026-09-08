@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+import asyncio
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -130,6 +131,10 @@ class HistoricalReplayResult:
         return tuple(event for point in self.points for event in point.exit_events)
 
 
+class HistoricalReplayCancelledError(RuntimeError):
+    """Raised when an operator requests cooperative replay cancellation."""
+
+
 class HistoricalReplayRunner:
     """Chronological bridge from historical candles to the existing PAPER pipeline.
 
@@ -187,6 +192,9 @@ class HistoricalReplayRunner:
         *,
         candles: Sequence[Any],
         run: BacktestRun,
+        progress_callback: Callable[[int, int, datetime], None] | None = None,
+        point_callback: Callable[[HistoricalReplayPoint], None] | None = None,
+        cancel_check: Callable[[], bool] | None = None,
     ) -> HistoricalReplayResult:
         rows = self._validated_rows(candles, run)
         self._validate_component_versions(run)
@@ -205,13 +213,34 @@ class HistoricalReplayRunner:
         processed_candles = 0
         opportunity_count = 0
         executed_order_count = 0
+        work_total = sum(
+            1
+            for item in rows
+            if self._row_time(item, "close_time") <= run.period_end
+        )
+        work_done = 0
 
         for row in rows:
+            if cancel_check is not None and cancel_check():
+                raise HistoricalReplayCancelledError("historical replay cancelled by operator")
+
             lifecycle_row = self._lifecycle_row(row, run)
             open_at = self._row_time(row, "open_time")
             observed_at = self._row_time(row, "close_time")
             if observed_at > run.period_end:
                 break
+
+            work_done += 1
+            if progress_callback is not None and (
+                work_done == 1 or work_done % 10 == 0 or work_done == work_total
+            ):
+                progress_callback(work_done, work_total, observed_at)
+            if work_done % 25 == 0:
+                await asyncio.sleep(0)
+                if cancel_check is not None and cancel_check():
+                    raise HistoricalReplayCancelledError(
+                        "historical replay cancelled by operator"
+                    )
 
             visible.append(row)
             if observed_at >= run.period_start:
@@ -281,18 +310,22 @@ class HistoricalReplayRunner:
                         )
                         await self._refresh_dynamic_portfolio(clock.now())
 
-            points.append(
-                HistoricalReplayPoint(
-                    observed_at=clock.now(),
-                    visible_candle_count=len(visible),
-                    feature_snapshot=feature,
-                    scan_result=scan_result,
-                    pipeline_result=pipeline_result,
-                    portfolio_state=self._current_portfolio_state(run.config.system_id),
-                    account_state=self._current_account_state(),
-                    exit_events=tuple(candle_exit_events),
-                )
+            point = HistoricalReplayPoint(
+                observed_at=clock.now(),
+                visible_candle_count=len(visible),
+                feature_snapshot=feature,
+                scan_result=scan_result,
+                pipeline_result=pipeline_result,
+                portfolio_state=self._current_portfolio_state(run.config.system_id),
+                account_state=self._current_account_state(),
+                exit_events=tuple(candle_exit_events),
             )
+            points.append(point)
+            if point_callback is not None:
+                point_callback(point)
+
+        if progress_callback is not None and work_total > 0:
+            progress_callback(work_total, work_total, run.period_end)
 
         return HistoricalReplayResult(
             backtest_result=BacktestResult(

@@ -170,8 +170,41 @@
           <span id="run-status" class="pill">IDLE</span>
         </div>
         <div id="error-box" class="error hidden"></div>
+
+        <div id="progress-panel" class="progress-panel hidden">
+          <div class="progress-head">
+            <div>
+              <span class="muted">Progression</span>
+              <strong id="progress-label">0 %</strong>
+            </div>
+            <button type="button" id="stop-button" class="danger-button" disabled>
+              Stop campagne
+            </button>
+          </div>
+          <progress id="campaign-progress" max="100" value="0"></progress>
+          <div id="progress-detail" class="muted">Aucune campagne active.</div>
+        </div>
+
         <div id="results" class="empty">Aucune campagne exécutée.</div>
       </aside>
+    </section>
+
+    <section class="panel agent-panel">
+      <div class="section-title">
+        <div>
+          <p class="label">Observabilité</p>
+          <h2>Traces agents & décisions</h2>
+        </div>
+        <span class="pill">SORTIES STRUCTURÉES</span>
+      </div>
+      <p class="notice">
+        Ce panneau affiche les sorties structurées et les décisions auditées
+        (Professor, spécialistes, Palermo, Risk Engine). Il n'affiche pas de
+        chaîne de pensée privée.
+      </p>
+      <div id="agent-traces" class="agent-traces empty">
+        Aucune trace agent pour le moment.
+      </div>
     </section>
 
     <section class="panel history-panel">

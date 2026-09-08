@@ -4,7 +4,7 @@ import asyncio
 import json
 import os
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -50,6 +50,7 @@ from app.services.backtest import (
     split_report_to_json,
     walk_forward_report_to_json,
 )
+from app.services.backtest.runner import HistoricalReplayCancelledError
 from app.services.orchestration import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
 from app.services.paper_pipeline.pipeline import PaperTradingPipeline
@@ -297,6 +298,36 @@ class EquityView(FrozenModel):
     equity: str
 
 
+class AgentTraceView(FrozenModel):
+    sequence: int
+    observed_at: datetime
+    role: BacktestPeriodRole
+    opportunity_id: str
+    agent: str
+    phase: str
+    title: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class CampaignProgressView(FrozenModel):
+    campaign_id: str
+    created_at: datetime
+    status: str
+    phase: str
+    current_role: BacktestPeriodRole | None = None
+    percent: float = Field(ge=0, le=100)
+    work_done: int = Field(ge=0)
+    total_work: int = Field(ge=0)
+    current_observed_at: datetime | None = None
+    opportunity_count: int = Field(ge=0)
+    executed_order_count: int = Field(ge=0)
+    agent_traces: tuple[AgentTraceView, ...] = ()
+    error: str | None = None
+    message: str = ""
+    can_cancel: bool = False
+    result_available: bool = False
+
+
 class WalkForwardOOSView(FrozenModel):
     window_index: int
     run_id: str
@@ -328,6 +359,9 @@ class BacktestCapabilities(FrozenModel):
     supported_timeframes: tuple[str, ...]
     paper_only: bool = True
     live_trading: bool = False
+    campaign_cancel: bool = True
+    campaign_progress: bool = True
+    agent_traces: bool = True
 
 
 @dataclass(slots=True)
@@ -349,6 +383,27 @@ class _RunExecution:
 class _CampaignRecord:
     summary: CampaignSummary
     exports: dict[str, tuple[str, str]]
+
+
+@dataclass(slots=True)
+class _CampaignRuntime:
+    campaign_id: str
+    created_at: datetime
+    status: str = "QUEUED"
+    phase: str = "QUEUED"
+    current_role: BacktestPeriodRole | None = None
+    percent: float = 0.0
+    work_done: int = 0
+    total_work: int = 0
+    current_observed_at: datetime | None = None
+    opportunity_count: int = 0
+    executed_order_count: int = 0
+    traces: list[AgentTraceView] = field(default_factory=list)
+    trace_sequence: int = 0
+    cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
+    error: str | None = None
+    message: str = ""
+    result_available: bool = False
 
 
 class BacktestDashboardError(RuntimeError):
@@ -540,6 +595,109 @@ class BacktestDashboardService:
         self._order: list[str] = []
         self._cache = BacktestResponseCache()
         self._run_lock = asyncio.Lock()
+        self._progress_records: dict[str, _CampaignRuntime] = {}
+        self._progress_order: list[str] = []
+        self._active_campaign_id: str | None = None
+        self._active_task: asyncio.Task[None] | None = None
+
+    async def start_campaign(self, request: CampaignRequest) -> CampaignProgressView:
+        if self._active_campaign_id is not None:
+            active = self._progress_records.get(self._active_campaign_id)
+            if active is not None and active.status in {
+                "QUEUED",
+                "RUNNING",
+                "CANCEL_REQUESTED",
+            }:
+                raise BacktestDashboardError(
+                    "another backtest campaign is already running"
+                )
+        if (
+            request.ai.mode is BacktestAIMode.LIVE_EVAL
+            and not self.capabilities().live_eval_available
+        ):
+            raise BacktestDashboardError(
+                "LIVE_EVAL requires OPENAI_API_KEY in the backend environment"
+            )
+
+        campaign_id = str(uuid4())
+        runtime = _CampaignRuntime(
+            campaign_id=campaign_id,
+            created_at=datetime.now(UTC),
+        )
+        self._store_progress(runtime)
+        self._active_campaign_id = campaign_id
+        self._active_task = asyncio.create_task(
+            self._run_campaign_background(campaign_id, request),
+            name=f"money-heist-backtest-{campaign_id}",
+        )
+        return self._progress_view(runtime)
+
+    async def _run_campaign_background(
+        self,
+        campaign_id: str,
+        request: CampaignRequest,
+    ) -> None:
+        runtime = self._progress_records[campaign_id]
+        runtime.status = "RUNNING"
+        runtime.phase = "PREPARING"
+        runtime.message = "Validation du dataset et préparation des runs."
+        try:
+            await self.run_campaign(request, _campaign_id=campaign_id)
+        except HistoricalReplayCancelledError:
+            runtime.status = "CANCELLED"
+            runtime.phase = "CANCELLED"
+            runtime.message = "Campagne arrêtée proprement par l'opérateur."
+        except Exception as exc:
+            runtime.status = "FAILED"
+            runtime.phase = "FAILED"
+            runtime.error = str(exc)
+            runtime.message = "La campagne a échoué."
+        else:
+            runtime.status = "COMPLETED"
+            runtime.phase = "COMPLETED"
+            runtime.percent = 100.0
+            runtime.result_available = True
+            runtime.message = "Campagne terminée."
+        finally:
+            runtime.current_role = None
+            if self._active_campaign_id == campaign_id:
+                self._active_campaign_id = None
+                self._active_task = None
+
+    def get_campaign_progress(self, campaign_id: str) -> CampaignProgressView | None:
+        runtime = self._progress_records.get(campaign_id)
+        return None if runtime is None else self._progress_view(runtime)
+
+    def cancel_campaign(self, campaign_id: str) -> CampaignProgressView | None:
+        runtime = self._progress_records.get(campaign_id)
+        if runtime is None:
+            return None
+        if runtime.status in {"QUEUED", "RUNNING"}:
+            runtime.cancel_event.set()
+            runtime.status = "CANCEL_REQUESTED"
+            runtime.phase = "CANCEL_REQUESTED"
+            runtime.message = "Arrêt demandé; attente du prochain checkpoint de replay."
+        return self._progress_view(runtime)
+
+    def _progress_view(self, runtime: _CampaignRuntime) -> CampaignProgressView:
+        return CampaignProgressView(
+            campaign_id=runtime.campaign_id,
+            created_at=runtime.created_at,
+            status=runtime.status,
+            phase=runtime.phase,
+            current_role=runtime.current_role,
+            percent=round(runtime.percent, 2),
+            work_done=runtime.work_done,
+            total_work=runtime.total_work,
+            current_observed_at=runtime.current_observed_at,
+            opportunity_count=runtime.opportunity_count,
+            executed_order_count=runtime.executed_order_count,
+            agent_traces=tuple(runtime.traces[-120:]),
+            error=runtime.error,
+            message=runtime.message,
+            can_cancel=runtime.status in {"QUEUED", "RUNNING"},
+            result_available=runtime.result_available,
+        )
 
     def capabilities(self) -> BacktestCapabilities:
         return BacktestCapabilities(
@@ -552,7 +710,12 @@ class BacktestDashboardService:
     def preview_dataset(self, request: DatasetInput) -> DatasetPreview:
         return self._parse_dataset(request).preview
 
-    async def run_campaign(self, request: CampaignRequest) -> CampaignSummary:
+    async def run_campaign(
+        self,
+        request: CampaignRequest,
+        *,
+        _campaign_id: str | None = None,
+    ) -> CampaignSummary:
         async with self._run_lock:
             parsed = self._parse_dataset(request.dataset)
             if not parsed.preview.is_valid:
@@ -581,6 +744,21 @@ class BacktestDashboardService:
                 label_prefix="dashboard",
             )
             run_set = split.runs(config)
+            runtime = (
+                self._progress_records.get(_campaign_id)
+                if _campaign_id is not None
+                else None
+            )
+            if runtime is not None:
+                runtime.total_work = sum(
+                    self._run_work_units(parsed.candles, run_set.by_role(role))
+                    for role in BacktestPeriodRole
+                )
+                runtime.work_done = 0
+                runtime.percent = 0.0
+                runtime.phase = "DESIGN"
+                runtime.message = "Replay DESIGN en cours."
+
             executions, split_report, exports = await self._execute_split(
                 split=split,
                 run_set=run_set,
@@ -588,11 +766,17 @@ class BacktestDashboardService:
                 risk_profile=risk_profile,
                 market_constraints=market_constraints,
                 ai=request.ai,
+                runtime=runtime,
             )
 
             wf_report: WalkForwardReport | None = None
             wf_views: tuple[WalkForwardOOSView, ...] = ()
             if request.walk_forward.enabled:
+                if runtime is not None:
+                    runtime.phase = "WALK_FORWARD"
+                    runtime.message = (
+                        "Walk-forward en cours; progression principale déjà parcourue."
+                    )
                 plan = build_walk_forward_plan(
                     parsed.candles,
                     dataset=parsed.dataset_ref,
@@ -610,6 +794,7 @@ class BacktestDashboardService:
                         risk_profile=risk_profile,
                         market_constraints=market_constraints,
                         ai=request.ai,
+                        runtime=runtime,
                     )
                     return report
 
@@ -648,7 +833,12 @@ class BacktestDashboardService:
             )
             exports["ai-cache.json"] = ("application/json", self._cache.export_json())
 
-            campaign_id = str(uuid4())
+            if runtime is not None:
+                runtime.phase = "FINALIZING"
+                runtime.message = "Génération des rapports et exports."
+                runtime.percent = max(runtime.percent, 99.0)
+
+            campaign_id = _campaign_id or str(uuid4())
             oos_equity = tuple(
                 EquityView(observed_at=point.observed_at, equity=str(point.equity))
                 for point in executions[BacktestPeriodRole.OOS].evaluation.equity_points
@@ -687,10 +877,18 @@ class BacktestDashboardService:
         return self._cache.export_json()
 
     def import_cache(self, payload: str) -> int:
-        if self._run_lock.locked():
+        if self._run_lock.locked() or self._active_campaign_id is not None:
             raise BacktestDashboardError("cannot replace AI cache while a campaign is running")
         self._cache = BacktestResponseCache.import_json(payload)
         return len(self._cache)
+
+    def _store_progress(self, runtime: _CampaignRuntime) -> None:
+        self._progress_records[runtime.campaign_id] = runtime
+        self._progress_order.append(runtime.campaign_id)
+        while len(self._progress_order) > self._history_limit:
+            removed = self._progress_order.pop(0)
+            if removed != self._active_campaign_id:
+                self._progress_records.pop(removed, None)
 
     def _store(self, record: _CampaignRecord) -> None:
         campaign_id = record.summary.campaign_id
@@ -859,6 +1057,7 @@ class BacktestDashboardService:
         risk_profile: RiskProfile,
         market_constraints: MarketConstraints,
         ai: AIInput,
+        runtime: _CampaignRuntime | None = None,
     ) -> tuple[
         dict[BacktestPeriodRole, _RunExecution],
         BacktestSplitReport,
@@ -868,6 +1067,10 @@ class BacktestDashboardService:
         exports: dict[str, tuple[str, str]] = {}
         for role in BacktestPeriodRole:
             run = run_set.by_role(role)
+            if runtime is not None:
+                runtime.current_role = role
+                runtime.phase = role.value
+                runtime.message = f"Replay {role.value} en cours."
             execution = await self._execute_run(
                 role=role,
                 run=run,
@@ -875,6 +1078,7 @@ class BacktestDashboardService:
                 risk_profile=risk_profile,
                 market_constraints=market_constraints,
                 ai=ai,
+                runtime=runtime,
             )
             executions[role] = execution
             prefix = role.value.lower()
@@ -909,6 +1113,7 @@ class BacktestDashboardService:
         risk_profile: RiskProfile,
         market_constraints: MarketConstraints,
         ai: AIInput,
+        runtime: _CampaignRuntime | None = None,
     ) -> _RunExecution:
         clock = ReplayClock.start(run.dataset.start_at)
         broker = PaperBroker(
@@ -999,7 +1204,42 @@ class BacktestDashboardService:
             portfolio_provider=portfolio,
             position_lifecycle=lifecycle,
         )
-        replay = await runner.run(candles=candles, run=run)
+        last_progress = 0
+
+        def on_progress(done: int, total: int, observed_at: datetime) -> None:
+            nonlocal last_progress
+            if runtime is None:
+                return
+            delta = max(0, done - last_progress)
+            last_progress = done
+            runtime.work_done += delta
+            runtime.current_observed_at = observed_at
+            if runtime.total_work > 0:
+                computed = runtime.work_done / runtime.total_work * 100.0
+                runtime.percent = max(runtime.percent, min(99.0, computed))
+
+        def on_point(point: Any) -> None:
+            if runtime is None:
+                return
+            if point.opportunity is not None:
+                runtime.opportunity_count += 1
+            pipeline_result = point.pipeline_result
+            if pipeline_result is not None and getattr(pipeline_result, "fill", None) is not None:
+                runtime.executed_order_count += 1
+            if pipeline_result is not None:
+                self._append_agent_traces(runtime, role, point)
+
+        replay = await runner.run(
+            candles=candles,
+            run=run,
+            progress_callback=on_progress if runtime is not None else None,
+            point_callback=on_point if runtime is not None else None,
+            cancel_check=(
+                (lambda: runtime.cancel_event.is_set())
+                if runtime is not None
+                else None
+            ),
+        )
         self._raise_cached_miss(replay, run.config.ai_mode)
         evaluation = await evaluate_historical_replay(
             replay,
@@ -1015,6 +1255,103 @@ class BacktestDashboardService:
             replay=replay,
             evaluation=evaluation,
         )
+
+    @staticmethod
+    def _run_work_units(candles: tuple[Any, ...], run: BacktestRun) -> int:
+        return sum(1 for candle in candles if candle.close_time <= run.period_end)
+
+    def _append_agent_traces(
+        self,
+        runtime: _CampaignRuntime,
+        role: BacktestPeriodRole,
+        point: Any,
+    ) -> None:
+        pipeline_result = point.pipeline_result
+        orchestration = getattr(pipeline_result, "orchestration_result", None)
+        if orchestration is None:
+            return
+
+        opportunity_id = str(getattr(orchestration, "opportunity_id", ""))
+        observed_at = point.observed_at
+
+        def add(agent: str, phase: str, title: str, value: Any) -> None:
+            if value is None:
+                return
+            if hasattr(value, "model_dump"):
+                details = value.model_dump(mode="json")
+            elif isinstance(value, dict):
+                details = value
+            else:
+                details = {"value": str(value)}
+            runtime.trace_sequence += 1
+            runtime.traces.append(
+                AgentTraceView(
+                    sequence=runtime.trace_sequence,
+                    observed_at=observed_at,
+                    role=role,
+                    opportunity_id=opportunity_id,
+                    agent=agent,
+                    phase=phase,
+                    title=title,
+                    details=details,
+                )
+            )
+            if len(runtime.traces) > 160:
+                del runtime.traces[:-160]
+
+        plan = getattr(orchestration, "professor_plan", None)
+        if plan is not None:
+            selected = ", ".join(getattr(plan, "selected_agents", ())) or "aucun"
+            add(
+                "professor",
+                "PLAN",
+                f"{getattr(plan, 'decision', 'PLAN')} · {selected}",
+                plan,
+            )
+
+        for specialist in getattr(orchestration, "specialist_runs", ()):
+            analysis = specialist.analysis
+            stance = getattr(analysis, "stance", "")
+            confidence = getattr(analysis, "confidence", None)
+            suffix = (
+                f" · confiance {float(confidence):.2f}"
+                if confidence is not None
+                else ""
+            )
+            add(
+                specialist.agent_id,
+                "ANALYSIS",
+                f"{stance}{suffix}".strip(" ·"),
+                analysis,
+            )
+
+        palermo = getattr(orchestration, "palermo_run", None)
+        if palermo is not None:
+            review = palermo.review
+            add(
+                "palermo",
+                "RED_TEAM",
+                f"{getattr(review, 'verdict', 'REVIEW')} · sévérité "
+                f"{getattr(review, 'severity', '—')}",
+                review,
+            )
+
+        decision = getattr(orchestration, "professor_decision", None)
+        if decision is not None:
+            add(
+                "professor",
+                "FINAL",
+                f"{decision.direction} · confiance {decision.confidence:.2f}",
+                decision,
+            )
+
+        risk_record = getattr(pipeline_result, "risk_record", None)
+        if risk_record is not None:
+            add("risk_engine", "RISK", "Décision Risk Engine", risk_record)
+
+        failure = getattr(orchestration, "failure", None)
+        if failure is not None:
+            add("orchestration", "FAILED", str(failure.code), failure)
 
     @staticmethod
     def _raise_cached_miss(replay: Any, mode: BacktestAIMode) -> None:
@@ -1074,6 +1411,7 @@ __all__ = [
     "BacktestCapabilities",
     "BacktestDashboardError",
     "BacktestDashboardService",
+    "CampaignProgressView",
     "CampaignRequest",
     "CampaignSummary",
     "DatasetInput",

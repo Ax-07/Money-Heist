@@ -109,3 +109,63 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 footer { display: flex; justify-content: space-between; gap: 18px; border-top: 1px solid var(--border); padding: 20px 0 32px; color: var(--muted); font-size: .72rem; }
 @media (max-width: 1160px) { .layout { grid-template-columns: 1fr; }.results-panel { position: static; max-height: none; }.grid.four { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 @media (max-width: 760px) { .topbar, .hero, footer { grid-template-columns: 1fr; flex-direction: column; }.topbar { flex-direction: column; }.badges { justify-content: flex-start; }.grid.three, .grid.four { grid-template-columns: 1fr; }.layout { display: block; }.results-panel { margin-top: 18px; }.history-item { grid-template-columns: 1fr; }.metric-grid { grid-template-columns: 1fr; } }
+
+/* Batch 16.8 — Backtest controls & observability */
+.agent-panel { padding: 18px; }
+.progress-panel {
+  margin: 12px 0 16px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #101013;
+}
+.progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.progress-head > div { display: grid; gap: 2px; }
+progress {
+  width: 100%;
+  height: 16px;
+  accent-color: var(--paper);
+}
+#progress-detail { margin-top: 8px; font-size: .72rem; line-height: 1.4; }
+button.danger-button {
+  background: rgba(239,107,115,.12);
+  border-color: rgba(239,107,115,.65);
+  color: var(--bad);
+}
+.agent-traces {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  max-height: 560px;
+  overflow: auto;
+}
+.agent-trace {
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 10px 12px;
+  background: #101013;
+}
+.agent-trace-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: .68rem;
+}
+.agent-trace strong { display: block; margin-top: 5px; font-size: .85rem; }
+.agent-trace details { margin-top: 8px; }
+.agent-trace summary { cursor: pointer; color: var(--paper); font-size: .7rem; }
+.agent-trace pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+  font: .68rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+

@@ -2,6 +2,8 @@ const $ = (id) => document.getElementById(id);
 const endpoint = "/api/dashboard/backtest";
 let csvText = "";
 let datasetPreview = null;
+let activeCampaignId = null;
+let pollTimer = null;
 
 const esc = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
@@ -194,6 +196,116 @@ function equityChart(points) {
     + `</svg><div class="muted">Equity OOS: ${esc(min)} → ${esc(max)}</div>`;
 }
 
+
+function renderAgentTraces(traces) {
+  const el = $("agent-traces");
+  if (!traces?.length) {
+    el.className = "agent-traces empty";
+    el.textContent = "Aucune trace agent pour le moment.";
+    return;
+  }
+  el.className = "agent-traces";
+  el.innerHTML = [...traces].reverse().map((trace) => {
+    const when = trace.observed_at
+      ? new Date(trace.observed_at).toLocaleString("fr-FR")
+      : "—";
+    const details = esc(JSON.stringify(trace.details ?? {}, null, 2));
+    return `<article class="agent-trace">`
+      + `<div class="agent-trace-head"><span>${esc(trace.role)} · ${esc(trace.agent)} · ${esc(trace.phase)}</span>`
+      + `<span>${esc(when)}</span></div>`
+      + `<strong>${esc(trace.title)}</strong>`
+      + `<details><summary>Voir la sortie structurée</summary><pre>${details}</pre></details>`
+      + `</article>`;
+  }).join("");
+}
+
+function renderProgress(data) {
+  const panel = $("progress-panel");
+  panel.classList.remove("hidden");
+  $("campaign-progress").value = Number(data.percent ?? 0);
+  $("progress-label").textContent = `${Number(data.percent ?? 0).toFixed(1)} %`;
+  $("run-status").textContent = data.status;
+  $("stop-button").disabled = !data.can_cancel;
+
+  const role = data.current_role ? ` · ${data.current_role}` : "";
+  const at = data.current_observed_at
+    ? ` · ${new Date(data.current_observed_at).toLocaleString("fr-FR")}`
+    : "";
+  $("progress-detail").textContent =
+    `${data.phase}${role}${at} · travail ${data.work_done}/${data.total_work}`
+    + ` · opportunités ${data.opportunity_count} · ordres ${data.executed_order_count}`
+    + (data.message ? ` · ${data.message}` : "");
+
+  renderAgentTraces(data.agent_traces || []);
+}
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function finishCampaignUi() {
+  activeCampaignId = null;
+  $("run-button").disabled = false;
+  $("stop-button").disabled = true;
+}
+
+async function pollCampaign(campaignId) {
+  const response = await api(
+    `${endpoint}/runs/${encodeURIComponent(campaignId)}/progress`
+  );
+  const data = await response.json();
+  renderProgress(data);
+
+  if (data.status === "COMPLETED") {
+    stopPolling();
+    const resultResponse = await api(
+      `${endpoint}/runs/${encodeURIComponent(campaignId)}`
+    );
+    renderResults(await resultResponse.json());
+    finishCampaignUi();
+    await refreshCapabilities();
+    await refreshHistory();
+    return;
+  }
+
+  if (data.status === "CANCELLED") {
+    stopPolling();
+    finishCampaignUi();
+    $("results").className = "empty";
+    $("results").textContent = "Campagne annulée. Aucun résultat final n'a été publié.";
+    return;
+  }
+
+  if (data.status === "FAILED") {
+    stopPolling();
+    finishCampaignUi();
+    showError(new Error(data.error || "La campagne a échoué."));
+    return;
+  }
+
+  pollTimer = setTimeout(
+    () => pollCampaign(campaignId).catch((error) => {
+      stopPolling();
+      finishCampaignUi();
+      showError(error);
+    }),
+    600,
+  );
+}
+
+async function stopCampaign() {
+  if (!activeCampaignId) return;
+  $("stop-button").disabled = true;
+  const response = await api(
+    `${endpoint}/runs/${encodeURIComponent(activeCampaignId)}/cancel`,
+    { method: "POST" },
+  );
+  renderProgress(await response.json());
+}
+
 function renderResults(data) {
   $("run-status").textContent = data.status;
   const exports = data.exports.map((name) =>
@@ -215,22 +327,27 @@ function renderResults(data) {
 async function runCampaign(event) {
   event.preventDefault();
   clearError();
+  stopPolling();
   $("run-button").disabled = true;
-  $("run-status").textContent = "RUNNING";
+  $("run-status").textContent = "QUEUED";
+  $("results").className = "empty";
+  $("results").textContent = "Campagne en cours…";
+  renderAgentTraces([]);
+
   try {
     if (!csvText) await readCsv();
     const response = await api(`${endpoint}/runs`, {
       method: "POST",
       body: JSON.stringify(campaignPayload()),
     });
-    renderResults(await response.json());
-    await refreshCapabilities();
-    await refreshHistory();
+    const progress = await response.json();
+    activeCampaignId = progress.campaign_id;
+    renderProgress(progress);
+    await pollCampaign(activeCampaignId);
   } catch (error) {
+    finishCampaignUi();
     $("run-status").textContent = "FAILED";
     showError(error);
-  } finally {
-    $("run-button").disabled = false;
   }
 }
 
@@ -290,6 +407,7 @@ async function importCache(file) {
   await refreshCapabilities();
 }
 
+$("stop-button").addEventListener("click", () => stopCampaign().catch(showError));
 $("preview-button").addEventListener("click", preview);
 $("campaign-form").addEventListener("submit", runCampaign);
 $("refresh-history").addEventListener("click", () => refreshHistory().catch(showError));
