@@ -64,6 +64,7 @@ from .risk_gate import (
     build_master_risk_gate_candidate,
     build_master_risk_gate_policy,
 )
+from .risk_gate_evaluator import evaluate_master_risk_gate
 from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
@@ -112,6 +113,7 @@ __all__ = [
     "build_master_allocation_policy",
     "build_master_risk_gate_candidate",
     "build_master_risk_gate_policy",
+    "evaluate_master_risk_gate",
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
     "build_observed_master_portfolio_snapshot",
