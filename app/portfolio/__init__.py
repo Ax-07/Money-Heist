@@ -5,13 +5,25 @@ from .models import (
     PortfolioMemberRef,
     SnapshotDataStatus,
 )
+from .observation import (
+    CrewPortfolioStateSource,
+    PortfolioObservationReasonCode,
+    PortfolioStateProvider,
+    build_observed_master_portfolio_snapshot,
+    observe_crew_exposure,
+)
 from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
     "CrewExposureSnapshot",
+    "CrewPortfolioStateSource",
     "MasterCapitalSnapshot",
     "MasterPortfolioSnapshot",
     "PortfolioMemberRef",
+    "PortfolioObservationReasonCode",
+    "PortfolioStateProvider",
     "SnapshotDataStatus",
     "build_master_portfolio_snapshot",
+    "build_observed_master_portfolio_snapshot",
+    "observe_crew_exposure",
 ]
