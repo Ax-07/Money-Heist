@@ -71,6 +71,11 @@ from .risk_gate_admission import (
     ReservationAdmissionTransitionStatus,
     apply_master_risk_gate_decision_to_reservation,
 )
+from .risk_gate_closure import (
+    MasterRiskGateClosureSeal,
+    MasterRiskGateClosureStatus,
+    build_master_risk_gate_closure_seal,
+)
 from .risk_gate_evaluator import evaluate_master_risk_gate
 from .snapshot import build_master_portfolio_snapshot
 
@@ -117,6 +122,8 @@ __all__ = [
     "MasterRiskGatePolicySource",
     "MasterRiskGatePolicyStatus",
     "MasterRiskGateReasonCode",
+    "MasterRiskGateClosureSeal",
+    "MasterRiskGateClosureStatus",
     "ReservationAdmissionBridgeError",
     "ReservationAdmissionReasonCode",
     "ReservationAdmissionReceipt",
@@ -125,6 +132,7 @@ __all__ = [
     "build_master_allocation_policy",
     "build_master_risk_gate_candidate",
     "build_master_risk_gate_policy",
+    "build_master_risk_gate_closure_seal",
     "evaluate_master_risk_gate",
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
