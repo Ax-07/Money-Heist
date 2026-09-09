@@ -16,6 +16,12 @@ from .arbitration import (
     build_master_arbitration_batch,
     build_master_arbitration_policy,
 )
+from .arbitration_sequential import (
+    MasterSequentialArbitrationOutcome,
+    MasterSequentialArbitrationResult,
+    MasterSequentialArbitrationStatus,
+    arbitrate_master_batch_sequentially,
+)
 from .audit import (
     MasterPortfolioAuditSeal,
     PortfolioAuditSourceKind,
@@ -98,6 +104,9 @@ __all__ = [
     "MasterArbitrationPolicy",
     "MasterArbitrationPolicySource",
     "MasterArbitrationPolicyStatus",
+    "MasterSequentialArbitrationOutcome",
+    "MasterSequentialArbitrationResult",
+    "MasterSequentialArbitrationStatus",
     "AllocationEnvelopeStatus",
     "AllocationPolicySource",
     "CrewAllocationEnvelope",
@@ -147,6 +156,7 @@ __all__ = [
     "ReservationAdmissionReceipt",
     "ReservationAdmissionTransitionStatus",
     "apply_master_risk_gate_decision_to_reservation",
+    "arbitrate_master_batch_sequentially",
     "build_master_arbitration_batch",
     "build_master_arbitration_policy",
     "build_master_allocation_policy",
