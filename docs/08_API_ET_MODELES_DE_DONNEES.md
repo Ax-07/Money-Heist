@@ -379,6 +379,7 @@ Les agents ne consomment pas arbitrairement l’API HTTP.
 Ils utilisent une couche de tools autorisés.
 
 Exemples :
+
 - `get_market_context` ;
 - `get_portfolio_summary` ;
 - `get_agent_statistics` ;
@@ -391,6 +392,7 @@ Exemples :
 Tous les objets critiques sont validés avant stockage ou utilisation.
 
 Technologie prévue côté Python :
+
 - modèles typés ;
 - validation de schéma ;
 - erreurs explicites.
@@ -404,6 +406,7 @@ Le choix exact de bibliothèque sera décidé dans Batch 01.
 Les objets persistés critiques doivent pouvoir évoluer.
 
 Prévoir :
+
 - migrations DB ;
 - champ version lorsque utile ;
 - convertisseurs si un schéma change.
@@ -419,12 +422,12 @@ Prévoir :
 - chaque coût IA est lié à une exécution ;
 - chaque décision peut être reliée à son snapshot.
 
-
 ---
 
 ## 18. Addendum Batch 16 — modèles de backtest
 
 Contrats principaux ajoutés :
+
 - `DatasetRef` : identité/version/hash du dataset ;
 - `BacktestConfig` : système, versions, mode IA, coûts d’exécution, policy intrabar, `code_version`, `execution_model_version`, `random_seed` ;
 - `BacktestRun` / `BacktestResult` ;
@@ -460,3 +463,25 @@ POST /api/dashboard/backtest/ai-cache
 
 Le payload de campagne contient dataset CSV, splits, `RiskProfile`, `MarketConstraints`, paramètres PAPER, mode IA et walk-forward optionnel. Aucun champ de clé API fournisseur n'est accepté.
 
+<!-- BATCH18A_STEP4_API_START -->
+
+## Addendum Batch 18a — Contrats réputation et ablation
+
+Contrats publics principaux :
+- `AblationRunDescriptor`, `AblationComparison`, `AblationAggregate` ;
+- `ReputationPolicy`, `AgentReputationProfile` ;
+- `ReputationPolicyThresholds`, `AgentStateEvidence`, `AgentStateRecommendation` ;
+- `DeterministicAgentStateAdvisor` ;
+- `ReputationEvidenceProvenance`, `AgentReputationAdvisoryReport` ;
+- `ReputationAdvisoryService` ;
+- `reputation_advisory_to_dict()` / `reputation_advisory_to_json()`.
+
+Les deltas d’ablation utilisent les conventions suivantes : `baseline - ablated` pour Trading
+Net et Economic Net, `ablated - baseline` pour la réduction de drawdown. Une valeur positive de
+`drawdown_reduction_pct` signifie donc que la présence de l’agent a réduit le drawdown observé.
+
+Le rapport advisory inclut l’état courant lu dans le registry, les preuves, les seuils
+explicitement fournis, la recommandation et sa provenance. Il ne contient aucune opération de
+mutation du registry ou d’activation LIVE.
+
+<!-- BATCH18A_STEP4_API_END -->

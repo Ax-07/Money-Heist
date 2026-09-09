@@ -1,0 +1,19 @@
+Batch 18a Step 4
+==================
+
+Fichiers:
+- app/evaluation/__init__.py
+- app/evaluation/reputation_exports.py
+- apply_batch_18a_step4_docs.py
+- tests/evaluation/test_reputation_exports.py
+- tests/evaluation/test_batch18a_docs_updater.py
+- tests/evaluation/test_reputation_public_api.py
+- README_BATCH_18A_STEP4.md
+- CHANGELOG_BATCH.md
+
+Frontières:
+- evaluation/advisory only
+- no registry mutation
+- no Risk Engine
+- no broker
+- no LIVE

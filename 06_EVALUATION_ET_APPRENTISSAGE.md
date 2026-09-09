@@ -459,3 +459,31 @@ règles anti-look-ahead que les autres données du replay.
 
 Les diagnostics de disponibilité Rio peuvent être journalisés pour distinguer une absence de signal
 d'une absence de données, mais ils ne doivent pas être interprétés comme une métrique de performance.
+
+<!-- BATCH18A_STEP4_EVALUATION_START -->
+
+## Addendum Batch 18a — Réputation, ablation et advisory d’état
+
+Le Batch 18a ajoute une couche d’évaluation déterministe au-dessus des métriques agents et
+du moteur historique Batch 16. Une ablation compare une baseline et un run identique sans
+exactement un agent ;
+les runs non comparables sont rejetés.
+
+La réputation reste multidimensionnelle : participation, accord directionnel, confiance, coût,
+latence, marginal Trading Net, marginal Economic Net et contribution au drawdown. Aucun score global
+opaque n’est utilisé comme autorité.
+
+Pour une recommandation de changement d’état fondée sur l’ablation, la preuve consommée par
+`ReputationAdvisoryService` doit être OOS-only. Les seuils sont injectés explicitement via
+`ReputationPolicy` et `ReputationPolicyThresholds` ; les valeurs de tests ne constituent pas des
+seuils de production.
+
+Les recommandations `HOLD / PROMOTE / DEMOTE / REDUCE_FREQUENCY` sont advisory-only. Elles ne
+modifient jamais `AgentRegistry`, ne peuvent pas s’auto-appliquer (`auto_apply=False`) et ne
+changent ni le Risk Engine, ni le broker, ni PAPER/SHADOW/LIVE. Les fonctions Core restent
+protégées.
+
+Chaque `AgentReputationAdvisoryReport` conserve la provenance des comparaisons et un fingerprint
+SHA-256 déterministe afin de rendre la recommandation reconstruisible et auditable.
+
+<!-- BATCH18A_STEP4_EVALUATION_END -->

@@ -1,0 +1,17 @@
+Batch 18a Step 1
+==================
+
+Fichiers:
+- app/evaluation/__init__.py
+- app/evaluation/ablation.py
+- app/evaluation/reputation.py
+- tests/evaluation/test_ablation.py
+- tests/evaluation/test_reputation.py
+- README_BATCH_18A_STEP1.md
+
+Frontières:
+- evaluation only
+- no registry mutation
+- no Risk Engine
+- no broker
+- no LIVE

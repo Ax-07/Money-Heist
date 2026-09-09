@@ -1,35 +1,53 @@
-# Batch 17b — Rio avancé / données dérivées réelles
+# Batch 18a — Réputation et ablation — clôture des fondations
 
-## Pré-requis
+## État
 
-- Batch 17a validé et commité ;
-- Step 17b.1 Kraken Futures Analytics validé avec smoke réseau public ;
-- Step 17b.2 intégration PAPER/SHADOW validée.
+Steps 1 à 4 livrés et conçus comme une couche d’évaluation déterministe/advisory-only.
 
-## Livré
+## Step 1 — Fondations réputation + ablation
 
-- adaptateur public Kraken Futures Analytics ;
-- mapping explicite BTC/ETH/SOL vers les perpetuals Kraken ;
-- funding, open interest, variation OI et long/short ratio normalisés ;
-- absence explicite du split long/short des liquidations non garanti ;
-- cache Rio avec fraîcheur et cooldown ;
-- refresh sidecar uniquement après opportunité Scanner ;
-- panne dérivés non critique pour le flux Spot/PAPER ;
-- Rio context-gated dans l'orchestration ;
-- composition Rio + Denver ;
-- observabilité read-only Rio ;
-- documentation et ADR-027.
+- comparaison stricte baseline vs run sans exactement un agent ;
+- comparabilité par fingerprint expérimental, dataset, rôle, période, bougies et opportunités ;
+- deltas Trading Net / Economic Net / drawdown / coût IA ;
+- agrégation d’ablation ;
+- `AgentReputationProfile` multidimensionnel ;
+- aucune mutation runtime.
 
-## Non modifié
+## Step 2 — Policy de recommandation d’état
 
-- Risk Engine ;
-- sizing ;
-- PaperBroker ;
-- LiveBroker ;
-- kill switches ;
-- authentification Kraken privée ;
-- premier LIVE Kraken Spot/EUR.
+- `AgentStateEvidence` ;
+- seuils explicites `ReputationPolicyThresholds` ;
+- recommandations `HOLD / PROMOTE / DEMOTE / REDUCE_FREQUENCY` ;
+- transitions progressives ;
+- fonctions Core protégées ;
+- `auto_apply=False`.
 
-## Limite volontaire
+## Step 3 — Bridge et rapport auditable
 
-Rio n'est pas injecté dans les replays historiques Batch 16 sans dataset dérivés historique dédié.
+- `ReputationAdvisoryService` ;
+- adaptation Step 1 → Step 2 ;
+- ablation OOS-only pour la preuve de transition ;
+- contrôle du scope de coût IA ;
+- provenance runs/datasets/fingerprints ;
+- `AgentReputationAdvisoryReport` avec fingerprint SHA-256 déterministe.
+
+## Step 4 — API publique, exports et documentation
+
+- consolidation des exports publics dans `app/evaluation/__init__.py` ;
+- `reputation_advisory_to_dict()` / `reputation_advisory_to_json()` ;
+- sérialisation JSON-safe des Decimal/enums/dataclasses sans mutation ;
+- updater documentaire idempotent pour Evaluation/API/Roadmap ;
+- tests d’API publique, d’exports et de préservation documentaire.
+
+## Frontières
+
+Batch 18a ne :
+- modifie pas automatiquement `AgentRegistry` ;
+- ne fixe pas de seuil de production ;
+- n’active pas le LIVE ;
+- ne modifie pas le Risk Engine ni le broker ;
+- ne considère pas l’ablation comme une preuve causale universelle ;
+- ne transforme pas DESIGN/VALIDATION en OOS.
+
+Les campagnes empiriques comparables et les critères opérateur pré-définis restent nécessaires avant
+toute décision organisationnelle réelle sur un agent.

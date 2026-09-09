@@ -450,3 +450,23 @@ Si le développement révèle qu’un batch est trop gros :
 2. Définir avant observation finale les critères quantitatifs DESIGN/VALIDATION/OOS/walk-forward.
 3. Poursuivre PAPER/SHADOW et conserver le LIVE non armé tant que la gate n’est pas satisfaite.
 4. Démarrer **Batch 18 — Réputation et ablation** afin de mesurer la valeur marginale réelle des spécialistes, dont Rio et Denver.
+
+<!-- BATCH18A_STEP4_ROADMAP_START -->
+
+## Addendum Batch 18a — Fondations réputation et ablation livrées
+
+Le sous-batch 18a est livré avec :
+- comparaison d’ablation déterministe sur runs comparables ;
+- agrégation et réputation multidimensionnelle ;
+- politique advisory de recommandation d’état avec seuils injectés ;
+- bridge OOS-only réputation/ablation vers `AgentStateEvidence` ;
+- provenance et fingerprint d’audit déterministes ;
+- exports publics de la couche Evaluation ;
+- aucune mutation automatique des états agents et aucun impact LIVE.
+
+Cette livraison fournit l’infrastructure de preuve du Batch 18. Elle ne constitue pas, à elle
+seule, une validation empirique d’un agent : les campagnes comparables réelles et les seuils
+opérateur
+pré-définis restent nécessaires avant toute décision organisationnelle.
+
+<!-- BATCH18A_STEP4_ROADMAP_END -->

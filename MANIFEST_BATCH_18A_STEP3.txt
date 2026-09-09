@@ -1,0 +1,17 @@
+Batch 18a — Step 3
+
+FILES
+app/evaluation/reputation_advisory.py
+tests/evaluation/test_reputation_advisory.py
+README_BATCH_18A_STEP3.md
+MANIFEST_BATCH_18A_STEP3.txt
+CHANGELOG_BATCH.md
+
+BOUNDARIES
+- advisory-only
+- no AgentRegistry mutation
+- no Risk Engine changes
+- no broker changes
+- no LIVE changes
+- OOS-only ablation evidence for state policy
+- explicit policy thresholds

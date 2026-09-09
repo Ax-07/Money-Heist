@@ -1,5 +1,14 @@
-"""Batch 10 deterministic evaluation and AI economics layer."""
+"""Deterministic evaluation, AI economics, reputation and ablation layer."""
 
+from .ablation import (
+    AblationAggregate,
+    AblationComparison,
+    AblationMetricDelta,
+    AblationMetricStatus,
+    AblationRunDescriptor,
+    aggregate_ablation,
+    compare_ablation,
+)
 from .adapters import (
     build_evaluation_source,
     execution_records_from_paper,
@@ -28,35 +37,76 @@ from .models import (
     SelfFundingStatus,
     TradingMetrics,
 )
+from .reputation import AgentReputationProfile, ReputationPolicy, build_agent_reputation
+from .reputation_advisory import (
+    AgentReputationAdvisoryReport,
+    ReputationAdvisoryService,
+    ReputationEvidenceProvenance,
+    build_agent_state_evidence,
+)
+from .reputation_exports import (
+    reputation_advisory_to_dict,
+    reputation_advisory_to_json,
+)
+from .reputation_policy import (
+    AgentStateEvidence,
+    AgentStateRecommendation,
+    DeterministicAgentStateAdvisor,
+    EvidenceSufficiency,
+    ReputationPolicyThresholds,
+    StateRecommendationAction,
+)
 from .service import EvaluationService
 from .trading import calculate_trading_metrics
 
 __all__ = [
     "AICostMetrics",
+    "AblationAggregate",
+    "AblationComparison",
+    "AblationMetricDelta",
+    "AblationMetricStatus",
+    "AblationRunDescriptor",
     "AgentMetrics",
+    "AgentReputationAdvisoryReport",
+    "AgentReputationProfile",
+    "AgentStateEvidence",
+    "AgentStateRecommendation",
     "CounterfactualOutcome",
     "DataKind",
+    "DeterministicAgentStateAdvisor",
     "DeterministicLisbonReporter",
     "EquityPoint",
     "EvaluationReport",
     "EvaluationService",
     "EvaluationSource",
+    "EvidenceSufficiency",
     "ExecutionRecord",
     "LisbonEvaluationReport",
     "Metric",
     "MetricStatus",
     "OpportunityTrace",
+    "ReputationAdvisoryService",
+    "ReputationEvidenceProvenance",
+    "ReputationPolicy",
+    "ReputationPolicyThresholds",
     "SelfFundingRatio",
     "SelfFundingStatus",
+    "StateRecommendationAction",
     "TradingMetrics",
     "agent_metrics_to_csv",
+    "aggregate_ablation",
+    "build_agent_reputation",
+    "build_agent_state_evidence",
     "build_evaluation_source",
     "calculate_agent_metrics",
     "calculate_ai_cost_metrics",
     "calculate_trading_metrics",
+    "compare_ablation",
     "execution_records_from_paper",
     "report_to_dict",
     "report_to_json",
+    "reputation_advisory_to_dict",
+    "reputation_advisory_to_json",
     "self_funding_ratio",
     "trace_from_paper_pipeline",
     "traces_from_paper_events",
