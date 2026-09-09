@@ -5,6 +5,17 @@ from .allocation import (
     MasterAllocationPolicy,
     build_master_allocation_policy,
 )
+from .arbitration import (
+    MasterArbitrationBatch,
+    MasterArbitrationBatchStatus,
+    MasterArbitrationEntry,
+    MasterArbitrationOrderStrategy,
+    MasterArbitrationPolicy,
+    MasterArbitrationPolicySource,
+    MasterArbitrationPolicyStatus,
+    build_master_arbitration_batch,
+    build_master_arbitration_policy,
+)
 from .audit import (
     MasterPortfolioAuditSeal,
     PortfolioAuditSourceKind,
@@ -80,6 +91,13 @@ from .risk_gate_evaluator import evaluate_master_risk_gate
 from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
+    "MasterArbitrationBatch",
+    "MasterArbitrationBatchStatus",
+    "MasterArbitrationEntry",
+    "MasterArbitrationOrderStrategy",
+    "MasterArbitrationPolicy",
+    "MasterArbitrationPolicySource",
+    "MasterArbitrationPolicyStatus",
     "AllocationEnvelopeStatus",
     "AllocationPolicySource",
     "CrewAllocationEnvelope",
@@ -129,6 +147,8 @@ __all__ = [
     "ReservationAdmissionReceipt",
     "ReservationAdmissionTransitionStatus",
     "apply_master_risk_gate_decision_to_reservation",
+    "build_master_arbitration_batch",
+    "build_master_arbitration_policy",
     "build_master_allocation_policy",
     "build_master_risk_gate_candidate",
     "build_master_risk_gate_policy",
