@@ -11,6 +11,12 @@ from .audit import (
     PortfolioSourceAuditRecord,
     build_master_portfolio_audit_seal,
 )
+from .closure import (
+    ReservationClosureSeal,
+    ReservationClosureSealStatus,
+    ReservationLifecycleAuditRecord,
+    build_reservation_closure_seal,
+)
 from .fleet import MasterPortfolioFleetObserver
 from .models import (
     CrewExposureSnapshot,
@@ -58,6 +64,9 @@ __all__ = [
     "CrewExposureSnapshot",
     "CrewReservationReconciliation",
     "CrewReservationUsage",
+    "ReservationClosureSeal",
+    "ReservationClosureSealStatus",
+    "ReservationLifecycleAuditRecord",
     "CrewPortfolioStateSource",
     "MasterCapitalSnapshot",
     "MasterPortfolioFleetObserver",
@@ -86,6 +95,7 @@ __all__ = [
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
     "build_observed_master_portfolio_snapshot",
+    "build_reservation_closure_seal",
     "build_reservation_reconciliation_report",
     "observe_crew_exposure",
 ]
