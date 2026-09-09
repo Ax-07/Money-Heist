@@ -16,6 +16,11 @@ from .arbitration import (
     build_master_arbitration_batch,
     build_master_arbitration_policy,
 )
+from .arbitration_closure import (
+    MasterArbitrationClosureSeal,
+    MasterArbitrationClosureStatus,
+    build_master_arbitration_closure_seal,
+)
 from .arbitration_sequential import (
     MasterSequentialArbitrationOutcome,
     MasterSequentialArbitrationResult,
@@ -98,6 +103,8 @@ from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
     "MasterArbitrationBatch",
+    "MasterArbitrationClosureSeal",
+    "MasterArbitrationClosureStatus",
     "MasterArbitrationBatchStatus",
     "MasterArbitrationEntry",
     "MasterArbitrationOrderStrategy",
@@ -158,6 +165,7 @@ __all__ = [
     "apply_master_risk_gate_decision_to_reservation",
     "arbitrate_master_batch_sequentially",
     "build_master_arbitration_batch",
+    "build_master_arbitration_closure_seal",
     "build_master_arbitration_policy",
     "build_master_allocation_policy",
     "build_master_risk_gate_candidate",
