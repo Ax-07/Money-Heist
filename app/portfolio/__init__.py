@@ -1,3 +1,4 @@
+from .fleet import MasterPortfolioFleetObserver
 from .models import (
     CrewExposureSnapshot,
     MasterCapitalSnapshot,
@@ -18,6 +19,7 @@ __all__ = [
     "CrewExposureSnapshot",
     "CrewPortfolioStateSource",
     "MasterCapitalSnapshot",
+    "MasterPortfolioFleetObserver",
     "MasterPortfolioSnapshot",
     "PortfolioMemberRef",
     "PortfolioObservationReasonCode",
