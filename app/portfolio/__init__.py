@@ -26,6 +26,13 @@ from .observation import (
     build_observed_master_portfolio_snapshot,
     observe_crew_exposure,
 )
+from .reconciliation import (
+    CrewReservationReconciliation,
+    ReservationReconciliationReasonCode,
+    ReservationReconciliationReport,
+    ReservationReconciliationStatus,
+    build_reservation_reconciliation_report,
+)
 from .reservation import (
     CrewReservationUsage,
     MasterReservationLedger,
@@ -49,6 +56,7 @@ __all__ = [
     "MasterAllocationPolicy",
     "MasterPortfolioAuditSeal",
     "CrewExposureSnapshot",
+    "CrewReservationReconciliation",
     "CrewReservationUsage",
     "CrewPortfolioStateSource",
     "MasterCapitalSnapshot",
@@ -63,6 +71,9 @@ __all__ = [
     "MasterReservationLedger",
     "PortfolioReservation",
     "ReservationIdempotencyConflict",
+    "ReservationReconciliationReasonCode",
+    "ReservationReconciliationReport",
+    "ReservationReconciliationStatus",
     "ReservationLedgerInitializationError",
     "ReservationLedgerSnapshot",
     "ReservationOutcomeStatus",
@@ -75,5 +86,6 @@ __all__ = [
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
     "build_observed_master_portfolio_snapshot",
+    "build_reservation_reconciliation_report",
     "observe_crew_exposure",
 ]
