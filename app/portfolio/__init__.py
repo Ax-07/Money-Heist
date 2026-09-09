@@ -1,3 +1,10 @@
+from .allocation import (
+    AllocationEnvelopeStatus,
+    AllocationPolicySource,
+    CrewAllocationEnvelope,
+    MasterAllocationPolicy,
+    build_master_allocation_policy,
+)
 from .audit import (
     MasterPortfolioAuditSeal,
     PortfolioAuditSourceKind,
@@ -22,6 +29,10 @@ from .observation import (
 from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
+    "AllocationEnvelopeStatus",
+    "AllocationPolicySource",
+    "CrewAllocationEnvelope",
+    "MasterAllocationPolicy",
     "MasterPortfolioAuditSeal",
     "CrewExposureSnapshot",
     "CrewPortfolioStateSource",
@@ -34,6 +45,7 @@ __all__ = [
     "PortfolioObservationReasonCode",
     "PortfolioStateProvider",
     "SnapshotDataStatus",
+    "build_master_allocation_policy",
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
     "build_observed_master_portfolio_snapshot",
