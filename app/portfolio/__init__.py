@@ -40,6 +40,13 @@ from .closure import (
     build_reservation_closure_seal,
 )
 from .fleet import MasterPortfolioFleetObserver
+from .historical_replay import (
+    MasterHistoricalReplayCrewRef,
+    MasterHistoricalReplayMode,
+    MasterHistoricalReplayPlan,
+    MasterHistoricalReplayPlanStatus,
+    build_master_historical_replay_plan,
+)
 from .models import (
     CrewExposureSnapshot,
     MasterCapitalSnapshot,
@@ -114,6 +121,10 @@ __all__ = [
     "MasterSequentialArbitrationOutcome",
     "MasterSequentialArbitrationResult",
     "MasterSequentialArbitrationStatus",
+    "MasterHistoricalReplayCrewRef",
+    "MasterHistoricalReplayMode",
+    "MasterHistoricalReplayPlan",
+    "MasterHistoricalReplayPlanStatus",
     "AllocationEnvelopeStatus",
     "AllocationPolicySource",
     "CrewAllocationEnvelope",
@@ -167,6 +178,7 @@ __all__ = [
     "build_master_arbitration_batch",
     "build_master_arbitration_closure_seal",
     "build_master_arbitration_policy",
+    "build_master_historical_replay_plan",
     "build_master_allocation_policy",
     "build_master_risk_gate_candidate",
     "build_master_risk_gate_policy",
