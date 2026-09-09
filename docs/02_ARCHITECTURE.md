@@ -597,3 +597,35 @@ Browser /dashboard/backtest
 
 `BacktestDashboardService` orchestre les composants existants mais ne possède aucune dépendance vers `app.trading.live`. Les secrets fournisseurs ne transitent ni dans les modèles métier ni dans le navigateur.
 
+
+---
+
+## 18. Addendum Batch 19 — frontière Recruitment
+
+`app/recruitment` constitue une couche de domaine/service séparée du registre opérationnel des agents et de l'exécution LIVE.
+
+```text
+RecruitmentProposal
+→ RecruitmentCandidateSpec gelé
+→ Recruitment lifecycle séparé
+→ Candidate campaign plan
+→ HistoricalReplayRunner / PAPER
+→ comparability + provenance + OOS gates
+→ Batch 18 ablation / reputation
+→ CandidateEvidencePackage
+→ RecruitmentAdvisory
+→ operator-gated transition plan
+→ audit FRESH / STALE
+```
+
+Règles de dépendance :
+- un candidat Recruitment n'est pas inscrit automatiquement dans `AgentRegistry` ;
+- Recruitment ne modifie pas le `RiskEngine` ;
+- les campagnes candidates réutilisent Batch 16 et le broker PAPER, sans second moteur de replay ;
+- baseline et candidat utilisent des runners/brokers isolés ;
+- les seuils de capacité/budget sont injectés par politique opérateur, pas codés comme seuils magiques ;
+- les critères de succès sont pré-enregistrés et exigent une preuve OOS pour l'advisory de promotion ;
+- `PROMOTION_RECOMMENDED` reste un état Recruitment, pas un `AgentState.ACTIVE` ;
+- l'API HTTP Recruitment V1 est read-only et n'expose que les capabilities.
+
+Cette frontière conserve le principe architectural : l'IA ou l'évaluation peut proposer/recommander, tandis que les systèmes déterministes et l'opérateur gardent l'autorité.

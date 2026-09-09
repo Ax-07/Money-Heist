@@ -464,73 +464,65 @@ POST /api/dashboard/backtest/ai-cache
 Le payload de campagne contient dataset CSV, splits, `RiskProfile`, `MarketConstraints`, paramètres PAPER, mode IA et walk-forward optionnel. Aucun champ de clé API fournisseur n'est accepté.
 
 
-## 20. Addendum Batch 17a — contrats Rio / Denver
+---
 
-Nouveaux contrats internes principaux :
-- `RioContext` : provenance dérivés, instrument, timestamp, stale/quality et métriques disponibles ;
-- `DenverContext` : `stats_id`, version de setup, `as_of`, provenance runs/datasets, sample counts et
-  métriques statistiques ;
-- `RioAnalysis` et `DenverAnalysis` : sorties strictes de spécialistes ;
-- `HistoricalSetupKey` / `HistoricalSetupObservation` / `HistoricalSetupStats` ;
-- `HistoricalSetupStatsCatalog` : base content-addressed exportable/importable ;
-- `DenverSetupStatsContextProvider` : adaptateur read-only vers l’orchestration ;
-- `SpecialistContextProvider` : port déterministe facultatif par opportunité.
+## 25. Addendum Batch 19 — modèles et API Recruitment
 
-Les contextes spécialistes ne sont pas des tool calls LLM. Ils sont préparés par du code backend et
-validés avant que le Professor ne voie l’agent comme disponible. Une collision entre contexte fourni
-par un provider et contexte explicite pour le même agent est rejetée.
+### 25.1 Contrats publics
 
-## 21. Addendum Batch 17b — modèles Market Data et observabilité Rio
+Le package `app.recruitment` expose notamment :
+- `RecruitmentProposal` ;
+- `RecruitmentCandidateSpec` / `RecruitmentBaselineSpec` / `RecruitmentSuccessCriterion` ;
+- `RecruitmentCandidateState` ;
+- lifecycle records et transition plans ;
+- `RecruitmentCapacityPolicy` / snapshot / décisions de gate ;
+- plan et exécution de campagne candidate ;
+- gate de comparabilité/provenance/OOS ;
+- bridge vers `AblationComparison` Batch 18 ;
+- réputation/coûts candidat ;
+- `RecruitmentCandidateEvidencePackage` ;
+- `RecruitmentAdvisory` ;
+- planning advisory → lifecycle ;
+- `RecruitmentAdvisoryAuditRecord` et guards de fraîcheur/reproductibilité.
 
-Nouveaux contrats internes :
-- `DerivativesPositioningSnapshot` : faits dérivés normalisés, sans recommandation ;
-- `KrakenFuturesAnalyticsConfig` / `KrakenFuturesAnalyticsProvider` ;
-- `MarketSidecarRefresher` ;
-- `MarketSidecarRefreshResult` / `MarketSidecarRefreshStatus` ;
-- `PaperShadowMarketInput.sidecar_refreshes` et lookup `sidecar_result(refresher_id)` ;
-- `KrakenFuturesRioContextProvider` ;
-- `RioContextDiagnostic` / `RioContextDiagnosticStatus` ;
-- `CompositeSpecialistContextProvider` pour combiner plusieurs sources spécialisées sans collision.
+États candidat :
 
-Aucun de ces contrats n'est une API d'exécution. Les diagnostics Rio sont read-only et ne provoquent
-aucun I/O lorsqu'ils sont consultés.
+```text
+PROPOSED
+CANDIDATE
+SHADOW
+PROBATION
+REJECTED
+PROMOTION_RECOMMENDED
+```
 
-<!-- BATCH18A_STEP4_API_START -->
+Avis :
 
-## Addendum Batch 18a — Contrats réputation et ablation
+```text
+REJECT
+EXTEND
+PROBATION
+RECOMMEND_PROMOTION
+```
 
-Contrats publics principaux :
-- `AblationRunDescriptor`, `AblationComparison`, `AblationAggregate` ;
-- `ReputationPolicy`, `AgentReputationProfile` ;
-- `ReputationPolicyThresholds`, `AgentStateEvidence`, `AgentStateRecommendation` ;
-- `DeterministicAgentStateAdvisor` ;
-- `ReputationEvidenceProvenance`, `AgentReputationAdvisoryReport` ;
-- `ReputationAdvisoryService` ;
-- `reputation_advisory_to_dict()` / `reputation_advisory_to_json()`.
+Purposes d'évidence : `DIAGNOSTIC` et `PROMOTION`. Fraîcheur d'audit : `FRESH` / `STALE`. Statut de planning : `READY` / `BLOCKED`.
 
-Les deltas d’ablation utilisent les conventions suivantes : `baseline - ablated` pour Trading
-Net et Economic Net, `ablated - baseline` pour la réduction de drawdown. Une valeur positive de
-`drawdown_reduction_pct` signifie donc que la présence de l’agent a réduit le drawdown observé.
+### 25.2 API HTTP Recruitment V1
 
-Le rapport advisory inclut l’état courant lu dans le registry, les preuves, les seuils
-explicitement fournis, la recommandation et sa provenance. Il ne contient aucune opération de
-mutation du registry ou d’activation LIVE.
+Endpoint public livré :
 
-<!-- BATCH18A_STEP4_API_END -->
+```text
+GET /api/recruitment/capabilities
+```
 
-<!-- BATCH18B_STEP4_API_START -->
+Réponse `batch19.recruitment-api.v1`, mode `ADVISORY_READ_ONLY`.
 
-## Addendum Batch 18b — Modèles de campagne d'ablation
+La réponse publie les enums/actions/métriques supportés, les versions de contrats et les drapeaux de sécurité. Elle indique explicitement :
+- `operator_authorization_required = true` ;
+- `auto_apply = false` ;
+- `registry_mutation = false` ;
+- `lifecycle_transition_applied = false` ;
+- `promotion_applied = false` ;
+- `live_authority = false`.
 
-Contrats publics principaux :
-- `AblationCampaignPlan` : identité, crew baseline, cibles et variants ;
-- `AblationCampaignVariant` : BASELINE ou WITHOUT_AGENT avec `BacktestRun` dédié ;
-- `AblationCampaignExecutionReport` : exécutions, comparaisons et fingerprint d'exécution ;
-- `PaperAblationRuntimeSettings` : RiskProfile, MarketConstraints, budget/pricing IA et clients ;
-- `PaperAblationRuntimeFactory` : stack PAPER/Batch 16 neuf par variant ;
-- `ablation_campaign_execution_to_dict/json()` : export compact d'audit.
-
-Les symboles Batch 18b exposés depuis `app.evaluation` et `app.services.backtest` utilisent un
-chargement lazy afin d'éviter une dépendance circulaire entre Evaluation et Backtest.
-
-<!-- BATCH18B_STEP4_API_END -->
+Aucun endpoint Recruitment `POST`, `PUT`, `PATCH` ou `DELETE` n'est livré dans Batch 19e.1.

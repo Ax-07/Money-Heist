@@ -425,87 +425,55 @@ Les modes IA sont :
 Un fingerprint business compare les sorties économiques et décisions déterministes sans dépendre d’identifiants techniques volatils sans impact business.
 
 
-## 27. Addendum Batch 17a — statistiques de setup pour Denver
+---
 
-Batch 17a ajoute un catalogue statistique déterministe construit à partir de trades PAPER réellement
-fermés par Batch 16. L’attribution d’un trade à un setup exige une correspondance non ambiguë avec
-l’entrée exécutée. Les positions scalées ou inversées impossibles à attribuer proprement échouent au
-lieu d’être assignées arbitrairement.
+## 27. Addendum Batch 19 — évaluation des candidats Recruitment
 
-Le catalogue calcule actuellement :
-- nombre d’échantillons ;
-- nombre d’échantillons OOS ;
-- win rate ;
-- expectancy en PnL net de la devise de cotation ;
-- profit factor, avec statut explicite lorsque non borné ou indisponible.
+Batch 19 applique la règle de la section 12 avec des contrats reproductibles.
 
-Les observations sont filtrées par `closed_at <= as_of`, ce qui interdit à Denver de consommer le
-résultat d’un trade encore futur au moment de la décision. Le catalogue est content-addressed et ne
-peut mélanger plusieurs fingerprints de configuration de stratégie. Un même événement de marché ne
-peut pas être compté plusieurs fois via plusieurs reruns.
+### 27.1 Baseline et critères gelés avant OOS
 
-Ces métriques constituent une base d’interprétation pour Denver, pas une preuve de causalité ni une
-autorisation de promotion LIVE.
+Chaque `RecruitmentCandidateSpec` contient une `RecruitmentBaselineSpec` et des `RecruitmentSuccessCriterion` numériques. Les critères sont définis avant la campagne, utilisent `AT_LEAST` ou `AT_MOST`, et portent `evidence_role = OOS`.
 
-## 28. Addendum Batch 17b — évaluation de Rio
+Le fingerprint de campagne inclut les critères de succès. Le paquet d'évidence conserve également un fingerprint du CandidateSpec afin qu'une règle, un budget, un outil ou un modèle modifié après observation ne puisse pas être substitué silencieusement.
 
-La présence de vraies données dérivés ne constitue pas à elle seule une preuve d'amélioration de la
-stratégie. L'effet marginal de Rio devra être mesuré par ablation au Batch 18 sur des périodes et
-configurations comparables.
+### 27.2 Twins historiques comparables
 
-Les analytics courants ne doivent pas être injectés dans des décisions historiques antérieures. Un
-backtest Rio valide exige un dataset historique dérivés versionné, horodaté et soumis aux mêmes
-règles anti-look-ahead que les autres données du replay.
+Une campagne Recruitment compare :
 
-Les diagnostics de disponibilité Rio peuvent être journalisés pour distinguer une absence de signal
-d'une absence de données, mais ils ne doivent pas être interprétés comme une métrique de performance.
+```text
+BASELINE
+vs
+WITH_CANDIDATE
+```
 
-<!-- BATCH18A_STEP4_EVALUATION_START -->
+avec même dataset, période, rôle, configuration matérielle et crew incumbent. Seul le candidat d'évaluation est ajouté au twin `WITH_CANDIDATE`.
 
-## Addendum Batch 18a — Réputation, ablation et advisory d’état
+Les deux twins sont exécutés via Batch 16 Historical Replay/PAPER avec runtimes isolés. Une preuve n'est admissible que si les contrôles de comparabilité et de provenance passent.
 
-Le Batch 18a ajoute une couche d’évaluation déterministe au-dessus des métriques agents et
-du moteur historique Batch 16. Une ablation compare une baseline et un run identique sans
-exactement un agent ;
-les runs non comparables sont rejetés.
+`DESIGN` et `VALIDATION` restent utilisables pour diagnostic. Une preuve destinée à la promotion doit être `OOS`.
 
-La réputation reste multidimensionnelle : participation, accord directionnel, confiance, coût,
-latence, marginal Trading Net, marginal Economic Net et contribution au drawdown. Aucun score global
-opaque n’est utilisé comme autorité.
+### 27.3 Réutilisation Batch 18
 
-Pour une recommandation de changement d’état fondée sur l’ablation, la preuve consommée par
-`ReputationAdvisoryService` doit être OOS-only. Les seuils sont injectés explicitement via
-`ReputationPolicy` et `ReputationPolicyThresholds` ; les valeurs de tests ne constituent pas des
-seuils de production.
+Le twin `WITH_CANDIDATE` est adapté comme système complet et le twin `BASELINE` comme système sans le candidat afin de réutiliser `compare_ablation` et les dimensions de réputation Batch 18 sans second moteur de scoring.
 
-Les recommandations `HOLD / PROMOTE / DEMOTE / REDUCE_FREQUENCY` sont advisory-only. Elles ne
-modifient jamais `AgentRegistry`, ne peuvent pas s’auto-appliquer (`auto_apply=False`) et ne
-changent ni le Risk Engine, ni le broker, ni PAPER/SHADOW/LIVE. Les fonctions Core restent
-protégées.
+Les dimensions conservées comprennent notamment :
+- contribution économique et trading marginale ;
+- réduction/augmentation du drawdown ;
+- participation, accord directionnel, confiance ;
+- coût et latence moyens ;
+- nombre d'appels et comparaisons OOS.
 
-Chaque `AgentReputationAdvisoryReport` conserve la provenance des comparaisons et un fingerprint
-SHA-256 déterministe afin de rendre la recommandation reconstruisible et auditable.
+Le système distingue explicitement :
+- `candidate_direct_ai_cost_eur` : coût IA directement attribué au candidat ;
+- `marginal_total_ai_cost_eur` : différence du coût IA total entre twins.
 
-<!-- BATCH18A_STEP4_EVALUATION_END -->
+Ces coûts sont qualifiés comme estimations issues d'un replay historique PAPER simulé, et non comme dépenses LIVE.
 
-<!-- BATCH18B_STEP4_EVALUATION_START -->
+### 27.4 Paquet d'évidence et advisory
 
-## Addendum Batch 18b — Campagnes d'ablation exécutables
+`RecruitmentCandidateEvidencePackage` rassemble provenance, fingerprints, rapports twins, comparaison Batch 18, réputation multidimensionnelle et coûts. Son fingerprint est auto-vérifié.
 
-Batch 18b complète les fondations Batch 18a avec une campagne reproductible baseline + twins.
-`build_ablation_campaign()` fige l'identité expérimentale, puis un variant `WITHOUT_AGENT` retire
-exactement un spécialiste. `AblationCampaignExecutor` exécute chaque variant via Batch 16
-et produit
-un `AblationCampaignExecutionReport` ainsi que les `AblationComparison` correspondantes.
+Les avis sont `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION`. Il n'existe pas de score global magique imposant une décision. Les métriques indisponibles ne sont pas inventées.
 
-L'assemblage concret PAPER/Risk ne vit pas dans `app.evaluation`. Il appartient à
-`app.services.backtest.ablation_runtime`, qui recrée broker, portfolio, lifecycle, journal, budget,
-usage recorder, AI Gateway et instances spécialistes pour chaque variant. Evaluation reste une
-couche de mesure/advisory sans autorité d'exécution.
-
-Les exports de campagne conservent les identités, métriques et fingerprints nécessaires
-à l'audit,
-mais n'exposent pas les objets runtime/replay bruts. Aucune campagne d'ablation n'autorise le LIVE
-trading et aucune recommandation de réputation n'est auto-appliquée.
-
-<!-- BATCH18B_STEP4_EVALUATION_END -->
+Même un avis `RECOMMEND_PROMOTION` reste advisory : aucune promotion, transition, mutation de `AgentRegistry`, modification du Risk Engine ou autorité LIVE n'est appliquée automatiquement.

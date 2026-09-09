@@ -485,44 +485,70 @@ Le système agentique est correctement implémenté si :
 - les prompts sont versionnés.
 
 
-## 24. Addendum Batch 17a — Rio / Denver avancés
+---
 
-### Rio
+## 23. Addendum Batch 19 — Recruitment Engine implémenté
 
-Rio est enregistré `ON_DEMAND` mais sa disponibilité runtime est conditionnée à un `RioContext`
-fiable et non stale. Le contexte peut contenir funding, open interest, variation d’open interest,
-liquidations et ratio long/short. L’absence de ces données ne doit jamais être remplacée par une
-inférence à partir d’OHLCV. En Batch 17a, aucune source dérivés réelle n’est activée : Rio reste donc
-non sélectionnable dans le chemin historique normal.
+Le cycle conceptuel de la section 18 est désormais précisé par les contrats Batch 19.
 
-### Denver
+### 23.1 Cycle candidat distinct de `AgentState`
 
-Denver est enregistré `ON_DEMAND` et reçoit uniquement un `DenverContext` calculé hors LLM. Le
-contexte référence `stats_id`, version de définition du setup, `as_of`, runs/datasets sources, taille
-d’échantillon, échantillon OOS et métriques historiques disponibles. Denver interprète ces données ;
-il ne les calcule pas lui-même et ne peut pas inventer une probabilité manquante.
+Les états Recruitment sont :
+- `PROPOSED` ;
+- `CANDIDATE` ;
+- `SHADOW` ;
+- `PROBATION` ;
+- `REJECTED` ;
+- `PROMOTION_RECOMMENDED`.
 
-La définition de setup V1 utilise : système, symbole, timeframe, versions Scanner/Feature, régime et
-triggers Scanner. Les statistiques ne sont accessibles que si le contexte est utilisable et antérieur
-ou égal au snapshot marché courant.
+`CANDIDATE` et `PROMOTION_RECOMMENDED` ne sont pas ajoutés à `AgentState`. Un candidat n'est pas un `AgentRegistryEntry` avant une décision opérateur extérieure au Recruitment Engine.
 
-Les sorties Rio/Denver conservent le contrat commun : stance, confidence, evidence grounded, risks,
-invalidation et data gaps, plus les champs de spécialité. Leur `stance` n’est jamais une autorisation
-de trading.
+Actions de lifecycle disponibles :
+- `ENTER_SHADOW` ;
+- `EXTEND_SHADOW` ;
+- `ENTER_PROBATION` ;
+- `EXTEND_PROBATION` ;
+- `RETURN_TO_SHADOW` ;
+- `REJECT` ;
+- `REOPEN_CANDIDATE` ;
+- `RECOMMEND_PROMOTION` ;
+- `WITHDRAW_PROMOTION_RECOMMENDATION`.
 
-## 25. Addendum Batch 17b — Rio alimenté par données dérivés réelles
+Toute transition est déterministe, révisionnée et fingerprintée. Un plan stale est refusé. L'enregistrement d'une transition exige une autorisation opérateur explicite.
 
-Rio reste `ON_DEMAND`. Sa disponibilité est désormais déterminée par le cache backend
-`KrakenFuturesRioContextProvider` alimenté par Kraken Futures Analytics public.
+### 23.2 Fiche candidat effective
 
-Le Professor peut voir Rio dans `available_agents` uniquement si un `RioContext` utilisable existe
-au timestamp de décision. Le refresh réseau est exécuté avant l'orchestration, en dehors des agents.
-Rio n'effectue donc aucun tool call exchange.
+`RecruitmentCandidateSpec` gèle avant l'évaluation :
+- identité, rôle, problème et hypothèse ;
+- données requises ;
+- allowlist d'outils ;
+- classe de modèle ;
+- `budget_limit_eur` ;
+- fenêtre d'évaluation ;
+- baseline twin ;
+- critères numériques de succès, dont exactement un primaire ;
+- rôle d'évidence `OOS` pour ces critères.
 
-Métriques actuellement projetées : funding rate, open interest, variation d'open interest et ratio
-long/short. La séparation des liquidations longues/courtes reste un `data_gap` tant qu'elle n'est pas
-fournie de manière fiable par la source sélectionnée.
+Les outils candidats contenant des capacités de broker/exchange/secret/Risk Engine/shell/filesystem/withdraw/live-order/permission sont refusés par contrat.
 
-Les diagnostics opérateur (`REFRESHED`, `CACHE_HIT`, `DEGRADED`, `STALE`, `UNAVAILABLE`) ne sont
-jamais ajoutés artificiellement à l'analyse de Rio : ils servent à expliquer la disponibilité de son
-contexte, pas à créer un signal de marché.
+### 23.3 Population et budget
+
+`RecruitmentCapacityPolicy` reçoit explicitement :
+- `max_active_specialists` ;
+- `max_shadow_candidates` ;
+- `max_recruitments_per_period` ;
+- `max_compute_per_candidate_eur`.
+
+Un `ALLOW` de capacité ou de compute n'applique aucune transition et n'exécute aucun appel fournisseur. Le budget effectif est la limite la plus stricte entre le budget candidat pré-enregistré et la politique opérateur.
+
+### 23.4 Advisory
+
+Les avis déterministes sont :
+- `REJECT` ;
+- `EXTEND` ;
+- `PROBATION` ;
+- `RECOMMEND_PROMOTION`.
+
+Tous les critères pré-enregistrés sont obligatoires. Une métrique inconnue/indisponible produit `EXTEND`; un critère mesuré échoué ou un budget candidat dépassé produit `REJECT`. Un candidat ne peut pas sauter directement de `CANDIDATE` à `PROBATION`.
+
+Aucun avis ne mute le registre, n'applique la transition ou n'accorde d'autorité LIVE.

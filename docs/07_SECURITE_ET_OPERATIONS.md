@@ -346,3 +346,26 @@ Des tests statiques de frontière empêchent l’introduction accidentelle de ce
 `LIVE_EVAL` est un mode d’évaluation IA et non un mode d’exécution. Il peut consommer une API modèle réelle dans le respect du budget AI Gateway, mais ne change pas le broker PAPER du replay.
 
 La gate Batch 15 reste indépendante et fail-closed. Aucun résultat de backtest ne peut armer automatiquement le LIVE.
+
+
+---
+
+## 26. Addendum Batch 19 — sécurité Recruitment
+
+Le Recruitment Engine est fail-closed et advisory-only.
+
+Protections implémentées :
+- candidat séparé de `AgentRegistry` et de `AgentState` ;
+- `core_function = false`, `live_authority = false`, `auto_register = false`, `auto_promote = false` dans le CandidateSpec ;
+- allowlist d'outils candidats avec fragments dangereux refusés ;
+- aucun import nécessaire vers l'exécution LIVE ou le broker LIVE ;
+- budgets et limites de population explicites ;
+- campagnes historiques exécutées uniquement via le stack PAPER Batch 16 ;
+- preuve de promotion OOS obligatoire ;
+- transition positive impossible à appliquer sans autorisation opérateur ;
+- plans et audits fingerprintés ;
+- changement de lifecycle, politique, capacité, évidence ou CandidateSpec rendant l'audit `STALE` ;
+- guard fail-closed avant réutilisation d'un audit stale ;
+- API HTTP V1 exposée uniquement en GET via `/api/recruitment/capabilities`.
+
+Un `READY` ou un audit `FRESH` signifie seulement que le plan est cohérent avec le contexte contrôlé. Cela n'enregistre pas la transition et n'accorde aucune permission LIVE.

@@ -350,63 +350,32 @@ Le cache `money-heist.backtest-ai-cache.v2` exclut le `request_id` fournisseur d
 Les versions prompts/modèles et le contenu de requête restent dans la clé. Un cache miss en mode `CACHED` reste fail-closed.
 
 
+---
 
-## 19. Extension Batch 17a — Denver et statistiques historiques de setup
+## 19. Extension Batch 19 — campagnes d'évaluation Recruitment
 
-Batch 17a ajoute une couche statistique au-dessus des sorties Batch 16 sans modifier
-`HistoricalReplayRunner`.
-
-Flux :
+Le Recruitment Engine réutilise le moteur Batch 16 pour comparer un candidat à une baseline sans créer un second runner.
 
 ```text
-Runs Batch 16 terminés
-→ trades PAPER fermés + opportunités exécutées
-→ attribution stricte au setup Scanner/régime
-→ HistoricalSetupStatsCatalog content-addressed
-→ query as_of
-→ DenverContext
-→ Denver ON_DEMAND dans OrchestrationPipeline
+RecruitmentCampaignPlan
+├─ BASELINE
+│  → HistoricalReplayRunner / PAPER isolé
+└─ WITH_CANDIDATE
+   → HistoricalReplayRunner / PAPER isolé
 ```
 
-Le catalogue n’est pas une mémoire mutable implicite du runner. Pour un backtest reproductible, son
-identité et la version de définition du setup doivent être liées aux `execution_assumptions` du run.
-Le provider `DenverSetupStatsContextProvider.for_backtest(...)` refuse un binding absent ou
-incohérent.
+Les twins doivent partager dataset, période, rôle, configuration matérielle et crew incumbent. Les `run_id` sont distincts et les runners/brokers PAPER ne peuvent pas être réutilisés entre variants.
 
-Le MOCK avancé est un wrapper du provider MOCK existant : tous les schémas legacy sont délégués
-sans modification. En l’absence de contexte Rio/Denver, le plan legacy reste identique.
+Le rôle de période reste explicite :
+- `DESIGN` / `VALIDATION` : diagnostic possible ;
+- `OOS` : requis pour une preuve utilisable par l'advisory de promotion.
 
-Cette extension ne constitue pas un optimiseur, ne réalise pas d’ablation, ne calcule pas une
-réputation agent et n’active aucun chemin LIVE.
+Le gate de comparabilité vérifie notamment dataset, bornes temporelles, rôle, candles traitées, opportunités, configuration et roster. La provenance conserve les run ids, business fingerprints et fingerprints de campagne/critères.
 
-## 20. Extension Batch 17b — frontière historique de Rio
+Le résultat Recruitment peut être adapté vers l'ablation Batch 18 en considérant `WITH_CANDIDATE` comme le système complet et `BASELINE` comme le twin sans candidat. Cette adaptation ne modifie ni le runner, ni le Risk Engine, ni les métriques Batch 18.
 
-Le Batch 17b active Rio avec des analytics Kraken Futures courants pour PAPER/SHADOW, mais ne les
-injecte pas dans `HistoricalReplayRunner`.
-
-Cette séparation est volontaire : un snapshot analytics obtenu aujourd'hui ne peut pas être utilisé
-comme s'il avait été disponible au timestamp d'une bougie historique. Le replay Rio futur devra donc
-consommer un dataset dérivés historique content-addressed avec timestamps, provenance et règles de
-fraîcheur adaptées au replay.
-
-Denver reste le spécialiste avancé directement exploitable avec les preuves historiques Batch 16.
-Rio reste exploitable sur flux courant jusqu'à livraison d'une source historique dérivés dédiée.
-
-<!-- BATCH18B_STEP4_BACKTEST_START -->
-
-## Extension Batch 18b — Ablation Campaign Runner
-
-Batch 18b réutilise `HistoricalReplayRunner` ; il ne crée pas un second moteur de backtest.
-Pour une campagne, une baseline et un twin par agent ciblé sont construits sur le même dataset,
-la même période et les mêmes hypothèses matérielles, avec des identités de run distinctes.
-
-Chaque variant reçoit un stack PAPER indépendant : PaperBroker, portfolio, lifecycle, journal,
-budget IA, usage recorder, AI Gateway et instances spécialistes. La réutilisation d'un runner ou
-d'un broker entre variants est rejetée. Le crew du twin diffère de la baseline par exactement
-l'agent ablaté.
-
-`MOCK`, `CACHED` et `LIVE_EVAL` restent les modes IA Batch 16. Même en LIVE_EVAL, seule la requête
-IA peut être réelle ; l'exécution de trading reste PAPER. Les contextes historiques Rio/Denver ne
-sont jamais inventés et doivent provenir de datasets/providers compatibles avec le replay.
-
-<!-- BATCH18B_STEP4_BACKTEST_END -->
+Aucune campagne Recruitment historique ne peut :
+- créer un ordre LIVE ;
+- armer le Batch 15 ;
+- muter `AgentRegistry` ;
+- appliquer automatiquement une promotion.

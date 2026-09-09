@@ -349,21 +349,33 @@ Le cache `money-heist.backtest-ai-cache.v2` exclut le `request_id` fournisseur d
 
 Les versions prompts/modèles et le contenu de requête restent dans la clé. Un cache miss en mode `CACHED` reste fail-closed.
 
-<!-- BATCH18B_STEP4_BACKTEST_START -->
 
-## Extension Batch 18b — Ablation Campaign Runner
+---
 
-Batch 18b réutilise `HistoricalReplayRunner` ; il ne crée pas un second moteur de backtest.
-Pour une campagne, une baseline et un twin par agent ciblé sont construits sur le même dataset,
-la même période et les mêmes hypothèses matérielles, avec des identités de run distinctes.
+## 19. Extension Batch 19 — campagnes d'évaluation Recruitment
 
-Chaque variant reçoit un stack PAPER indépendant : PaperBroker, portfolio, lifecycle, journal,
-budget IA, usage recorder, AI Gateway et instances spécialistes. La réutilisation d'un runner ou
-d'un broker entre variants est rejetée. Le crew du twin diffère de la baseline par exactement
-l'agent ablaté.
+Le Recruitment Engine réutilise le moteur Batch 16 pour comparer un candidat à une baseline sans créer un second runner.
 
-`MOCK`, `CACHED` et `LIVE_EVAL` restent les modes IA Batch 16. Même en LIVE_EVAL, seule la requête
-IA peut être réelle ; l'exécution de trading reste PAPER. Les contextes historiques Rio/Denver ne
-sont jamais inventés et doivent provenir de datasets/providers compatibles avec le replay.
+```text
+RecruitmentCampaignPlan
+├─ BASELINE
+│  → HistoricalReplayRunner / PAPER isolé
+└─ WITH_CANDIDATE
+   → HistoricalReplayRunner / PAPER isolé
+```
 
-<!-- BATCH18B_STEP4_BACKTEST_END -->
+Les twins doivent partager dataset, période, rôle, configuration matérielle et crew incumbent. Les `run_id` sont distincts et les runners/brokers PAPER ne peuvent pas être réutilisés entre variants.
+
+Le rôle de période reste explicite :
+- `DESIGN` / `VALIDATION` : diagnostic possible ;
+- `OOS` : requis pour une preuve utilisable par l'advisory de promotion.
+
+Le gate de comparabilité vérifie notamment dataset, bornes temporelles, rôle, candles traitées, opportunités, configuration et roster. La provenance conserve les run ids, business fingerprints et fingerprints de campagne/critères.
+
+Le résultat Recruitment peut être adapté vers l'ablation Batch 18 en considérant `WITH_CANDIDATE` comme le système complet et `BASELINE` comme le twin sans candidat. Cette adaptation ne modifie ni le runner, ni le Risk Engine, ni les métriques Batch 18.
+
+Aucune campagne Recruitment historique ne peut :
+- créer un ordre LIVE ;
+- armer le Batch 15 ;
+- muter `AgentRegistry` ;
+- appliquer automatiquement une promotion.

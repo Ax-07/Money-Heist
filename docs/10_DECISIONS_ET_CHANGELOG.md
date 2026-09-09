@@ -452,6 +452,28 @@ Le cache IA passe au schéma `money-heist.backtest-ai-cache.v2`. La clé exclut 
 - les campagnes officielles doivent remplacer `batch16.7-working-tree` par un `code_version` immuable.
 
 
+
+### ADR-026 — Recruitment lifecycle séparé, OOS et advisory-only
+
+**Date :** 2026-09-09  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Batch 19 possède un lifecycle candidat propre (`PROPOSED`, `CANDIDATE`, `SHADOW`, `PROBATION`, `REJECTED`, `PROMOTION_RECOMMENDED`) séparé de `AgentState`. Un candidat Recruitment n'est pas automatiquement ajouté à `AgentRegistry`.
+
+Les critères de succès sont pré-enregistrés dans le CandidateSpec et exigent une preuve OOS pour l'advisory de promotion. Les campagnes candidates réutilisent le Historical Replay/PAPER Batch 16 et les comparaisons/réputation Batch 18. Les seuils de population et de budget sont des politiques opérateur explicites.
+
+L'advisory peut seulement produire `REJECT`, `EXTEND`, `PROBATION` ou `RECOMMEND_PROMOTION`. Le planning de transition reste soumis à autorisation opérateur; les audits deviennent `STALE` si le contexte matériel change. L'API HTTP Recruitment V1 est read-only (`GET /api/recruitment/capabilities`).
+
+**Conséquences :**
+- pas de nouvel état `CANDIDATE` dans `AgentState` ;
+- pas de mutation automatique du registre ;
+- pas de promotion directe vers `ACTIVE`/`ON_DEMAND` ;
+- pas de second moteur de backtest ou d'ablation ;
+- pas de seuil de promotion caché ou inventé après observation ;
+- pas d'autorité LIVE via Recruitment ;
+- décisions et plans reproductibles/fingerprintés.
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -487,6 +509,18 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+### v0.7 — 2026-09-09 — Batch 19 Recruitment Engine
+- lifecycle candidat séparé du registre opérationnel ;
+- CandidateSpec gelé avec baseline, budget, allowlist et critères OOS ;
+- gates population/fréquence/compute ;
+- campagnes twins Historical Replay/PAPER et comparabilité/provenance ;
+- bridge vers Batch 18 ablation/réputation ;
+- évidence coûts directs/marginaux et paquet auditable ;
+- advisory déterministe et planning opérateur-gaté ;
+- audit FRESH/STALE et stale-plan guards ;
+- exports publics et API GET read-only Recruitment ;
+- ADR-026 ajouté.
 
 ### v0.6 — 2026-09-08 — Batch 16.7 Backtest Dashboard
 - interface `/dashboard/backtest` reliée au moteur Batch 16 ;

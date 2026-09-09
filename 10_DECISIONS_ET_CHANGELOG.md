@@ -452,60 +452,27 @@ Le cache IA passe au schéma `money-heist.backtest-ai-cache.v2`. La clé exclut 
 - les campagnes officielles doivent remplacer `batch16.7-working-tree` par un `code_version` immuable.
 
 
-### ADR-026 — Batch 17a : spécialistes avancés context-gated et statistiques Denver déterministes
+
+### ADR-026 — Recruitment lifecycle séparé, OOS et advisory-only
 
 **Date :** 2026-09-09  
 **Statut :** ACCEPTED
 
 **Décision :**
-Rio et Denver sont des spécialistes `ON_DEMAND` sans outils ni autorité de trading. Leur disponibilité
-est conditionnée à un contexte backend typé et validé.
+Le Batch 19 possède un lifecycle candidat propre (`PROPOSED`, `CANDIDATE`, `SHADOW`, `PROBATION`, `REJECTED`, `PROMOTION_RECOMMENDED`) séparé de `AgentState`. Un candidat Recruitment n'est pas automatiquement ajouté à `AgentRegistry`.
 
-Denver consomme un catalogue de statistiques de setups produit par code déterministe à partir de
-runs Batch 16. Les observations sont liées à leur run/dataset, filtrées `as_of`, content-addressed et
-ne peuvent mélanger des configurations de stratégie incompatibles ni doubler une même opportunité
-par rerun.
+Les critères de succès sont pré-enregistrés dans le CandidateSpec et exigent une preuve OOS pour l'advisory de promotion. Les campagnes candidates réutilisent le Historical Replay/PAPER Batch 16 et les comparaisons/réputation Batch 18. Les seuils de population et de budget sont des politiques opérateur explicites.
 
-Rio ne devient pas disponible tant qu’aucune source dérivés fiable n’est fournie. Batch 17a définit
-son contrat mais reporte l’intégration réelle des données à Batch 17b.
-
-Le MOCK avancé délègue tous les schémas historiques au provider existant et n’altère le plan du
-Professor que lorsqu’un spécialiste avancé est effectivement disponible.
+L'advisory peut seulement produire `REJECT`, `EXTEND`, `PROBATION` ou `RECOMMEND_PROMOTION`. Le planning de transition reste soumis à autorisation opérateur; les audits deviennent `STALE` si le contexte matériel change. L'API HTTP Recruitment V1 est read-only (`GET /api/recruitment/capabilities`).
 
 **Conséquences :**
-- aucun changement Risk Engine, sizing, broker, portefeuille ou activation LIVE ;
-- Denver ne peut pas inventer les probabilités/statistiques manquantes ;
-- Rio ne peut pas transformer OHLCV spot en pseudo-données dérivées ;
-- OPEN-006 et OPEN-007 restent ouverts ;
-- Batch 18 réputation/ablation reste séparé.
-
-
-### ADR-027 — Batch 17b : Kraken Futures Analytics public comme source Rio PAPER/SHADOW
-
-**Date :** 2026-09-09  
-**Statut :** ACCEPTED
-
-**Décision :**
-Rio est alimenté par les analytics publics Kraken Futures via un adaptateur read-only sans
-authentification. Le mapping initial relie BTC/EUR, ETH/EUR et SOL/EUR aux perpetuals Kraken
-PF_XBTUSD, PF_ETHUSD et PF_SOLUSD.
-
-Le refresh est un sidecar Market Data déclenché uniquement lorsqu'une opportunité Scanner existe.
-Une panne du sidecar ne bloque pas le Market Data spot ni PAPER/SHADOW ; elle retire simplement Rio
-des spécialistes disponibles si aucun cache frais n'existe.
-
-Le volume de liquidation agrégé n'est pas transformé en split long/short. Les champs correspondants
-restent absents jusqu'à disponibilité d'une source fiable. Les analytics live ne sont pas réutilisés
-rétroactivement dans les backtests.
-
-**Conséquences :**
-- aucun credential Kraken Futures requis ;
-- aucun changement au premier LIVE Kraken Spot/EUR ;
-- aucun changement Risk Engine, broker, sizing ou kill switch ;
-- Rio devient réellement sélectionnable en PAPER/SHADOW quand le contexte est frais ;
-- un replay historique Rio exigera une source dérivés historique versionnée ;
-- Batch 18 peut mesurer Rio par ablation sans modifier son autorité.
-
+- pas de nouvel état `CANDIDATE` dans `AgentState` ;
+- pas de mutation automatique du registre ;
+- pas de promotion directe vers `ACTIVE`/`ON_DEMAND` ;
+- pas de second moteur de backtest ou d'ablation ;
+- pas de seuil de promotion caché ou inventé après observation ;
+- pas d'autorité LIVE via Recruitment ;
+- décisions et plans reproductibles/fingerprintés.
 
 ## 4. Décisions ouvertes
 
@@ -543,24 +510,17 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 
 ## 5. Changelog documentation
 
-### v0.8 — 2026-09-09 — Batch 17b Rio / Kraken Futures Analytics
-- adaptateur public Kraken Futures Analytics ajouté ;
-- funding, OI, variation OI et long/short ratio normalisés ;
-- refresh sidecar PAPER/SHADOW avec cache, cooldown et staleness ;
-- Rio réellement disponible pour le Professor lorsque le contexte est utilisable ;
-- composition Rio + Denver et diagnostics read-only ajoutés ;
-- liquidations long/short non inventées ;
-- ADR-027 ajouté.
-
-
-### v0.7 — 2026-09-09 — Batch 17a Denver / infrastructure Rio
-- Rio et Denver ajoutés comme spécialistes avancés context-gated ;
-- Denver relié aux statistiques réelles Batch 16 via catalogue content-addressed ;
-- protections anti-look-ahead, provenance et anti-double-comptage ;
-- support MOCK avancé préservant le comportement legacy sans contexte avancé ;
-- Rio réel reporté à Batch 17b faute de source dérivés intégrée ;
+### v0.7 — 2026-09-09 — Batch 19 Recruitment Engine
+- lifecycle candidat séparé du registre opérationnel ;
+- CandidateSpec gelé avec baseline, budget, allowlist et critères OOS ;
+- gates population/fréquence/compute ;
+- campagnes twins Historical Replay/PAPER et comparabilité/provenance ;
+- bridge vers Batch 18 ablation/réputation ;
+- évidence coûts directs/marginaux et paquet auditable ;
+- advisory déterministe et planning opérateur-gaté ;
+- audit FRESH/STALE et stale-plan guards ;
+- exports publics et API GET read-only Recruitment ;
 - ADR-026 ajouté.
-
 
 ### v0.6 — 2026-09-08 — Batch 16.7 Backtest Dashboard
 - interface `/dashboard/backtest` reliée au moteur Batch 16 ;

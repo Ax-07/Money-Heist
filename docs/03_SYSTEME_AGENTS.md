@@ -483,3 +483,72 @@ Le système agentique est correctement implémenté si :
 - un nouvel agent ne possède aucune autorité par défaut ;
 - les sorties critiques sont validées par schéma ;
 - les prompts sont versionnés.
+
+
+---
+
+## 23. Addendum Batch 19 — Recruitment Engine implémenté
+
+Le cycle conceptuel de la section 18 est désormais précisé par les contrats Batch 19.
+
+### 23.1 Cycle candidat distinct de `AgentState`
+
+Les états Recruitment sont :
+- `PROPOSED` ;
+- `CANDIDATE` ;
+- `SHADOW` ;
+- `PROBATION` ;
+- `REJECTED` ;
+- `PROMOTION_RECOMMENDED`.
+
+`CANDIDATE` et `PROMOTION_RECOMMENDED` ne sont pas ajoutés à `AgentState`. Un candidat n'est pas un `AgentRegistryEntry` avant une décision opérateur extérieure au Recruitment Engine.
+
+Actions de lifecycle disponibles :
+- `ENTER_SHADOW` ;
+- `EXTEND_SHADOW` ;
+- `ENTER_PROBATION` ;
+- `EXTEND_PROBATION` ;
+- `RETURN_TO_SHADOW` ;
+- `REJECT` ;
+- `REOPEN_CANDIDATE` ;
+- `RECOMMEND_PROMOTION` ;
+- `WITHDRAW_PROMOTION_RECOMMENDATION`.
+
+Toute transition est déterministe, révisionnée et fingerprintée. Un plan stale est refusé. L'enregistrement d'une transition exige une autorisation opérateur explicite.
+
+### 23.2 Fiche candidat effective
+
+`RecruitmentCandidateSpec` gèle avant l'évaluation :
+- identité, rôle, problème et hypothèse ;
+- données requises ;
+- allowlist d'outils ;
+- classe de modèle ;
+- `budget_limit_eur` ;
+- fenêtre d'évaluation ;
+- baseline twin ;
+- critères numériques de succès, dont exactement un primaire ;
+- rôle d'évidence `OOS` pour ces critères.
+
+Les outils candidats contenant des capacités de broker/exchange/secret/Risk Engine/shell/filesystem/withdraw/live-order/permission sont refusés par contrat.
+
+### 23.3 Population et budget
+
+`RecruitmentCapacityPolicy` reçoit explicitement :
+- `max_active_specialists` ;
+- `max_shadow_candidates` ;
+- `max_recruitments_per_period` ;
+- `max_compute_per_candidate_eur`.
+
+Un `ALLOW` de capacité ou de compute n'applique aucune transition et n'exécute aucun appel fournisseur. Le budget effectif est la limite la plus stricte entre le budget candidat pré-enregistré et la politique opérateur.
+
+### 23.4 Advisory
+
+Les avis déterministes sont :
+- `REJECT` ;
+- `EXTEND` ;
+- `PROBATION` ;
+- `RECOMMEND_PROMOTION`.
+
+Tous les critères pré-enregistrés sont obligatoires. Une métrique inconnue/indisponible produit `EXTEND`; un critère mesuré échoué ou un budget candidat dépassé produit `REJECT`. Un candidat ne peut pas sauter directement de `CANDIDATE` à `PROBATION`.
+
+Aucun avis ne mute le registre, n'applique la transition ou n'accorde d'autorité LIVE.

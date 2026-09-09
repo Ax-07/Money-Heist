@@ -334,32 +334,13 @@ Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiq
 
 ## 20. Batch 17 — Rio / Denver avancés
 
-### Batch 17a — Denver avancé + infrastructure commune — livré
+Selon disponibilité des données :
+- dérivés ;
+- statistiques historiques issues du moteur Batch 16 ;
+- setup DB ;
+- outils statistiques réels pour Denver.
 
-Contenu :
-- schémas/prompts/registry Rio et Denver ;
-- disponibilité conditionnelle par contexte typé ;
-- orchestration jusqu’à cinq spécialistes, MINI_CREW toujours limité à deux ;
-- catalogue content-addressed de statistiques de setup issu de Batch 16 ;
-- `as_of` anti-look-ahead et provenance runs/datasets ;
-- provider déterministe Denver ;
-- support MOCK avancé sans changement du comportement legacy lorsque Rio/Denver sont absents.
-
-Denver ne calcule ni n’invente les statistiques dans le LLM.
-
-### Batch 17b — Rio avec vraies données dérivées — livré
-
-Contenu livré :
-- Kraken Futures Analytics public, sans credentials ;
-- funding, open interest, variation OI et long/short ratio ;
-- mapping explicite spot EUR → perpetual Kraken ;
-- cache/fraîcheur/cooldown fail-closed pour Rio ;
-- refresh sidecar PAPER/SHADOW non critique ;
-- composition de contextes Rio + Denver ;
-- observabilité explicite de disponibilité Rio ;
-- aucune invention de split long/short des liquidations.
-
-Le replay historique Rio reste séparé et exigera un dataset dérivés historique reproductible.
+Denver ne doit pas inventer des probabilités ou statistiques absentes.
 
 ---
 
@@ -374,12 +355,28 @@ Le replay historique Rio reste séparé et exigera un dataset dérivés historiq
 
 ## 22. Batch 19 — Recruitment Engine
 
-- propositions ;
-- candidat SHADOW ;
-- budget candidat ;
-- critères de promotion ;
-- limites population ;
-- passage obligatoire par replay/backtest/PAPER/SHADOW selon pertinence.
+**État : livré et validé jusqu'au Batch 19e.1 ; documentation réalignée au Batch 19e.2.**
+
+Livré :
+- contrats `RecruitmentProposal` / `RecruitmentCandidateSpec` ;
+- lifecycle candidat séparé de `AgentState` ;
+- gates population, fréquence et compute candidat ;
+- campagnes twins `BASELINE` / `WITH_CANDIDATE` sur Historical Replay/PAPER ;
+- comparabilité, provenance et gate OOS ;
+- bridge vers l'ablation et la réputation Batch 18 ;
+- coûts candidat directs et coût marginal système distincts ;
+- paquet d'évidence auditable et reproductible ;
+- avis `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION` ;
+- planning de transition opérateur-gaté ;
+- audit `FRESH / STALE` et stale-plan guards ;
+- exports publics `app.recruitment` ;
+- endpoint GET read-only `/api/recruitment/capabilities`.
+
+Non livré volontairement :
+- mutation automatique d'`AgentRegistry` ;
+- promotion automatique ACTIVE/ON_DEMAND ;
+- autorité LIVE candidat ;
+- endpoint HTTP d'écriture Recruitment.
 
 ---
 
@@ -446,46 +443,7 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-1. Exécuter des campagnes Batch 16 sur des datasets historiques réels et versionnés.
-2. Définir avant observation finale les critères quantitatifs DESIGN/VALIDATION/OOS/walk-forward.
-3. Poursuivre PAPER/SHADOW et conserver le LIVE non armé tant que la gate n’est pas satisfaite.
-4. Démarrer **Batch 18 — Réputation et ablation** afin de mesurer la valeur marginale réelle des spécialistes, dont Rio et Denver.
-
-<!-- BATCH18A_STEP4_ROADMAP_START -->
-
-## Addendum Batch 18a — Fondations réputation et ablation livrées
-
-Le sous-batch 18a est livré avec :
-- comparaison d’ablation déterministe sur runs comparables ;
-- agrégation et réputation multidimensionnelle ;
-- politique advisory de recommandation d’état avec seuils injectés ;
-- bridge OOS-only réputation/ablation vers `AgentStateEvidence` ;
-- provenance et fingerprint d’audit déterministes ;
-- exports publics de la couche Evaluation ;
-- aucune mutation automatique des états agents et aucun impact LIVE.
-
-Cette livraison fournit l’infrastructure de preuve du Batch 18. Elle ne constitue pas, à elle
-seule, une validation empirique d’un agent : les campagnes comparables réelles et les seuils
-opérateur
-pré-définis restent nécessaires avant toute décision organisationnelle.
-
-<!-- BATCH18A_STEP4_ROADMAP_END -->
-
-<!-- BATCH18B_STEP4_ROADMAP_START -->
-
-## Addendum Batch 18b — Batch 18 terminé
-
-Le Batch 18 est désormais livré en deux sous-batches :
-- 18a : réputation multidimensionnelle, ablation comparative, policy advisory et provenance ;
-- 18b : planification déterministe, exécution baseline/twins, runtime PAPER isolé et exports.
-
-La campagne peut produire des preuves comparables par agent sur DESIGN/VALIDATION/OOS, mais les
-changements d'état restent advisory-only, soumis aux seuils opérateur pré-définis
-et sans mutation
-automatique du registry. Le Risk Engine reste autoritaire et aucun chemin LIVE n'est ajouté.
-
-La prochaine étape de roadmap peut donc être **Batch 19 — Recruitment Engine**,
-en réutilisant les
-preuves de réputation/ablation du Batch 18 au lieu d'un score opaque ou d'un simple rendement.
-
-<!-- BATCH18B_STEP4_ROADMAP_END -->
+1. Clôturer Batch 19 avec intégration documentaire, tests complets et commit dédié.
+2. Conserver les campagnes historiques/PAPER/SHADOW comme preuves, sans armer automatiquement le LIVE.
+3. Démarrer **Batch 20 — Task Force Agents** seulement sur la frontière Recruitment désormais auditée.
+4. Maintenir séparées les décisions de recrutement d'agents et les décisions d'activation du trading LIVE.

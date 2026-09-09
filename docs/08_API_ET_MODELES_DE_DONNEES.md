@@ -463,42 +463,66 @@ POST /api/dashboard/backtest/ai-cache
 
 Le payload de campagne contient dataset CSV, splits, `RiskProfile`, `MarketConstraints`, paramètres PAPER, mode IA et walk-forward optionnel. Aucun champ de clé API fournisseur n'est accepté.
 
-<!-- BATCH18A_STEP4_API_START -->
 
-## Addendum Batch 18a — Contrats réputation et ablation
+---
 
-Contrats publics principaux :
-- `AblationRunDescriptor`, `AblationComparison`, `AblationAggregate` ;
-- `ReputationPolicy`, `AgentReputationProfile` ;
-- `ReputationPolicyThresholds`, `AgentStateEvidence`, `AgentStateRecommendation` ;
-- `DeterministicAgentStateAdvisor` ;
-- `ReputationEvidenceProvenance`, `AgentReputationAdvisoryReport` ;
-- `ReputationAdvisoryService` ;
-- `reputation_advisory_to_dict()` / `reputation_advisory_to_json()`.
+## 25. Addendum Batch 19 — modèles et API Recruitment
 
-Les deltas d’ablation utilisent les conventions suivantes : `baseline - ablated` pour Trading
-Net et Economic Net, `ablated - baseline` pour la réduction de drawdown. Une valeur positive de
-`drawdown_reduction_pct` signifie donc que la présence de l’agent a réduit le drawdown observé.
+### 25.1 Contrats publics
 
-Le rapport advisory inclut l’état courant lu dans le registry, les preuves, les seuils
-explicitement fournis, la recommandation et sa provenance. Il ne contient aucune opération de
-mutation du registry ou d’activation LIVE.
+Le package `app.recruitment` expose notamment :
+- `RecruitmentProposal` ;
+- `RecruitmentCandidateSpec` / `RecruitmentBaselineSpec` / `RecruitmentSuccessCriterion` ;
+- `RecruitmentCandidateState` ;
+- lifecycle records et transition plans ;
+- `RecruitmentCapacityPolicy` / snapshot / décisions de gate ;
+- plan et exécution de campagne candidate ;
+- gate de comparabilité/provenance/OOS ;
+- bridge vers `AblationComparison` Batch 18 ;
+- réputation/coûts candidat ;
+- `RecruitmentCandidateEvidencePackage` ;
+- `RecruitmentAdvisory` ;
+- planning advisory → lifecycle ;
+- `RecruitmentAdvisoryAuditRecord` et guards de fraîcheur/reproductibilité.
 
-<!-- BATCH18A_STEP4_API_END -->
+États candidat :
 
-<!-- BATCH18B_STEP4_API_START -->
+```text
+PROPOSED
+CANDIDATE
+SHADOW
+PROBATION
+REJECTED
+PROMOTION_RECOMMENDED
+```
 
-## Addendum Batch 18b — Modèles de campagne d'ablation
+Avis :
 
-Contrats publics principaux :
-- `AblationCampaignPlan` : identité, crew baseline, cibles et variants ;
-- `AblationCampaignVariant` : BASELINE ou WITHOUT_AGENT avec `BacktestRun` dédié ;
-- `AblationCampaignExecutionReport` : exécutions, comparaisons et fingerprint d'exécution ;
-- `PaperAblationRuntimeSettings` : RiskProfile, MarketConstraints, budget/pricing IA et clients ;
-- `PaperAblationRuntimeFactory` : stack PAPER/Batch 16 neuf par variant ;
-- `ablation_campaign_execution_to_dict/json()` : export compact d'audit.
+```text
+REJECT
+EXTEND
+PROBATION
+RECOMMEND_PROMOTION
+```
 
-Les symboles Batch 18b exposés depuis `app.evaluation` et `app.services.backtest` utilisent un
-chargement lazy afin d'éviter une dépendance circulaire entre Evaluation et Backtest.
+Purposes d'évidence : `DIAGNOSTIC` et `PROMOTION`. Fraîcheur d'audit : `FRESH` / `STALE`. Statut de planning : `READY` / `BLOCKED`.
 
-<!-- BATCH18B_STEP4_API_END -->
+### 25.2 API HTTP Recruitment V1
+
+Endpoint public livré :
+
+```text
+GET /api/recruitment/capabilities
+```
+
+Réponse `batch19.recruitment-api.v1`, mode `ADVISORY_READ_ONLY`.
+
+La réponse publie les enums/actions/métriques supportés, les versions de contrats et les drapeaux de sécurité. Elle indique explicitement :
+- `operator_authorization_required = true` ;
+- `auto_apply = false` ;
+- `registry_mutation = false` ;
+- `lifecycle_transition_applied = false` ;
+- `promotion_applied = false` ;
+- `live_authority = false`.
+
+Aucun endpoint Recruitment `POST`, `PUT`, `PATCH` ou `DELETE` n'est livré dans Batch 19e.1.

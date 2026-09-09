@@ -1311,3 +1311,38 @@ Dataset historique versionné
 Un run historique doit identifier sa période, son dataset, les versions Feature/Scanner/Risk/Prompts/Models, sa version de code, sa version du modèle d’exécution, son seed et son mode IA.
 
 Le moteur est une infrastructure de preuve. Sa présence ne constitue pas une preuve de profitabilité ni une autorisation LIVE. Les critères de promotion doivent être définis avant les campagnes finales et les résultats OOS doivent rester séparés des données de conception.
+
+
+---
+
+## 42. Addendum post-Batch 19 — Recruitment Engine implémenté
+
+Le recrutement contrôlé décrit dans ce document possède désormais une implémentation dédiée dans `app/recruitment`.
+
+La frontière structurante est la suivante : un candidat Recruitment **n'est pas** un `AgentRegistryEntry` opérationnel. Son cycle de vie est séparé de `AgentState` :
+
+```text
+PROPOSED
+→ CANDIDATE
+→ SHADOW
+→ PROBATION
+→ PROMOTION_RECOMMENDED
+```
+
+avec chemins contrôlés vers `REJECTED`, retour en SHADOW, réouverture et retrait d'une recommandation.
+
+Une recommandation de promotion ne crée pas d'état `ACTIVE` ou `ON_DEMAND`, ne modifie pas `AgentRegistry` et n'accorde aucune autorité LIVE. Toute transition reste planifiée, auditée et soumise à autorisation opérateur explicite.
+
+Le Batch 19 ajoute également :
+- fiche candidat gelée avant test avec baseline, budget, outils autorisés et critères de succès OOS ;
+- limites explicites de population, fréquence de recrutement et compute candidat ;
+- campagnes twins `BASELINE` / `WITH_CANDIDATE` exécutées par le moteur Historical Replay/PAPER existant ;
+- gates de comparabilité, provenance et usage OOS ;
+- réutilisation des comparaisons d'ablation et de la réputation multidimensionnelle Batch 18 ;
+- distinction entre coût IA directement attribué au candidat et coût IA marginal total du système ;
+- paquet d'évidence reproductible ;
+- avis déterministe `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION` ;
+- plan de transition opérateur-gaté et audit `FRESH / STALE` ;
+- API publique read-only `GET /api/recruitment/capabilities`.
+
+Le Recruitment Engine est une infrastructure d'évaluation et d'advisory. Il ne constitue ni une preuve automatique de profitabilité, ni une promotion automatique, ni une autorisation de trading LIVE.

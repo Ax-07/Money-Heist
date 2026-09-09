@@ -78,3 +78,44 @@ Une décision organisationnelle réelle reste conditionnée aux campagnes empiri
 seuils opérateur pré-définis ; elle n'est jamais appliquée automatiquement.
 
 <!-- BATCH18B_STEP4_CHANGELOG_END -->
+
+<!-- BATCH19_CLOSURE_START -->
+
+# Batch 19 — Recruitment Engine — clôture
+
+## Livré
+
+- contrats `RecruitmentProposal` / `RecruitmentCandidateSpec` et lifecycle candidat séparé ;
+- gates déterministes population, fréquence et budget/compute ;
+- campagnes twins `BASELINE` / `WITH_CANDIDATE` sur Historical Replay/PAPER ;
+- isolation stricte runner/broker entre variantes ;
+- comparabilité, provenance et gate OOS ;
+- bridge vers `AblationComparison` et réputation multidimensionnelle Batch 18 ;
+- distinction coût IA direct candidat / coût IA marginal système ;
+- paquet d'évidence auditable et reproductible ;
+- advisory `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION` ;
+- planning de transition opérateur-gaté ;
+- audit `FRESH / STALE` et stale-plan guards ;
+- exports publics `app.recruitment` ;
+- API `GET /api/recruitment/capabilities` en mode `ADVISORY_READ_ONLY` ;
+- documentation projet et ADR-026 réalignés.
+
+## Frontières de clôture
+
+Batch 19 ne :
+- crée pas automatiquement d'`AgentRegistryEntry` candidat ;
+- ne promeut pas automatiquement un candidat vers `ACTIVE` ou `ON_DEMAND` ;
+- n'applique pas automatiquement les transitions de lifecycle ;
+- ne modifie pas le Risk Engine ;
+- n'accorde aucune autorité LIVE ;
+- n'expose aucun endpoint HTTP Recruitment d'écriture.
+
+Toute progression matérielle reste opérateur-gatée, fondée sur des critères pré-enregistrés et, pour la promotion, sur une preuve OOS comparable.
+
+## Clôture documentaire
+
+Le layout historique du dépôt est préservé : `01_PROJECT_MASTER.md`, `02_ARCHITECTURE.md` et `07_SECURITE_ET_OPERATIONS.md` restent docs-only et ne sont pas versionnés à la racine.
+
+La prochaine étape de roadmap est **Batch 20 — Task Force Agents**.
+
+<!-- BATCH19_CLOSURE_END -->

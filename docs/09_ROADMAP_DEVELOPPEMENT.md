@@ -9,7 +9,6 @@
 ## 1. Objectif
 
 Décomposer le développement en lots suffisamment petits pour :
-
 - être testables ;
 - être intégrables dans VS Code ;
 - permettre des retours rapides ;
@@ -23,7 +22,6 @@ Décomposer le développement en lots suffisamment petits pour :
 ## 2. Convention de livraison
 
 Chaque lot ZIP contient :
-
 - arborescence de fichiers ;
 - code ;
 - tests ;
@@ -43,11 +41,9 @@ money-heist_batch_01_foundation.zip
 ## 3. Batch 01 — Fondations
 
 ### Objectif
-
 Créer un projet exécutable vide mais propre.
 
 ### Contenu
-
 - structure Python ;
 - gestion configuration ;
 - logging ;
@@ -59,7 +55,6 @@ Créer un projet exécutable vide mais propre.
 - base de données minimale.
 
 ### Critères
-
 - installation propre ;
 - `pytest` passe ;
 - serveur démarre ;
@@ -71,11 +66,9 @@ Créer un projet exécutable vide mais propre.
 ## 4. Batch 02 — Market Data Core
 
 ### Objectif
-
 Créer les interfaces de données et la normalisation.
 
 ### Contenu
-
 - `MarketDataProvider` ;
 - modèles candle/snapshot ;
 - validation fraîcheur ;
@@ -89,7 +82,6 @@ Aucun exchange LIVE n’est requis si le choix n’est pas encore figé.
 ## 5. Batch 03 — Feature Engine et Scanner
 
 ### Contenu
-
 - indicateurs initiaux ;
 - feature snapshot ;
 - règles scanner ;
@@ -98,7 +90,6 @@ Aucun exchange LIVE n’est requis si le choix n’est pas encore figé.
 - tests replay.
 
 ### Critère
-
 Une série historique peut produire des opportunités reproductibles.
 
 ---
@@ -106,7 +97,6 @@ Une série historique peut produire des opportunités reproductibles.
 ## 6. Batch 04 — Paper Broker
 
 ### Contenu
-
 - compte virtuel ;
 - ordres ;
 - fills ;
@@ -117,7 +107,6 @@ Une série historique peut produire des opportunités reproductibles.
 - stops simples.
 
 ### Critère
-
 Un scénario déterministe peut être rejoué avec le même résultat.
 
 ---
@@ -125,7 +114,6 @@ Un scénario déterministe peut être rejoué avec le même résultat.
 ## 7. Batch 05 — Risk Engine
 
 ### Contenu
-
 - profils de risque ;
 - sizing ;
 - limites ;
@@ -134,7 +122,6 @@ Un scénario déterministe peut être rejoué avec le même résultat.
 - tests de sécurité.
 
 ### Important
-
 Les valeurs Balanced doivent être décidées avant finalisation de ce batch.
 
 ---
@@ -142,7 +129,6 @@ Les valeurs Balanced doivent être décidées avant finalisation de ce batch.
 ## 8. Batch 06 — AI Gateway
 
 ### Contenu
-
 - client IA abstrait ;
 - routage modèle configurable ;
 - comptage tokens ;
@@ -152,7 +138,6 @@ Les valeurs Balanced doivent être décidées avant finalisation de ce batch.
 - budget dur.
 
 ### Critère
-
 Un mock IA permet tous les tests sans coût API.
 
 ---
@@ -160,7 +145,6 @@ Un mock IA permet tous les tests sans coût API.
 ## 9. Batch 07a — Core Agents
 
 ### Contenu
-
 - The Professor ;
 - Palermo ;
 - Lisbon ;
@@ -168,7 +152,6 @@ Un mock IA permet tous les tests sans coût API.
 - prompt versioning.
 
 ### Critère
-
 Pipeline agentique fonctionnel sur données mockées.
 
 ---
@@ -176,7 +159,6 @@ Pipeline agentique fonctionnel sur données mockées.
 ## 10. Batch 07b — Spécialistes V1
 
 ### Contenu
-
 - Berlin ;
 - Tokyo ;
 - Nairobi.
@@ -198,7 +180,6 @@ Scanner
 ```
 
 ### Critères
-
 - analyses indépendantes ;
 - budget respecté ;
 - sortie structurée ;
@@ -218,7 +199,6 @@ Opportunity
 ```
 
 ### Critère
-
 Simulation end-to-end automatisée.
 
 ---
@@ -226,7 +206,6 @@ Simulation end-to-end automatisée.
 ## 13. Batch 10 — Evaluation
 
 ### Contenu
-
 - métriques trading ;
 - coûts IA ;
 - self-funding ratio ;
@@ -239,7 +218,6 @@ Simulation end-to-end automatisée.
 ## 14. Batch 11 — Systèmes SHADOW
 
 ### Contenu
-
 - Conservative ;
 - Balanced ;
 - Aggressive ;
@@ -247,7 +225,6 @@ Simulation end-to-end automatisée.
 - comparaison.
 
 ### Critère
-
 Trois systèmes peuvent traiter le même marché sans se contaminer.
 
 ---
@@ -255,7 +232,6 @@ Trois systèmes peuvent traiter le même marché sans se contaminer.
 ## 15. Batch 12 — Dashboard V1
 
 ### Ecrans minimum
-
 - état système ;
 - capital ;
 - positions ;
@@ -273,7 +249,6 @@ Trois systèmes peuvent traiter le même marché sans se contaminer.
 Le choix de l’exchange doit être figé avant ce lot.
 
 Contenu :
-
 - market data réel ;
 - symbol metadata ;
 - rate limits ;
@@ -285,7 +260,6 @@ Contenu :
 ## 17. Batch 14 — LIVE Broker sécurisé
 
 Pré-requis :
-
 - API key dédiée ;
 - retraits désactivés ;
 - Risk Engine validé ;
@@ -303,7 +277,6 @@ Activation contrôlée du profil Balanced.
 **État : livré comme infrastructure/garde-fous fail-closed. Aucun premier ordre réel n’est inclus dans la validation du batch.**
 
 Avant activation :
-
 - checklist sécurité ;
 - seuils exacts ;
 - tests paper ;
@@ -316,11 +289,9 @@ Avant activation :
 **État : livré après validation du lot final.**
 
 ### Objectif atteint
-
 Fournir le banc d’essai historique end-to-end exigé avant tout premier ordre LIVE réel.
 
 ### Contenu livré
-
 - `HistoricalReplayRunner` et `ReplayClock` ;
 - datasets historiques content-addressed/versionnés ;
 - Feature Engine + Scanner de production réutilisés sans logique parallèle ;
@@ -339,14 +310,13 @@ Fournir le banc d’essai historique end-to-end exigé avant tout premier ordre 
 - tests anti-look-ahead et frontière anti-LIVE.
 
 ### Critère d’infrastructure
-
 Une période historique peut être rejouée de bout en bout de manière reproductible sans donnée future, en conservant les décisions Risk, positions, coûts, equity et métriques.
 
 ### Gate opérationnelle
-
 Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiquement réussie**. Les datasets réels, critères d’acceptation OOS/walk-forward et campagnes PAPER/SHADOW doivent encore être exécutés/validés avant un premier ordre réel.
 
 ---
+
 
 ### Extension 16.7 — Backtest Dashboard
 
@@ -361,10 +331,10 @@ Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiq
 - résultats et exports Batch 16 ;
 - aucune capacité de trading LIVE.
 
+
 ## 20. Batch 17 — Rio / Denver avancés
 
 Selon disponibilité des données :
-
 - dérivés ;
 - statistiques historiques issues du moteur Batch 16 ;
 - setup DB ;
@@ -385,12 +355,28 @@ Denver ne doit pas inventer des probabilités ou statistiques absentes.
 
 ## 22. Batch 19 — Recruitment Engine
 
-- propositions ;
-- candidat SHADOW ;
-- budget candidat ;
-- critères de promotion ;
-- limites population ;
-- passage obligatoire par replay/backtest/PAPER/SHADOW selon pertinence.
+**État : livré et validé jusqu'au Batch 19e.1 ; documentation réalignée au Batch 19e.2.**
+
+Livré :
+- contrats `RecruitmentProposal` / `RecruitmentCandidateSpec` ;
+- lifecycle candidat séparé de `AgentState` ;
+- gates population, fréquence et compute candidat ;
+- campagnes twins `BASELINE` / `WITH_CANDIDATE` sur Historical Replay/PAPER ;
+- comparabilité, provenance et gate OOS ;
+- bridge vers l'ablation et la réputation Batch 18 ;
+- coûts candidat directs et coût marginal système distincts ;
+- paquet d'évidence auditable et reproductible ;
+- avis `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION` ;
+- planning de transition opérateur-gaté ;
+- audit `FRESH / STALE` et stale-plan guards ;
+- exports publics `app.recruitment` ;
+- endpoint GET read-only `/api/recruitment/capabilities`.
+
+Non livré volontairement :
+- mutation automatique d'`AgentRegistry` ;
+- promotion automatique ACTIVE/ON_DEMAND ;
+- autorité LIVE candidat ;
+- endpoint HTTP d'écriture Recruitment.
 
 ---
 
@@ -407,7 +393,6 @@ Denver ne doit pas inventer des probabilités ou statistiques absentes.
 ## 24. Batch 21 — Master Portfolio Layer
 
 Plus tard :
-
 - plusieurs crews LIVE ;
 - Master Professor ;
 - Master Risk Engine ;
@@ -417,26 +402,25 @@ Plus tard :
 
 ## 25. Décisions nécessaires par étape
 
-| Décision                      | Dernier moment recommandé                               |
-| ----------------------------- | ------------------------------------------------------- |
-| Version Python                | Batch 01                                                |
-| Base locale                   | Batch 01                                                |
-| Exchange                      | avant Batch 13                                          |
-| Spot/dérivés                  | résolu pour premier LIVE : Kraken Spot / EUR (Batch 14) |
-| Timeframes                    | bloqueur avant preflight/premier LIVE                   |
-| Balanced risk                 | bloqueur avant preflight/premier LIVE                   |
-| AI routing                    | avant Batch 06                                          |
-| Dashboard stack               | implémentation Batch 12                                 |
-| Backtest fill/intrabar policy | Batch 16                                                |
-| Critères OOS / walk-forward   | Batch 16                                                |
-| Hébergement                   | avant fonctionnement 24/7                               |
+| Décision | Dernier moment recommandé |
+|---|---|
+| Version Python | Batch 01 |
+| Base locale | Batch 01 |
+| Exchange | avant Batch 13 |
+| Spot/dérivés | résolu pour premier LIVE : Kraken Spot / EUR (Batch 14) |
+| Timeframes | bloqueur avant preflight/premier LIVE |
+| Balanced risk | bloqueur avant preflight/premier LIVE |
+| AI routing | avant Batch 06 |
+| Dashboard stack | implémentation Batch 12 |
+| Backtest fill/intrabar policy | Batch 16 |
+| Critères OOS / walk-forward | Batch 16 |
+| Hébergement | avant fonctionnement 24/7 |
 
 ---
 
 ## 26. Priorités
 
 Ordre :
-
 1. fiabilité ;
 2. sécurité ;
 3. observabilité ;
@@ -451,7 +435,6 @@ Ordre :
 ## 27. Règle de modification
 
 Si le développement révèle qu’un batch est trop gros :
-
 - le scinder ;
 - ne pas compresser artificiellement plusieurs features ;
 - mettre à jour cette roadmap et le changelog.
@@ -460,46 +443,7 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-1. Exécuter des campagnes Batch 16 sur des datasets historiques réels et versionnés.
-2. Définir avant observation finale les critères quantitatifs DESIGN/VALIDATION/OOS/walk-forward.
-3. Poursuivre PAPER/SHADOW et conserver le LIVE non armé tant que la gate n’est pas satisfaite.
-4. Démarrer **Batch 17 — Rio / Denver avancés** en utilisant les statistiques réellement produites par Batch 16.
-
-<!-- BATCH18A_STEP4_ROADMAP_START -->
-
-## Addendum Batch 18a — Fondations réputation et ablation livrées
-
-Le sous-batch 18a est livré avec :
-- comparaison d’ablation déterministe sur runs comparables ;
-- agrégation et réputation multidimensionnelle ;
-- politique advisory de recommandation d’état avec seuils injectés ;
-- bridge OOS-only réputation/ablation vers `AgentStateEvidence` ;
-- provenance et fingerprint d’audit déterministes ;
-- exports publics de la couche Evaluation ;
-- aucune mutation automatique des états agents et aucun impact LIVE.
-
-Cette livraison fournit l’infrastructure de preuve du Batch 18. Elle ne constitue pas, à elle
-seule, une validation empirique d’un agent : les campagnes comparables réelles et les seuils
-opérateur
-pré-définis restent nécessaires avant toute décision organisationnelle.
-
-<!-- BATCH18A_STEP4_ROADMAP_END -->
-
-<!-- BATCH18B_STEP4_ROADMAP_START -->
-
-## Addendum Batch 18b — Batch 18 terminé
-
-Le Batch 18 est désormais livré en deux sous-batches :
-- 18a : réputation multidimensionnelle, ablation comparative, policy advisory et provenance ;
-- 18b : planification déterministe, exécution baseline/twins, runtime PAPER isolé et exports.
-
-La campagne peut produire des preuves comparables par agent sur DESIGN/VALIDATION/OOS, mais les
-changements d'état restent advisory-only, soumis aux seuils opérateur pré-définis
-et sans mutation
-automatique du registry. Le Risk Engine reste autoritaire et aucun chemin LIVE n'est ajouté.
-
-La prochaine étape de roadmap peut donc être **Batch 19 — Recruitment Engine**,
-en réutilisant les
-preuves de réputation/ablation du Batch 18 au lieu d'un score opaque ou d'un simple rendement.
-
-<!-- BATCH18B_STEP4_ROADMAP_END -->
+1. Clôturer Batch 19 avec intégration documentaire, tests complets et commit dédié.
+2. Conserver les campagnes historiques/PAPER/SHADOW comme preuves, sans armer automatiquement le LIVE.
+3. Démarrer **Batch 20 — Task Force Agents** seulement sur la frontière Recruitment désormais auditée.
+4. Maintenir séparées les décisions de recrutement d'agents et les décisions d'activation du trading LIVE.
