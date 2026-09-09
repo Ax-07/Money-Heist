@@ -484,3 +484,22 @@ opérateur
 pré-définis restent nécessaires avant toute décision organisationnelle.
 
 <!-- BATCH18A_STEP4_ROADMAP_END -->
+
+<!-- BATCH18B_STEP4_ROADMAP_START -->
+
+## Addendum Batch 18b — Batch 18 terminé
+
+Le Batch 18 est désormais livré en deux sous-batches :
+- 18a : réputation multidimensionnelle, ablation comparative, policy advisory et provenance ;
+- 18b : planification déterministe, exécution baseline/twins, runtime PAPER isolé et exports.
+
+La campagne peut produire des preuves comparables par agent sur DESIGN/VALIDATION/OOS, mais les
+changements d'état restent advisory-only, soumis aux seuils opérateur pré-définis
+et sans mutation
+automatique du registry. Le Risk Engine reste autoritaire et aucun chemin LIVE n'est ajouté.
+
+La prochaine étape de roadmap peut donc être **Batch 19 — Recruitment Engine**,
+en réutilisant les
+preuves de réputation/ablation du Batch 18 au lieu d'un score opaque ou d'un simple rendement.
+
+<!-- BATCH18B_STEP4_ROADMAP_END -->

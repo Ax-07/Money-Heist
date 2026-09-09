@@ -1,0 +1,15 @@
+Batch 18b Step 3 architecture hotfix
+
+FILES
+app/services/backtest/ablation_runtime.py
+app/evaluation/ablation_campaign_runtime.py
+tests/evaluation/test_ablation_campaign_runtime.py
+README_BATCH_18B_STEP3_ARCHITECTURE_FIX.md
+MANIFEST_BATCH_18B_STEP3_ARCHITECTURE_FIX.txt
+
+BOUNDARIES
+- concrete PAPER/Risk runtime assembly lives in app.services.backtest
+- app.evaluation has no app.trading.risk import
+- no LIVE trading
+- no registry mutation
+- no new dependency

@@ -1,0 +1,16 @@
+Batch 18b Step 1
+================
+
+FILES
+- app/evaluation/ablation_campaign.py
+- tests/evaluation/test_ablation_campaign.py
+- README_BATCH_18B_STEP1.md
+- MANIFEST_BATCH_18B_STEP1.txt
+
+BOUNDARIES
+- deterministic planning only
+- no AgentRegistry mutation
+- no Risk Engine changes
+- no broker changes
+- no LIVE changes
+- no automatic reputation/state mutation

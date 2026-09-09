@@ -485,3 +485,20 @@ explicitement fournis, la recommandation et sa provenance. Il ne contient aucune
 mutation du registry ou d’activation LIVE.
 
 <!-- BATCH18A_STEP4_API_END -->
+
+<!-- BATCH18B_STEP4_API_START -->
+
+## Addendum Batch 18b — Modèles de campagne d'ablation
+
+Contrats publics principaux :
+- `AblationCampaignPlan` : identité, crew baseline, cibles et variants ;
+- `AblationCampaignVariant` : BASELINE ou WITHOUT_AGENT avec `BacktestRun` dédié ;
+- `AblationCampaignExecutionReport` : exécutions, comparaisons et fingerprint d'exécution ;
+- `PaperAblationRuntimeSettings` : RiskProfile, MarketConstraints, budget/pricing IA et clients ;
+- `PaperAblationRuntimeFactory` : stack PAPER/Batch 16 neuf par variant ;
+- `ablation_campaign_execution_to_dict/json()` : export compact d'audit.
+
+Les symboles Batch 18b exposés depuis `app.evaluation` et `app.services.backtest` utilisent un
+chargement lazy afin d'éviter une dépendance circulaire entre Evaluation et Backtest.
+
+<!-- BATCH18B_STEP4_API_END -->

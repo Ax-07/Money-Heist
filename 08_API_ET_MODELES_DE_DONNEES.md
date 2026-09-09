@@ -494,3 +494,43 @@ Nouveaux contrats internes :
 
 Aucun de ces contrats n'est une API d'exécution. Les diagnostics Rio sont read-only et ne provoquent
 aucun I/O lorsqu'ils sont consultés.
+
+<!-- BATCH18A_STEP4_API_START -->
+
+## Addendum Batch 18a — Contrats réputation et ablation
+
+Contrats publics principaux :
+- `AblationRunDescriptor`, `AblationComparison`, `AblationAggregate` ;
+- `ReputationPolicy`, `AgentReputationProfile` ;
+- `ReputationPolicyThresholds`, `AgentStateEvidence`, `AgentStateRecommendation` ;
+- `DeterministicAgentStateAdvisor` ;
+- `ReputationEvidenceProvenance`, `AgentReputationAdvisoryReport` ;
+- `ReputationAdvisoryService` ;
+- `reputation_advisory_to_dict()` / `reputation_advisory_to_json()`.
+
+Les deltas d’ablation utilisent les conventions suivantes : `baseline - ablated` pour Trading
+Net et Economic Net, `ablated - baseline` pour la réduction de drawdown. Une valeur positive de
+`drawdown_reduction_pct` signifie donc que la présence de l’agent a réduit le drawdown observé.
+
+Le rapport advisory inclut l’état courant lu dans le registry, les preuves, les seuils
+explicitement fournis, la recommandation et sa provenance. Il ne contient aucune opération de
+mutation du registry ou d’activation LIVE.
+
+<!-- BATCH18A_STEP4_API_END -->
+
+<!-- BATCH18B_STEP4_API_START -->
+
+## Addendum Batch 18b — Modèles de campagne d'ablation
+
+Contrats publics principaux :
+- `AblationCampaignPlan` : identité, crew baseline, cibles et variants ;
+- `AblationCampaignVariant` : BASELINE ou WITHOUT_AGENT avec `BacktestRun` dédié ;
+- `AblationCampaignExecutionReport` : exécutions, comparaisons et fingerprint d'exécution ;
+- `PaperAblationRuntimeSettings` : RiskProfile, MarketConstraints, budget/pricing IA et clients ;
+- `PaperAblationRuntimeFactory` : stack PAPER/Batch 16 neuf par variant ;
+- `ablation_campaign_execution_to_dict/json()` : export compact d'audit.
+
+Les symboles Batch 18b exposés depuis `app.evaluation` et `app.services.backtest` utilisent un
+chargement lazy afin d'éviter une dépendance circulaire entre Evaluation et Backtest.
+
+<!-- BATCH18B_STEP4_API_END -->

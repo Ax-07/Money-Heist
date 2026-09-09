@@ -391,3 +391,22 @@ fraîcheur adaptées au replay.
 
 Denver reste le spécialiste avancé directement exploitable avec les preuves historiques Batch 16.
 Rio reste exploitable sur flux courant jusqu'à livraison d'une source historique dérivés dédiée.
+
+<!-- BATCH18B_STEP4_BACKTEST_START -->
+
+## Extension Batch 18b — Ablation Campaign Runner
+
+Batch 18b réutilise `HistoricalReplayRunner` ; il ne crée pas un second moteur de backtest.
+Pour une campagne, une baseline et un twin par agent ciblé sont construits sur le même dataset,
+la même période et les mêmes hypothèses matérielles, avec des identités de run distinctes.
+
+Chaque variant reçoit un stack PAPER indépendant : PaperBroker, portfolio, lifecycle, journal,
+budget IA, usage recorder, AI Gateway et instances spécialistes. La réutilisation d'un runner ou
+d'un broker entre variants est rejetée. Le crew du twin diffère de la baseline par exactement
+l'agent ablaté.
+
+`MOCK`, `CACHED` et `LIVE_EVAL` restent les modes IA Batch 16. Même en LIVE_EVAL, seule la requête
+IA peut être réelle ; l'exécution de trading reste PAPER. Les contextes historiques Rio/Denver ne
+sont jamais inventés et doivent provenir de datasets/providers compatibles avec le replay.
+
+<!-- BATCH18B_STEP4_BACKTEST_END -->

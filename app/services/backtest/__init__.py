@@ -1,5 +1,7 @@
 """Batch 16 deterministic historical replay and validation toolkit."""
 
+from importlib import import_module
+
 from .advanced_mock import (
     DeterministicAdvancedSpecialistMockProvider,
     MockProviderPort,
@@ -72,6 +74,41 @@ from .walk_forward import (
     execute_walk_forward,
 )
 
+_BATCH18B_LAZY_EXPORTS = {
+    "PaperAblationRuntimeFactory": (
+        ".ablation_runtime",
+        "PaperAblationRuntimeFactory",
+    ),
+    "PaperAblationRuntimeSettings": (
+        ".ablation_runtime",
+        "PaperAblationRuntimeSettings",
+    ),
+    "SpecialistFactory": (".ablation_runtime", "SpecialistFactory"),
+    "build_paper_ablation_executor": (
+        ".ablation_runtime",
+        "build_paper_ablation_executor",
+    ),
+    "execute_paper_ablation_campaign": (
+        ".ablation_runtime",
+        "execute_paper_ablation_campaign",
+    ),
+    "v1_specialist_factories": (
+        ".ablation_runtime",
+        "v1_specialist_factories",
+    ),
+}
+
+
+def __getattr__(name: str):
+    target = _BATCH18B_LAZY_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attribute_name = target
+    value = getattr(import_module(module_name, __name__), attribute_name)
+    globals()[name] = value
+    return value
+
+
 __all__ = [
     "BacktestAIClient",
     "BacktestAIContext",
@@ -111,15 +148,19 @@ __all__ = [
     "IntrabarPolicy",
     "IntrabarResolution",
     "MockProviderPort",
+    "PaperAblationRuntimeFactory",
+    "PaperAblationRuntimeSettings",
     "ReplayClock",
     "ReplayIdFactory",
     "SETUP_DEFINITION_VERSION",
+    "SpecialistFactory",
     "WalkForwardPlan",
     "WalkForwardReport",
     "WalkForwardSplitExecutor",
     "WalkForwardWindow",
     "as_utc",
     "assert_reproducible",
+    "build_paper_ablation_executor",
     "build_run_manifest",
     "build_walk_forward_plan",
     "business_payload",
@@ -130,6 +171,7 @@ __all__ = [
     "equity_curve_to_csv",
     "equity_points_from_replay",
     "evaluate_historical_replay",
+    "execute_paper_ablation_campaign",
     "execute_walk_forward",
     "final_marks_from_replay",
     "fingerprint_backtest",
@@ -139,5 +181,6 @@ __all__ = [
     "split_report_to_json",
     "stable_digest",
     "stable_uuid",
+    "v1_specialist_factories",
     "walk_forward_report_to_json",
 ]

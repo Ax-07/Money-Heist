@@ -51,3 +51,30 @@ Batch 18a ne :
 
 Les campagnes empiriques comparables et les critères opérateur pré-définis restent nécessaires avant
 toute décision organisationnelle réelle sur un agent.
+
+<!-- BATCH18B_STEP4_CHANGELOG_START -->
+
+# Batch 18b — Ablation Campaign Runner — clôture
+
+## Livré
+
+- plan de campagne déterministe baseline + `WITHOUT_AGENT` ;
+- `run_id` distinct par twin avec fingerprint de comparaison commun ;
+- exécution Batch 16/PAPER isolée par variant ;
+- conversion automatique en `BacktestPeriodReport` et `AblationComparison` ;
+- rejet de toute réutilisation broker/runner entre twins ;
+- PAPER Runtime Factory dans `app.services.backtest`, hors couche Evaluation ;
+- spécialistes recréés avec un AI Gateway/budget/usage scope propre à chaque variant ;
+- modes IA MOCK/CACHED/LIVE_EVAL conservés ;
+- export compact JSON/dict du rapport de campagne ;
+- exports publics lazy pour éviter les cycles Evaluation ↔ Backtest ;
+- aucune mutation `AgentRegistry`, aucun bypass Risk et aucun trading LIVE.
+
+## Clôture Batch 18
+
+Batch 18a + 18b fournissent désormais l'infrastructure complète de réputation et d'ablation.
+Une décision organisationnelle réelle reste conditionnée aux campagnes empiriques,
+à l'OOS et aux
+seuils opérateur pré-définis ; elle n'est jamais appliquée automatiquement.
+
+<!-- BATCH18B_STEP4_CHANGELOG_END -->

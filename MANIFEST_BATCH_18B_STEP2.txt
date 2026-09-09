@@ -1,0 +1,16 @@
+Batch 18b Step 2
+================
+
+Files:
+- app/evaluation/ablation_campaign_execution.py
+- tests/evaluation/test_ablation_campaign_execution.py
+- README_BATCH_18B_STEP2.md
+- MANIFEST_BATCH_18B_STEP2.txt
+
+Boundaries:
+- historical replay / PAPER only
+- isolated runtime per variant
+- no registry mutation
+- no Risk Engine mutation
+- no LIVE
+- no automatic agent-state change

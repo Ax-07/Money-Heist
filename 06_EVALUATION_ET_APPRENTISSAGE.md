@@ -487,3 +487,25 @@ Chaque `AgentReputationAdvisoryReport` conserve la provenance des comparaisons e
 SHA-256 déterministe afin de rendre la recommandation reconstruisible et auditable.
 
 <!-- BATCH18A_STEP4_EVALUATION_END -->
+
+<!-- BATCH18B_STEP4_EVALUATION_START -->
+
+## Addendum Batch 18b — Campagnes d'ablation exécutables
+
+Batch 18b complète les fondations Batch 18a avec une campagne reproductible baseline + twins.
+`build_ablation_campaign()` fige l'identité expérimentale, puis un variant `WITHOUT_AGENT` retire
+exactement un spécialiste. `AblationCampaignExecutor` exécute chaque variant via Batch 16
+et produit
+un `AblationCampaignExecutionReport` ainsi que les `AblationComparison` correspondantes.
+
+L'assemblage concret PAPER/Risk ne vit pas dans `app.evaluation`. Il appartient à
+`app.services.backtest.ablation_runtime`, qui recrée broker, portfolio, lifecycle, journal, budget,
+usage recorder, AI Gateway et instances spécialistes pour chaque variant. Evaluation reste une
+couche de mesure/advisory sans autorité d'exécution.
+
+Les exports de campagne conservent les identités, métriques et fingerprints nécessaires
+à l'audit,
+mais n'exposent pas les objets runtime/replay bruts. Aucune campagne d'ablation n'autorise le LIVE
+trading et aucune recommandation de réputation n'est auto-appliquée.
+
+<!-- BATCH18B_STEP4_EVALUATION_END -->

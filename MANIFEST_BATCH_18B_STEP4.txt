@@ -1,0 +1,24 @@
+Batch 18b Step 4 — Closure
+==========================
+
+FILES
+app/evaluation/__init__.py
+app/evaluation/ablation_campaign_exports.py
+app/services/backtest/__init__.py
+apply_batch_18b_step4_closure.py
+tests/evaluation/test_ablation_campaign_exports.py
+tests/evaluation/test_batch18b_public_api.py
+tests/evaluation/test_batch18b_closure.py
+README_BATCH_18B_STEP4.md
+MANIFEST_BATCH_18B_STEP4.txt
+
+CLOSURE SCRIPT
+- adds idempotent documentation/changelog blocks
+- deletes app/evaluation/ablation_campaign_runtime.py migration tombstone
+
+BOUNDARIES
+- Evaluation owns measurement/advisory only
+- Backtest owns PAPER/Risk runtime assembly
+- no AgentRegistry mutation
+- no automatic state application
+- no LIVE broker/execution path
