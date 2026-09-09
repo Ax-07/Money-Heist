@@ -26,6 +26,20 @@ from .observation import (
     build_observed_master_portfolio_snapshot,
     observe_crew_exposure,
 )
+from .reservation import (
+    CrewReservationUsage,
+    MasterReservationLedger,
+    PortfolioReservation,
+    ReservationIdempotencyConflict,
+    ReservationLedgerInitializationError,
+    ReservationLedgerSnapshot,
+    ReservationOutcomeStatus,
+    ReservationReasonCode,
+    ReservationRecordStatus,
+    ReservationRequest,
+    ReservationResult,
+    ReservationStateTransitionError,
+)
 from .snapshot import build_master_portfolio_snapshot
 
 __all__ = [
@@ -35,6 +49,7 @@ __all__ = [
     "MasterAllocationPolicy",
     "MasterPortfolioAuditSeal",
     "CrewExposureSnapshot",
+    "CrewReservationUsage",
     "CrewPortfolioStateSource",
     "MasterCapitalSnapshot",
     "MasterPortfolioFleetObserver",
@@ -45,6 +60,17 @@ __all__ = [
     "PortfolioObservationReasonCode",
     "PortfolioStateProvider",
     "SnapshotDataStatus",
+    "MasterReservationLedger",
+    "PortfolioReservation",
+    "ReservationIdempotencyConflict",
+    "ReservationLedgerInitializationError",
+    "ReservationLedgerSnapshot",
+    "ReservationOutcomeStatus",
+    "ReservationReasonCode",
+    "ReservationRecordStatus",
+    "ReservationRequest",
+    "ReservationResult",
+    "ReservationStateTransitionError",
     "build_master_allocation_policy",
     "build_master_portfolio_audit_seal",
     "build_master_portfolio_snapshot",
