@@ -552,3 +552,27 @@ Les avis déterministes sont :
 Tous les critères pré-enregistrés sont obligatoires. Une métrique inconnue/indisponible produit `EXTEND`; un critère mesuré échoué ou un budget candidat dépassé produit `REJECT`. Un candidat ne peut pas sauter directement de `CANDIDATE` à `PROBATION`.
 
 Aucun avis ne mute le registre, n'applique la transition ou n'accorde d'autorité LIVE.
+
+<!-- BATCH20_AGENTS_START -->
+
+## Addendum Batch 20 — Task Force Agents implémentés
+
+Les agents temporaires sont désormais implémentés comme **assignations temporaires d’agents du
+registre**, et non comme créations autonomes d’identités IA.
+
+Les contraintes centrales sont :
+- états autorisés explicitement par policy ;
+- agents Core sélectionnables seulement si allowlistés par la policy ;
+- `DISABLED` jamais sélectionnable ;
+- capability coverage explicite ;
+- tool allowlist sous-ensemble de `AgentRegistryEntry.allowed_tools` ;
+- budget/appels/retries bornés ;
+- expiration obligatoire ;
+- Red Team couvert par un agent `red_team` du registre lorsqu’il est requis ;
+- aucune mutation automatique d’`AgentState` ou du registre.
+
+La réputation utilisée en composition reste multidimensionnelle et peut prioriser explicitement OOS,
+Economic Net marginal, réduction de drawdown, coût ou latence. L’ordre des dimensions est fourni par
+la policy de composition ; aucun score composite implicite n’est introduit.
+
+<!-- BATCH20_AGENTS_END -->

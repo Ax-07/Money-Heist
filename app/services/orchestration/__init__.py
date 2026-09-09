@@ -23,6 +23,21 @@ from .specialist_contexts import (
     SpecialistContextProvider,
 )
 
+from .task_force_report import (
+    TaskForceReportIntegration,
+    prepare_task_force_report_for_orchestration,
+    task_force_report_fingerprint,
+)
+from .task_force_trigger import (
+    TaskForceInvocationDecision,
+    TaskForceInvocationPolicy,
+    TaskForceInvocationStatus,
+    TaskForceTriggerSignal,
+    evaluate_task_force_trigger,
+    task_force_invocation_policy_fingerprint,
+    task_force_trigger_signal_fingerprint,
+)
+
 __all__ = [
     "AgentCallAudit",
     "CompositeSpecialistContextProvider",
@@ -45,4 +60,14 @@ __all__ = [
     "ProfessorTradeParameters",
     "SpecialistContextProvider",
     "TradeProposal",
+    "TaskForceReportIntegration",
+    "prepare_task_force_report_for_orchestration",
+    "task_force_report_fingerprint",
+    "TaskForceInvocationDecision",
+    "TaskForceInvocationPolicy",
+    "TaskForceInvocationStatus",
+    "TaskForceTriggerSignal",
+    "evaluate_task_force_trigger",
+    "task_force_invocation_policy_fingerprint",
+    "task_force_trigger_signal_fingerprint",
 ]

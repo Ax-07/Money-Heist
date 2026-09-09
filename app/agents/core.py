@@ -99,18 +99,23 @@ class TheProfessor(CoreAgent):
         specialist_analyses: list[dict[str, Any]],
         palermo_review: dict[str, Any],
         output_model: type[T],
+        task_force_report: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[T]:
         """Finalize through an explicit strict schema while preserving the existing API."""
 
+        payload = {
+            "opportunity": opportunity,
+            "market_context": market_context,
+            "specialist_analyses": specialist_analyses,
+            "palermo_review": palermo_review,
+        }
+        if task_force_report is not None:
+            payload["task_force_report"] = task_force_report
+
         return await self._run(
             system_id=system_id,
-            payload={
-                "opportunity": opportunity,
-                "market_context": market_context,
-                "specialist_analyses": specialist_analyses,
-                "palermo_review": palermo_review,
-            },
+            payload=payload,
             output_model=output_model,
             opportunity_id=opportunity_id,
             phase="finalize",
@@ -124,6 +129,7 @@ class TheProfessor(CoreAgent):
         market_context: dict[str, Any],
         specialist_analyses: list[dict[str, Any]],
         palermo_review: dict[str, Any],
+        task_force_report: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[ProfessorDecision]:
         return await self.finalize_with_schema(
@@ -133,6 +139,7 @@ class TheProfessor(CoreAgent):
             specialist_analyses=specialist_analyses,
             palermo_review=palermo_review,
             output_model=ProfessorDecision,
+            task_force_report=task_force_report,
             opportunity_id=opportunity_id,
         )
 

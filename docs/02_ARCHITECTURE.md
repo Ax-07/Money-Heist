@@ -629,3 +629,28 @@ Règles de dépendance :
 - l'API HTTP Recruitment V1 est read-only et n'expose que les capabilities.
 
 Cette frontière conserve le principe architectural : l'IA ou l'évaluation peut proposer/recommander, tandis que les systèmes déterministes et l'opérateur gardent l'autorité.
+
+<!-- BATCH20_ARCHITECTURE_START -->
+
+## Addendum Batch 20 — Architecture Task Force
+
+Le package `app.task_force` est un sibling fonctionnel de Recruitment et non un sous-système de
+trading. Il dépend des contrats agents/AI Gateway/evaluation mais ne possède aucune dépendance vers
+le broker LIVE ou une API exchange d’ordre.
+
+Architecture logique :
+
+```text
+orchestration trigger bridge
+→ app.task_force models/lifecycle/gates
+→ composition + provenance/stale
+→ execution contract/runtime via AI Gateway
+→ aggregation
+→ orchestration report bridge
+```
+
+La composition reste registry-only. Les candidats Batch 19 non inscrits au registre ne sont pas
+sélectionnables. Les stale guards entourent composition et replay afin qu’un changement matériel
+impose une régénération plutôt qu’une réutilisation silencieuse.
+
+<!-- BATCH20_ARCHITECTURE_END -->

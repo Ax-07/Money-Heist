@@ -369,3 +369,24 @@ Protections implémentées :
 - API HTTP V1 exposée uniquement en GET via `/api/recruitment/capabilities`.
 
 Un `READY` ou un audit `FRESH` signifie seulement que le plan est cohérent avec le contexte contrôlé. Cela n'enregistre pas la transition et n'accorde aucune permission LIVE.
+
+<!-- BATCH20_SECURITY_START -->
+
+## Addendum Batch 20 — Frontières sécurité Task Force
+
+La Task Force est fail-closed et ne constitue jamais une nouvelle autorité LIVE.
+
+Interdictions structurelles :
+- pas de secrets exchange/provider dans les outils membres ;
+- pas de broker/exchange/risk_engine/shell/filesystem/withdraw/live_order dans les allowlists ;
+- pas d’appel provider direct hors AI Gateway ;
+- pas de mutation `AgentRegistry` ;
+- pas de transition Recruitment automatique ;
+- pas de modification des paramètres constitutionnels de risque ;
+- pas de création directe d’ordre ou de `TradeProposal` depuis l’agrégateur ;
+- replay Task Force exclusivement PAPER.
+
+L’autorisation opérateur du lifecycle Task Force autorise seulement l’exécution analytique de cette
+Task Force. Elle ne vaut ni armement LIVE ni autorisation Risk.
+
+<!-- BATCH20_SECURITY_END -->

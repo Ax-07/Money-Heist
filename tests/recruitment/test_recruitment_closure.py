@@ -13,16 +13,18 @@ def test_batch19_closure_documents_are_present() -> None:
         assert (ROOT / name).is_file(), name
 
 
-def test_current_state_is_post_batch19_and_keeps_live_separate() -> None:
+def test_current_state_advances_past_batch19_and_keeps_live_separate() -> None:
     root_state = (ROOT / "00_ETAT_ACTUEL_POST_BATCH_15.md").read_text(encoding="utf-8")
     docs_state = (ROOT / "docs" / "00_ETAT_ACTUEL_POST_BATCH_15.md").read_text(
         encoding="utf-8"
     )
     assert root_state == docs_state
-    assert "État actuel post-Batch 19" in root_state
-    assert "Batch 20 — Task Force Agents" in root_state
-    assert "Recruitment Engine" in root_state
-    assert "n'arme pas le LIVE" in root_state
+    assert "État actuel post-Batch 20" in root_state
+    assert "Batch 20 — Task Force dynamique" in root_state
+    assert "Batch 21 — Master Portfolio Layer" in root_state
+    assert "candidat Recruitment Batch 19" in root_state
+    assert "live_authority = False" in root_state
+    assert "L’armement LIVE Batch 15 reste séparé" in root_state
 
 
 def test_central_changelog_records_batch19_closure() -> None:

@@ -1346,3 +1346,27 @@ Le Batch 19 ajoute également :
 - API publique read-only `GET /api/recruitment/capabilities`.
 
 Le Recruitment Engine est une infrastructure d'évaluation et d'advisory. Il ne constitue ni une preuve automatique de profitabilité, ni une promotion automatique, ni une autorisation de trading LIVE.
+
+<!-- BATCH20_MASTER_START -->
+
+## Addendum Batch 20 — Task Force dynamique
+
+Batch 20 implémente le concept de Task Force temporaire décrit dans cette spécification.
+
+Une Task Force :
+- sélectionne uniquement des agents présents dans `AgentRegistry` ;
+- possède mission, question, expiration, budget, appels et allowlist explicites ;
+- applique des gates population/capability/compute avant exécution ;
+- utilise la réputation Batch 18 sans score global caché ;
+- exige une autorisation opérateur avant exécution ;
+- appelle l’IA uniquement via le Batch 06 AI Gateway ;
+- agrège sans vote majoritaire sémantique ;
+- produit un `TaskForceReport` advisory-only ;
+- peut être évaluée par replay PAPER baseline vs treatment ;
+- n’accorde aucune mutation de registre, autorité Risk ou autorité LIVE.
+
+Le rapport Task Force peut devenir une source grounded du Professor final. Palermo principal reste
+une étape distincte de l’orchestration et le Risk Engine déterministe conserve son autorité
+constitutionnelle.
+
+<!-- BATCH20_MASTER_END -->

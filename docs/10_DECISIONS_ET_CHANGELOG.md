@@ -474,6 +474,37 @@ L'advisory peut seulement produire `REJECT`, `EXTEND`, `PROBATION` ou `RECOMMEND
 - pas d'autorité LIVE via Recruitment ;
 - décisions et plans reproductibles/fingerprintés.
 
+
+### ADR-027 — Task Force temporaire registry-only, operator-gated et advisory-only
+
+**Date :** 2026-09-09  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Batch 20 implémente les Task Forces comme compositions temporaires d’agents déjà présents dans
+`AgentRegistry`. Elles possèdent une mission étroite, une expiration, des policies explicites de
+population/coût/appels/retries et une allowlist tools bornée par le registre.
+
+La composition est déterministe et peut utiliser les preuves de réputation multidimensionnelles
+Batch 18 sans score magique. Toute exécution exige un lifecycle approuvé par l’opérateur, une gate
+Task Force et le hard budget du Batch 06 AI Gateway.
+
+L’agrégation conserve la provenance et n’effectue aucun vote sémantique ou moyenne de confiance. Le
+rapport Task Force peut être injecté comme source grounded du Professor final, sans être transmis au
+Palermo principal ni contourner le pipeline existant.
+
+L’évaluation historique compare `BASELINE` et `WITH_TASK_FORCE` sur des runtimes PAPER isolés et
+scelle les résultats par fingerprints/audit `FRESH / STALE`.
+
+**Conséquences :**
+- un candidat Recruitment absent du registre n’est pas sélectionnable ;
+- aucune Task Force ne crée ou promeut automatiquement un agent ;
+- aucun provider IA n’est appelé hors AI Gateway ;
+- aucun rapport Task Force ne crée directement de `TradeProposal` ;
+- Palermo principal et le Risk Engine déterministe restent des frontières séparées ;
+- aucune autorité LIVE n’est dérivée d’une autorisation Task Force ;
+- les preuves économiques marginales nécessitent des twins replay comparables.
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -509,6 +540,21 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+
+### v0.8 — 2026-09-09 — Batch 20 Task Force dynamique
+- contrats, lifecycle et gates Task Force temporaires ;
+- composition registry-only avec capabilities explicites et réputation Batch 18 ;
+- provenance, fingerprints et stale detection ;
+- exécution multi-membres exclusivement via AI Gateway et compute gate ;
+- agrégation provenance-preserving avec Red Team optionnel ;
+- trigger bridge explicite et intégration grounded dans le Professor final ;
+- évaluation coût/latence et comparaison économique baseline/treatment ;
+- Historical Replay PAPER `BASELINE` / `WITH_TASK_FORCE` ;
+- replay seal et audit `FRESH / STALE` ;
+- exports publics Task Force/Evaluation/Orchestration ;
+- ADR-027 ajouté.
+
 
 ### v0.7 — 2026-09-09 — Batch 19 Recruitment Engine
 - lifecycle candidat séparé du registre opérationnel ;

@@ -1,214 +1,199 @@
-# Money Heist — État actuel post-Batch 19
+# Money Heist — État actuel post-Batch 20
 
 **Statut :** référence d’alignement active  
 **Date :** 2026-09-09  
-**Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références existantes  
-**Baseline d’entrée Batch 19 :** `96b2288` — `feat(evaluation): complete Batch 18 reputation and ablation`
+**Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références  
+existantes  
+**Baseline d’entrée Batch 20 :** `572cd07` —  
+`feat(recruitment): complete Batch 19 Recruitment Engine`
 
 ---
 
 ## 1. État intégré
 
-Les fondations 01 à 18 sont complétées et le **Batch 19 — Recruitment Engine** ajoute une couche de recrutement d’agents déterministe, auditable et advisory-only.
+Les Batchs 01 à 20 sont livrés. Le **Batch 20 — Task Force dynamique** ajoute une couche
+multi-agents temporaire, déterministe, auditable et advisory-only pour les analyses complexes ou
+exceptionnelles.
 
-Le chemin de recrutement est maintenant :
+Le chemin intégré est maintenant :
 
 ```text
-RecruitmentProposal
-→ RecruitmentCandidateSpec
-→ lifecycle candidat séparé
-→ gates population / fréquence / compute
-→ campagne BASELINE vs WITH_CANDIDATE
-→ Historical Replay / PAPER isolé
-→ comparabilité + provenance + OOS gate
-→ AblationComparison Batch 18
-→ réputation multidimensionnelle + coûts candidat
-→ Candidate Evidence Package
-→ Recruitment Advisory
-→ Transition Planning opérateur-gaté
-→ Audit FRESH / STALE
+TaskForceTriggerSignal explicite
+→ TaskForceRequest
+→ policy opérateur + gates population/capability/budget
+→ composition registry-only + réputation multidimensionnelle
+→ provenance / stale audit
+→ TaskForcePlan PLANNED
+→ autorisation opérateur
+→ TaskForceExecutionContract
+→ compute gate par membre
+→ AI Gateway
+→ TaskForceMemberAnalysis
+→ agrégation provenance-preserving
+→ TaskForceReport
+→ bridge grounded vers The Professor
+→ orchestration principale inchangée
+→ Palermo principal
+→ Professor final
+→ TradeProposal éventuel
+→ Risk Engine déterministe
 ```
 
-Le Recruitment Engine **n'arme pas le LIVE**, ne modifie pas le Risk Engine et ne crée pas automatiquement d’`AgentRegistryEntry`.
+La Task Force ne devient jamais une autorité de trading.
 
 ---
 
-## 2. Lifecycle candidat
+## 2. Composition et lifecycle
 
-Le candidat reste hors `AgentRegistry` pendant son évaluation :
+Une Task Force est temporaire et bornée par :
+- une mission et une question explicites ;
+- une date d’expiration ;
+- une policy opérateur de population, coût, appels et retries ;
+- une allowlist tools qui ne peut pas dépasser celle du registre ;
+- des rôles/capabilities explicitement demandés ;
+- des fingerprints déterministes.
+
+La composition sélectionne uniquement des agents réellement présents dans `AgentRegistry`. Un
+candidat Recruitment Batch 19 ne peut pas être utilisé tant qu’il n’est pas devenu une entrée
+opérationnelle du registre par un processus externe autorisé.
+
+Le lifecycle est :
 
 ```text
-PROPOSED
-→ CANDIDATE
-→ SHADOW
-→ PROBATION
-→ PROMOTION_RECOMMENDED
+PLANNED
+→ APPROVED_FOR_EXECUTION
+→ RUNNING
+→ COMPLETED / FAILED / CANCELLED
 
-ou
-→ REJECTED
+PLANNED / APPROVED
+→ BLOCKED / CANCELLED
 ```
 
-`PROMOTION_RECOMMENDED` est une recommandation organisationnelle. Ce n’est ni `ACTIVE`, ni `ON_DEMAND`, ni une permission de trading LIVE.
-
-Toute transition matérielle reste explicitement opérateur-gatée.
+Le passage vers `APPROVED_FOR_EXECUTION` exige une autorisation opérateur explicite.
 
 ---
 
-## 3. Campagnes de recrutement
+## 3. Réputation et composition
 
-Les campagnes comparent deux twins déterministes :
+La réputation Batch 18 est consommée comme preuve multidimensionnelle. Aucun score magique de
+réputation ou de consensus n’est calculé.
 
-```text
-BASELINE
-= crew incumbent
-
-WITH_CANDIDATE
-= même crew + candidate:<recruitment_id>
-```
-
-Les twins partagent dataset, période et configuration matérielle. Chaque variante reçoit un HistoricalReplayRunner et un PaperBroker distincts afin d’éviter toute contamination d’état.
-
-Les résultats DESIGN et VALIDATION peuvent servir au diagnostic. Une preuve destinée à la progression vers une promotion doit être OOS et comparable.
+Les priorités de composition sont explicites et opérateur-owned : état, dimensions de réputation,
+capabilities et taille cible. Un changement du registre, des capabilities, des preuves de réputation
+ou des policies rend la composition `STALE` et impose une recomposition.
 
 ---
 
-## 4. Réutilisation Batch 18
+## 4. Exécution IA
 
-Le candidat réutilise les mécanismes Batch 18 sans dupliquer les calculs :
-
-- `WITH_CANDIDATE` est le système complet contenant l’agent évalué ;
-- `BASELINE` joue le rôle du système sans cet agent ;
-- `compare_ablation()` produit les deltas trading, Economic Net, drawdown et coût IA ;
-- la réputation reste multidimensionnelle ;
-- aucun score magique n’est introduit.
-
-Les coûts gardent deux dimensions distinctes :
+Chaque membre passe par :
 
 ```text
-candidate_direct_ai_cost_eur
-marginal_total_ai_cost_eur
+TaskForceComputeQuote
+→ TaskForce compute gate
+→ AIGateway.generate_structured()
+→ TaskForceMemberAnalysis
 ```
 
-Le coût directement attribué au candidat ne doit pas être confondu avec la variation totale de consommation IA du système.
+Le budget Task Force est un sous-plafond. Il ne remplace jamais le hard budget du Batch 06 AI
+Gateway. Les appels providers directs sont interdits.
+
+En cas de compute gate refusée, dépassement de quote, erreur Gateway, identité incohérente ou
+comptabilité de coût non fiable, l’exécution s’arrête fail-closed.
 
 ---
 
-## 5. Evidence Package et advisory
+## 5. Agrégation et Red Team
 
-Le paquet d’évidence fige notamment :
-
-- CandidateSpec ;
-- critères de succès pré-enregistrés ;
-- campagne et run IDs ;
-- fingerprints ;
-- provenance dataset/période ;
-- rapports business ;
-- comparaison Batch 18 ;
-- réputation multidimensionnelle ;
-- coûts candidat.
-
-Les avis possibles sont :
+L’agrégation conserve les contributions individuelles : réponses, findings, evidence refs,
+incertitudes, questions de suivi, coûts et latences.
 
 ```text
-REJECT
-EXTEND
-PROBATION
-RECOMMEND_PROMOTION
+aggregation_method = PROVENANCE_PRESERVING_NO_SEMANTIC_VOTE
+semantic_consensus_computed = False
+aggregate_confidence_computed = False
 ```
 
-Une métrique obligatoire indisponible ne reçoit pas de valeur inventée : l’avis est `EXTEND`. Un critère mesuré qui échoue ou un budget candidat dépassé peut produire `REJECT`.
+Si un Red Team temporaire est requis, il doit déjà être couvert par la composition et exécuté comme
+membre. Cette contribution ne remplace pas le `PalermoReview` du pipeline principal.
 
 ---
 
-## 6. Transition planning et audit
+## 6. Intégration orchestration
 
-Un avis peut être transformé en plan seulement après revalidation du contexte :
+Le déclenchement ne repose sur aucun seuil caché. Un `TaskForceTriggerSignal` explicite est
+requis et
+la policy opérateur décide quels triggers sont activés.
 
-- lifecycle courant et révision ;
-- CandidateSpec ;
-- Evidence Package ;
-- advisory ;
-- politique et snapshot de capacité ;
-- limites de population et de fréquence ;
-- budget opérateur.
+Un `TaskForceReport` consommé par l’orchestration est revalidé contre l’opportunité, le snapshot, la
+fenêtre temporelle et son fingerprint. Il est exposé uniquement au Professor final comme nouvelle
+source grounded `task_force_report.*`.
 
-Le résultat reste :
-
-```text
-READY ou BLOCKED
-```
-
-`READY` signifie « présentable à l’opérateur », jamais « appliqué ».
-
-L’audit `FRESH / STALE` empêche la réutilisation silencieuse d’un plan après modification de contexte. Un plan `STALE` doit être régénéré.
+Il n’est pas injecté dans Palermo et ne court-circuite aucune étape du pipeline historique.
 
 ---
 
-## 7. Surface API
+## 7. Evaluation et replay
 
-La surface HTTP officielle Batch 19 est volontairement read-only :
+Batch 20e fournit :
+- coût réel total et par agent ;
+- appels, attempts, latence et taille de Task Force ;
+- comptage findings/incertitudes/questions ;
+- deltas Trading Net / Economic Net / drawdown uniquement avec baseline comparable ;
+- campagne Historical Replay `BASELINE` vs `WITH_TASK_FORCE` ;
+- runner et PaperBroker isolés par twin ;
+- replay PAPER-only ;
+- seal de reproductibilité et audit `FRESH / STALE`.
 
-```text
-GET /api/recruitment/capabilities
-mode = ADVISORY_READ_ONLY
-```
-
-Elle expose les capacités et frontières du Recruitment Engine, mais aucun endpoint HTTP de transition, promotion, mutation de registre ou autorité LIVE.
-
-Les contrats Python publics sont exportés par `app.recruitment`.
+Sans baseline comparable, les métriques économiques marginales restent `UNAVAILABLE`.
 
 ---
 
-## 8. Invariants de sécurité
+## 8. Invariants d’autorité
 
-Les invariants suivants restent obligatoires :
+Les contrats Batch 20 préservent systématiquement :
 
 ```text
-auto_apply = False
+advisory_only = True
+auto_execute = False
 registry_mutation = False
-lifecycle_transition_applied = False
-promotion_applied = False
+risk_authority = False
 live_authority = False
-operator_authorization_required = True
 ```
 
-Le Risk Engine déterministe reste l’autorité de risque. Le Recruitment Engine n’ajoute aucun bypass de risque, aucun ordre LIVE et aucun accès secret privilégié au candidat.
+L’autorité Risk reste le moteur déterministe existant. L’armement LIVE Batch 15 reste séparé et
+explicite.
 
 ---
 
-## 9. Frontière avec le LIVE
+## 9. Frontière avec Recruitment
 
-Le projet dispose de composants LIVE sécurisés issus des Batchs 14–15, mais le recrutement d’un agent est une décision séparée de l’activation du trading LIVE.
+Recruitment décide si un candidat mérite une progression organisationnelle. Task Force compose et
+exécute temporairement des agents déjà disponibles dans le registre.
 
-Aucune preuve de recrutement, même OOS et favorable, ne remplace :
-
-- les gates LIVE existants ;
-- le preflight ;
-- les contrôles de configuration ;
-- l’armement explicite ;
-- la décision opérateur.
+Aucune Task Force ne peut transformer un candidat Recruitment en agent opérationnel, modifier son
+lifecycle ou contourner les gates de promotion Batch 19.
 
 ---
 
 ## 10. Documentation de référence
 
 Pour l’état courant, lire en priorité :
-
 1. le code intégré sur `main` ;
 2. ce document ;
 3. `09_ROADMAP_DEVELOPPEMENT.md` ;
 4. `10_DECISIONS_ET_CHANGELOG.md` ;
 5. `11_BACKTESTING_ET_REPLAY_HISTORIQUE.md` ;
-6. les addenda Batch 19 dans les documents de domaine sous `docs/`.
+6. les addenda Batch 20 des documents de domaine sous `docs/`.
 
-Le layout historique du dépôt est conservé : `01_PROJECT_MASTER.md`, `02_ARCHITECTURE.md` et `07_SECURITE_ET_OPERATIONS.md` sont des documents **docs-only** ; ils ne doivent pas être dupliqués à la racine.
+Le layout historique reste inchangé : `01_PROJECT_MASTER.md`, `02_ARCHITECTURE.md` et
+`07_SECURITE_ET_OPERATIONS.md` restent docs-only.
 
 ---
 
 ## 11. Prochaine étape
 
-La prochaine étape planifiée est :
+La prochaine étape de roadmap est **Batch 21 — Master Portfolio Layer**.
 
-**Batch 20 — Task Force Agents**
-
-Elle devra réutiliser les frontières de recrutement maintenant auditées : mission limitée, durée/expiration explicite, budget, allowlist tools, absence d’autorité LIVE implicite et capacité opérateur-gatée.
+Elle ne doit pas être confondue avec une autorisation de premier ordre réel : les bloqueurs LIVE
+existants, les campagnes historiques/PAPER/SHADOW et le preflight restent applicables.

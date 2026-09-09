@@ -379,3 +379,30 @@ Aucune campagne Recruitment historique ne peut :
 - armer le Batch 15 ;
 - muter `AgentRegistry` ;
 - appliquer automatiquement une promotion.
+
+<!-- BATCH20_REPLAY_START -->
+
+## Addendum Batch 20 — Replay Task Force
+
+Batch 20e réutilise le moteur Batch 16 pour comparer une opportunité avec et sans Task Force :
+
+```text
+BASELINE
+vs
+WITH_TASK_FORCE
+```
+
+Les deux variantes partagent dataset, rôle, période et configuration matérielle, mais possèdent des
+`run_id` distincts via des `execution_assumptions` réservées. Chaque variante reçoit un runner et un
+PaperBroker isolés.
+
+La baseline doit produire zéro artefact Task Force. Le treatment doit produire exactement un
+`TaskForceReport` et son exécution correspondante pour l’opportunité ciblée. Le report et son
+agrégation doivent rester dans les bornes temporelles du replay.
+
+Un seal final capture les business fingerprints baseline/treatment ainsi que les fingerprints Task
+Force. Toute dérive matérielle rend l’audit `STALE`. Le mécanisme reste PAPER-only, y compris
+lorsque
+le mode IA du backtest utilise un fournisseur réel pour l’évaluation.
+
+<!-- BATCH20_REPLAY_END -->

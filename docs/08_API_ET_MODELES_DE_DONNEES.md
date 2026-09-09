@@ -526,3 +526,34 @@ La réponse publie les enums/actions/métriques supportés, les versions de cont
 - `live_authority = false`.
 
 Aucun endpoint Recruitment `POST`, `PUT`, `PATCH` ou `DELETE` n'est livré dans Batch 19e.1.
+
+<!-- BATCH20_API_START -->
+
+## Addendum Batch 20 — Contrats Task Force
+
+Contrats publics principaux de `app.task_force` :
+- `TaskForceRequest`, `TaskForceOperatorPolicy`, `TaskForcePlan` ;
+- `TaskForceLifecycleRecord`, `TaskForceTransitionPlan` ;
+- `TaskForcePlanGateDecision`, `TaskForceComputeDecision` ;
+- `TaskForceCompositionPolicy`, `TaskForceCompositionResult` ;
+- `TaskForceCompositionProvenance`, `TaskForceCompositionAudit` ;
+- `TaskForceCompositionClosure` ;
+- `TaskForceExecutionContract`, `TaskForceMemberExecutionSpec` ;
+- `TaskForceMultiMemberExecution` et records d’usage ;
+- `TaskForceReport` et contributions agrégées.
+
+Bridges publics orchestration :
+- `TaskForceTriggerSignal`, `TaskForceInvocationPolicy`, `TaskForceInvocationDecision` ;
+- `TaskForceReportIntegration` ;
+- `evaluate_task_force_trigger()` ;
+- `prepare_task_force_report_for_orchestration()`.
+
+Contrats publics Evaluation :
+- `TaskForceRunOutcome`, `TaskForceOutcomeComparison`, `TaskForceEvaluationReport` ;
+- `TaskForceReplayPlan`, `TaskForceReplayCampaignReport`, `TaskForceReplayExecutor` ;
+- `TaskForceReplaySeal`, `TaskForceReplayAudit` et audit `FRESH / STALE`.
+
+Les contrats d’autorité utilisent des littéraux/flags fail-closed (`registry_mutation=False`,
+`risk_authority=False`, `live_authority=False`).
+
+<!-- BATCH20_API_END -->

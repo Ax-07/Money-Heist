@@ -119,3 +119,47 @@ Le layout historique du dépôt est préservé : `01_PROJECT_MASTER.md`, `02_ARC
 La prochaine étape de roadmap est **Batch 20 — Task Force Agents**.
 
 <!-- BATCH19_CLOSURE_END -->
+
+<!-- BATCH20_CLOSURE_START -->
+
+# Batch 20 — Task Force dynamique — clôture
+
+## Livré
+
+- contrats Task Force temporaires avec mission, expiration, budget, appels et allowlist ;
+- lifecycle `PLANNED → APPROVED_FOR_EXECUTION → RUNNING → terminal` ;
+- gates population/capability/compute fail-closed ;
+- composition déterministe registry-only ;
+- réputation Batch 18 multidimensionnelle sans score magique ;
+- provenance de composition, fingerprints et stale detection ;
+- clôture de composition vers `TaskForcePlan` toujours `PLANNED` ;
+- contrats d’exécution et appels multi-membres via AI Gateway uniquement ;
+- comptabilité coût/attempts/latence et arrêt fail-closed ;
+- agrégation provenance-preserving, sans vote sémantique ;
+- Red Team temporaire optionnel sans remplacer Palermo principal ;
+- trigger bridge explicite, sans seuil de complexité inventé ;
+- intégration `TaskForceReport` grounded dans le Professor final ;
+- Evaluation Task Force et contribution économique uniquement avec baseline comparable ;
+- Historical Replay twins `BASELINE` / `WITH_TASK_FORCE` PAPER-only ;
+- replay seal et audit `FRESH / STALE` ;
+- exports publics consolidés.
+
+## Frontières de clôture
+
+Batch 20 ne :
+- sélectionne pas un candidat Recruitment absent d'`AgentRegistry` ;
+- ne modifie pas automatiquement le registre ou l’état d’un agent ;
+- ne remplace pas le hard budget AI Gateway ;
+- n’appelle pas directement un provider IA ;
+- ne crée pas directement un `TradeProposal` depuis une Task Force ;
+- ne contourne pas Palermo principal ni le Risk Engine ;
+- n’accorde aucune autorité LIVE ;
+- n’invente aucune métrique économique lorsqu’une baseline comparable est absente.
+
+## Suite
+
+La prochaine étape de roadmap est **Batch 21 — Master Portfolio Layer**. Les bloqueurs LIVE
+existants
+restent indépendants et doivent toujours être satisfaits avant tout premier ordre réel.
+
+<!-- BATCH20_CLOSURE_END -->

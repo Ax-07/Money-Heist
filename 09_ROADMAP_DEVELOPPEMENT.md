@@ -1,8 +1,8 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots  
-**Version :** 0.2  
-**Statut :** Roadmap active — réalignée post-Batch 15
+**Version :** 0.3  
+**Statut :** Roadmap active — réalignée post-Batch 20
 
 ---
 
@@ -380,13 +380,32 @@ Non livré volontairement :
 
 ---
 
-## 23. Batch 20 — Task Force Agents
+## 23. Batch 20 — Task Force dynamique
 
-- agents temporaires ;
-- expiration ;
-- mission ;
-- budget ;
-- allowlist tools.
+**État : livré et validé.**
+
+Livré :
+- contrats temporaires, expiration et mission ;
+- lifecycle opérateur-gaté ;
+- policies population, budget, appels, retries et tools ;
+- composition registry-only par rôle/capability ;
+- réputation multidimensionnelle Batch 18 ;
+- provenance, fingerprints et stale detection ;
+- exécution multi-membres via AI Gateway ;
+- agrégation provenance-preserving et Red Team optionnel ;
+- trigger bridge explicite ;
+- `TaskForceReport` grounded dans le Professor final ;
+- Evaluation coût/latence et economic lift conditionnel ;
+- Historical Replay PAPER baseline vs treatment ;
+- seal de reproductibilité et audit `FRESH / STALE` ;
+- exports publics consolidés.
+
+Non livré volontairement :
+- création/promotion automatique d’agents ;
+- mutation automatique d’`AgentRegistry` ;
+- score magique de consensus/réputation ;
+- autorité Risk ou LIVE ;
+- ordre ou `TradeProposal` direct depuis la Task Force.
 
 ---
 
@@ -443,7 +462,10 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-1. Clôturer Batch 19 avec intégration documentaire, tests complets et commit dédié.
-2. Conserver les campagnes historiques/PAPER/SHADOW comme preuves, sans armer automatiquement le LIVE.
-3. Démarrer **Batch 20 — Task Force Agents** seulement sur la frontière Recruitment désormais auditée.
-4. Maintenir séparées les décisions de recrutement d'agents et les décisions d'activation du trading LIVE.
+1. Clôturer Batch 20 avec tests complets, consolidation documentaire et commit dédié.
+2. Conserver les campagnes historiques/PAPER/SHADOW comme preuves et maintenir le LIVE non armé
+   tant que ses gates propres ne sont pas satisfaites.
+3. Démarrer **Batch 21 — Master Portfolio Layer** sans réutiliser l’autorisation Task Force comme
+   autorité de portefeuille ou autorité LIVE.
+4. Définir toute future allocation multi-crews comme une couche déterministe/opérateur-gatée avec
+   un Master Risk Engine séparé de la logique analytique des agents.

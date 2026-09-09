@@ -27,6 +27,7 @@ from app.intelligence.ai_gateway.errors import (
 from app.intelligence.ai_gateway.models import AIGatewayResult
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
+from app.task_force.aggregation import TaskForceReport
 
 from .compute_gate import ComputeGate
 from .models import (
@@ -43,6 +44,7 @@ from .models import (
     TradeProposal,
 )
 from .specialist_contexts import SpecialistContextProvider
+from .task_force_report import prepare_task_force_report_for_orchestration
 
 
 class InvalidProfessorPlanError(ValueError):
@@ -75,15 +77,17 @@ def _assert_grounded_final_evidence(
     market_context: dict[str, Any],
     specialist_analyses: list[dict[str, Any]],
     palermo_review: dict[str, Any],
+    task_force_report: dict[str, Any] | None = None,
 ) -> None:
-    available = _leaf_paths(
-        {
-            "opportunity": opportunity,
-            "market_context": market_context,
-            "specialist_analyses": specialist_analyses,
-            "palermo_review": palermo_review,
-        }
-    )
+    grounded_inputs = {
+        "opportunity": opportunity,
+        "market_context": market_context,
+        "specialist_analyses": specialist_analyses,
+        "palermo_review": palermo_review,
+    }
+    if task_force_report is not None:
+        grounded_inputs["task_force_report"] = task_force_report
+    available = _leaf_paths(grounded_inputs)
     missing = sorted(item.source_key for item in evidence if item.source_key not in available)
     if missing:
         raise UngroundedEvidenceError(
@@ -128,6 +132,7 @@ class OrchestrationPipeline:
         market_context: FeatureSnapshot,
         now: datetime | None = None,
         specialist_contexts: Mapping[str, Any] | None = None,
+        task_force_report: TaskForceReport | None = None,
     ) -> OrchestrationResult:
         events: list[PipelineAuditEvent] = []
         calls: list[AgentCallAudit] = []
@@ -180,6 +185,40 @@ class OrchestrationPipeline:
             feature_version=market_context.feature_version,
             scanner_version=opportunity.scanner_version,
         )
+
+        task_force_payload = None
+        if task_force_report is not None:
+            try:
+                integration = prepare_task_force_report_for_orchestration(
+                    task_force_report,
+                    opportunity=opportunity,
+                    market_context=market_context,
+                    now=now,
+                )
+            except (ValueError, PermissionError) as exc:
+                event("task_force_report", "FAILED", reason=str(exc))
+                return self._failed(
+                    opportunity=opportunity,
+                    gate_decision=None,
+                    professor_plan=None,
+                    specialist_runs=(),
+                    palermo_run=None,
+                    final_decision=None,
+                    code=PipelineFailureCode.INVALID_CONTEXT,
+                    stage="task_force_report",
+                    message=str(exc),
+                    agent_id=None,
+                    calls=calls,
+                    events=events,
+                )
+            task_force_payload = integration.payload
+            event(
+                "task_force_report",
+                "COMPLETED",
+                task_force_id=integration.task_force_id,
+                execution_run_id=integration.execution_run_id,
+                report_fingerprint_sha256=integration.report_fingerprint_sha256,
+            )
 
         gate_decision = self.compute_gate.evaluate(opportunity, now=now)
         event(
@@ -523,6 +562,7 @@ class OrchestrationPipeline:
                 specialist_analyses=specialist_payloads,
                 palermo_review=palermo_run.review.model_dump(mode="json"),
                 output_model=ProfessorFinalDecision,
+                task_force_report=task_force_payload,
                 opportunity_id=opportunity_uuid,
             )
             final_decision = final_result.output
@@ -532,6 +572,7 @@ class OrchestrationPipeline:
                 market_context=market_payload,
                 specialist_analyses=specialist_payloads,
                 palermo_review=palermo_run.review.model_dump(mode="json"),
+                task_force_report=task_force_payload,
             )
             calls.append(self._call_audit(final_result, self.professor, "professor_finalize"))
             event(

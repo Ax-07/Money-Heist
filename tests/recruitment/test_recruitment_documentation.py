@@ -41,7 +41,9 @@ def test_recruitment_contracts_are_documented_without_auto_promotion() -> None:
     assert "GET /api/recruitment/capabilities" in api
     assert "ADVISORY_READ_ONLY" in api
     assert "mutation automatique d'`AgentRegistry`" in roadmap
-    assert "Batch 20 — Task Force Agents" in roadmap
+    assert "Batch 19 — Recruitment Engine" in roadmap
+    assert "Batch 20 — Task Force dynamique" in roadmap
+    assert "Batch 21 — Master Portfolio Layer" in roadmap
 
 
 def test_recruitment_security_and_decision_records_are_explicit() -> None:

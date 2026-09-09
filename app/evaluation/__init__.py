@@ -105,8 +105,57 @@ _BATCH18B_LAZY_EXPORTS = {
 }
 
 
+_BATCH20_LAZY_EXPORTS = {
+    "TaskForceRunOutcome": (".task_force", "TaskForceRunOutcome"),
+    "TaskForceOutcomeComparison": (".task_force", "TaskForceOutcomeComparison"),
+    "TaskForceEvaluationReport": (".task_force", "TaskForceEvaluationReport"),
+    "compare_task_force_outcomes": (".task_force", "compare_task_force_outcomes"),
+    "evaluate_task_force": (".task_force", "evaluate_task_force"),
+    "TaskForceReplayCampaignReport": (
+        ".task_force_replay",
+        "TaskForceReplayCampaignReport",
+    ),
+    "TaskForceReplayExecutor": (".task_force_replay", "TaskForceReplayExecutor"),
+    "TaskForceReplayPlan": (".task_force_replay", "TaskForceReplayPlan"),
+    "TaskForceReplayRuntime": (".task_force_replay", "TaskForceReplayRuntime"),
+    "TaskForceReplayRuntimeFactory": (
+        ".task_force_replay",
+        "TaskForceReplayRuntimeFactory",
+    ),
+    "TaskForceReplayVariant": (".task_force_replay", "TaskForceReplayVariant"),
+    "TaskForceReplayVariantExecution": (
+        ".task_force_replay",
+        "TaskForceReplayVariantExecution",
+    ),
+    "TaskForceReplayVariantKind": (
+        ".task_force_replay",
+        "TaskForceReplayVariantKind",
+    ),
+    "build_task_force_replay_plan": (
+        ".task_force_replay",
+        "build_task_force_replay_plan",
+    ),
+    "TaskForceReplayAudit": (".task_force_replay_audit", "TaskForceReplayAudit"),
+    "TaskForceReplayAuditStatus": (
+        ".task_force_replay_audit",
+        "TaskForceReplayAuditStatus",
+    ),
+    "TaskForceReplaySeal": (".task_force_replay_audit", "TaskForceReplaySeal"),
+    "assert_task_force_replay_fresh": (
+        ".task_force_replay_audit",
+        "assert_task_force_replay_fresh",
+    ),
+    "audit_task_force_replay": (
+        ".task_force_replay_audit",
+        "audit_task_force_replay",
+    ),
+    "seal_task_force_replay": (".task_force_replay_audit", "seal_task_force_replay"),
+}
+
+_LAZY_EXPORTS = {**_BATCH18B_LAZY_EXPORTS, **_BATCH20_LAZY_EXPORTS}
+
 def __getattr__(name: str):
-    target = _BATCH18B_LAZY_EXPORTS.get(name)
+    target = _LAZY_EXPORTS.get(name)
     if target is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     module_name, attribute_name = target
@@ -180,4 +229,24 @@ __all__ = [
     "trace_from_paper_pipeline",
     "traces_from_paper_events",
     "usage_from_ai_gateway",
+    "TaskForceRunOutcome",
+    "TaskForceOutcomeComparison",
+    "TaskForceEvaluationReport",
+    "compare_task_force_outcomes",
+    "evaluate_task_force",
+    "TaskForceReplayCampaignReport",
+    "TaskForceReplayExecutor",
+    "TaskForceReplayPlan",
+    "TaskForceReplayRuntime",
+    "TaskForceReplayRuntimeFactory",
+    "TaskForceReplayVariant",
+    "TaskForceReplayVariantExecution",
+    "TaskForceReplayVariantKind",
+    "build_task_force_replay_plan",
+    "TaskForceReplayAudit",
+    "TaskForceReplayAuditStatus",
+    "TaskForceReplaySeal",
+    "assert_task_force_replay_fresh",
+    "audit_task_force_replay",
+    "seal_task_force_replay",
 ]

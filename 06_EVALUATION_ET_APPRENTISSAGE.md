@@ -477,3 +477,27 @@ Ces coûts sont qualifiés comme estimations issues d'un replay historique PAPER
 Les avis sont `REJECT / EXTEND / PROBATION / RECOMMEND_PROMOTION`. Il n'existe pas de score global magique imposant une décision. Les métriques indisponibles ne sont pas inventées.
 
 Même un avis `RECOMMEND_PROMOTION` reste advisory : aucune promotion, transition, mutation de `AgentRegistry`, modification du Risk Engine ou autorité LIVE n'est appliquée automatiquement.
+
+<!-- BATCH20_EVALUATION_START -->
+
+## Addendum Batch 20 — Evaluation des Task Forces
+
+`app.evaluation.task_force` mesure séparément une Task Force sans modifier `AgentMetrics` :
+- coût réel total et par agent ;
+- attempts et usage records ;
+- latence et durée wall-clock ;
+- taille/completion ;
+- présence Red Team ;
+- findings, incertitudes et questions de suivi.
+
+Les deltas marginaux Trading Net / Economic Net / drawdown ne deviennent `AVAILABLE` qu’avec deux
+runs explicitement comparables. Sans baseline, ils restent `UNAVAILABLE`.
+
+`app.evaluation.task_force_replay` produit des twins PAPER `BASELINE` / `WITH_TASK_FORCE` sur le
+Historical Replay existant. `task_force_replay_audit` scelle ensuite plan, business fingerprints,
+report, comparaison et évaluation, puis retourne `FRESH` ou `STALE`.
+
+Aucun résultat d’évaluation n’applique automatiquement une transition d’agent, une mutation de
+registre ou une action de trading.
+
+<!-- BATCH20_EVALUATION_END -->
