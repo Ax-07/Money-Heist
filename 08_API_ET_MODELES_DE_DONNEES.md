@@ -479,3 +479,18 @@ Nouveaux contrats internes principaux :
 Les contextes spécialistes ne sont pas des tool calls LLM. Ils sont préparés par du code backend et
 validés avant que le Professor ne voie l’agent comme disponible. Une collision entre contexte fourni
 par un provider et contexte explicite pour le même agent est rejetée.
+
+## 21. Addendum Batch 17b — modèles Market Data et observabilité Rio
+
+Nouveaux contrats internes :
+- `DerivativesPositioningSnapshot` : faits dérivés normalisés, sans recommandation ;
+- `KrakenFuturesAnalyticsConfig` / `KrakenFuturesAnalyticsProvider` ;
+- `MarketSidecarRefresher` ;
+- `MarketSidecarRefreshResult` / `MarketSidecarRefreshStatus` ;
+- `PaperShadowMarketInput.sidecar_refreshes` et lookup `sidecar_result(refresher_id)` ;
+- `KrakenFuturesRioContextProvider` ;
+- `RioContextDiagnostic` / `RioContextDiagnosticStatus` ;
+- `CompositeSpecialistContextProvider` pour combiner plusieurs sources spécialisées sans collision.
+
+Aucun de ces contrats n'est une API d'exécution. Les diagnostics Rio sont read-only et ne provoquent
+aucun I/O lorsqu'ils sont consultés.

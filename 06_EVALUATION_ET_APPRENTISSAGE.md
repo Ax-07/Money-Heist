@@ -446,3 +446,16 @@ peut pas être compté plusieurs fois via plusieurs reruns.
 
 Ces métriques constituent une base d’interprétation pour Denver, pas une preuve de causalité ni une
 autorisation de promotion LIVE.
+
+## 28. Addendum Batch 17b — évaluation de Rio
+
+La présence de vraies données dérivés ne constitue pas à elle seule une preuve d'amélioration de la
+stratégie. L'effet marginal de Rio devra être mesuré par ablation au Batch 18 sur des périodes et
+configurations comparables.
+
+Les analytics courants ne doivent pas être injectés dans des décisions historiques antérieures. Un
+backtest Rio valide exige un dataset historique dérivés versionné, horodaté et soumis aux mêmes
+règles anti-look-ahead que les autres données du replay.
+
+Les diagnostics de disponibilité Rio peuvent être journalisés pour distinguer une absence de signal
+d'une absence de données, mais ils ne doivent pas être interprétés comme une métrique de performance.

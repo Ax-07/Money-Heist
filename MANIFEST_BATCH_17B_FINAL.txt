@@ -1,0 +1,33 @@
+Batch 17b — Rio avancé / données dérivées réelles
+
+Fichiers cumulés du batch :
+- MANIFEST_BATCH_17B_FINAL.txt
+- 00_ETAT_ACTUEL_POST_BATCH_15.md
+- 03_SYSTEME_AGENTS.md
+- 05_MARKET_DATA_ET_EXECUTION.md
+- 06_EVALUATION_ET_APPRENTISSAGE.md
+- 08_API_ET_MODELES_DE_DONNEES.md
+- 09_ROADMAP_DEVELOPPEMENT.md
+- 10_DECISIONS_ET_CHANGELOG.md
+- 11_BACKTESTING_ET_REPLAY_HISTORIQUE.md
+- CHANGELOG_BATCH.md
+- MANIFEST_BATCH_17B_STEP1.txt
+- MANIFEST_BATCH_17B_STEP2.txt
+- README_BATCH_17B.md
+- README_BATCH_17B_STEP1.md
+- README_BATCH_17B_STEP2.md
+- app/market/exchange/__init__.py
+- app/market/exchange/feed.py
+- app/market/exchange/kraken_futures.py
+- app/services/orchestration/__init__.py
+- app/services/orchestration/rio_contexts.py
+- app/services/orchestration/specialist_contexts.py
+- tests/integration_network/test_kraken_futures_public.py
+- tests/market/exchange/test_feed_sidecar_observability.py
+- tests/market/exchange/test_feed_sidecars.py
+- tests/market/exchange/test_kraken_futures.py
+- tests/orchestration/test_rio_context_provider.py
+- tests/orchestration/test_rio_observability.py
+- tests/orchestration/test_rio_paper_shadow_integration.py
+- tests/orchestration/test_rio_refresh.py
+- tests/orchestration/test_specialist_context_composite.py

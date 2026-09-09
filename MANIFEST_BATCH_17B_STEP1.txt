@@ -1,0 +1,26 @@
+Batch 17b — Step 1 — Rio / Kraken Futures Analytics
+
+FICHIERS AJOUTES
+- app/market/exchange/kraken_futures.py
+- app/services/orchestration/rio_contexts.py
+- tests/market/exchange/test_kraken_futures.py
+- tests/orchestration/test_rio_context_provider.py
+- tests/integration_network/test_kraken_futures_public.py
+- README_BATCH_17B_STEP1.md
+- MANIFEST_BATCH_17B_STEP1.txt
+
+FICHIERS MODIFIES
+- app/market/exchange/__init__.py
+- app/services/orchestration/__init__.py
+
+HORS PERIMETRE
+- Risk Engine
+- Paper Broker
+- Live Broker
+- activation LIVE
+- secrets / authentification Kraken privee
+- sizing
+
+RESEAU
+- tests unitaires : aucun appel reseau
+- smoke Kraken Futures public : skip par defaut

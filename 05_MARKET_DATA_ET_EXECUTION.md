@@ -394,3 +394,34 @@ réelle existante et ne sont pas requalifiées artificiellement en données dér
 Une future activation Rio devra fournir provenance, fraîcheur, mapping d’instrument et qualité de
 données explicites. Sans ce contexte, Rio n’est pas présenté au Professor comme spécialiste
 disponible.
+
+## 28. Addendum Batch 17b — Kraken Futures Analytics public
+
+Le Batch 17b ajoute un second adaptateur Market Data, strictement read-only :
+`KrakenFuturesAnalyticsProvider`.
+
+Source : analytics publics Kraken Futures, sans authentification. Univers initial :
+`BTC/EUR → PF_XBTUSD`, `ETH/EUR → PF_ETHUSD`, `SOL/EUR → PF_SOLUSD`.
+
+Les métriques normalisées sont :
+- funding rate ;
+- open interest ;
+- variation d'open interest sur les points disponibles ;
+- long/short ratio.
+
+Le volume de liquidation agrégé n'est pas converti en liquidations longues/courtes lorsque la source
+ne fournit pas cette séparation de manière fiable. Les deux champs restent alors absents et sont
+listés dans `missing_fields`.
+
+Intégration PAPER/SHADOW :
+```text
+Kraken Spot public → MarketSnapshot → Feature Engine → Scanner
+                                           ↓ opportunité
+                         Kraken Futures Analytics sidecar refresh
+                                           ↓ cache typé
+                          RioContextProvider → Orchestration
+```
+
+Le sidecar dérivés est non critique : erreur réseau, rate limit ou payload inutilisable n'invalide pas
+un snapshot spot autrement sain. En revanche Rio n'est pas annoncé au Professor sans cache utilisable.
+Aucun chemin ajouté n'importe le broker LIVE ou les credentials Kraken privés.

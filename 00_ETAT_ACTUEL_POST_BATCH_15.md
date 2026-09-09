@@ -1,4 +1,4 @@
-# Money Heist — État actuel post-Batch 17a
+# Money Heist — État actuel post-Batch 17b
 
 **Statut :** Référence d’alignement active  
 **Date :** 2026-09-09  
@@ -272,14 +272,14 @@ Aucune valeur ne doit être inventée pour fermer artificiellement ces points.
 
 ```text
 Batch 16 — Backtesting & Historical Replay — livré
-Batch 17 — Rio / Denver avancés
+Batch 17 — Rio / Denver avancés — livré
 Batch 18 — Réputation et ablation
 Batch 19 — Recruitment Engine
 Batch 20 — Task Force Agents
 Batch 21 — Master Portfolio Layer
 ```
 
-Denver avancé peut désormais consommer les statistiques réellement produites par le moteur Batch 16.
+Denver avancé peut consommer les statistiques Batch 16 et Rio peut consommer les analytics publics Kraken Futures en PAPER/SHADOW.
 
 ---
 
@@ -289,7 +289,7 @@ Denver avancé peut désormais consommer les statistiques réellement produites 
 2. exécuter des campagnes historiques réelles avec datasets/version/config figés ;
 3. définir avant test les critères de passage OOS/walk-forward ;
 4. poursuivre PAPER/SHADOW avec LIVE non armé ;
-5. démarrer Batch 17 sans interpréter ce démarrage comme une autorisation LIVE.
+5. préparer Batch 18 (réputation/ablation) sans interpréter Batch 17 comme une autorisation LIVE.
 
 ---
 
@@ -323,3 +323,28 @@ Risk/PAPER/LIVE.
 
 Le Batch 17a ne fournit pas de source réelle funding/OI/liquidations. Cette activation appartient au
 Batch 17b. Il ne ferme pas non plus les bloqueurs LIVE `OPEN-006` et `OPEN-007`.
+
+## 17. Addendum Batch 17b — Rio réel sur Kraken Futures Analytics
+
+Le Batch 17b active Rio avec une source dérivés réelle et publique, tout en conservant le premier
+LIVE en Kraken Spot/EUR.
+
+État implémenté :
+- adaptateur public `KrakenFuturesAnalyticsProvider`, sans authentification ni méthode d'ordre ;
+- mapping initial `BTC/EUR → PF_XBTUSD`, `ETH/EUR → PF_ETHUSD`, `SOL/EUR → PF_SOLUSD` ;
+- funding, open interest, variation d'open interest et long/short ratio normalisés ;
+- séparation long/short des liquidations laissée absente lorsque la source publique ne la garantit
+  pas ;
+- refresh dérivés déclenché seulement après détection d'une opportunité par le Scanner ;
+- sidecar non critique : une panne analytics ne bloque pas le Market Data spot ni le chemin PAPER ;
+- cache Rio borné par âge et cooldown ; cache stale => Rio indisponible ;
+- `KrakenFuturesRioContextProvider` utilisé à la fois comme refresher asynchrone et provider de
+  contexte synchrone pour l'orchestration ;
+- composition Rio + Denver possible via `CompositeSpecialistContextProvider` ;
+- diagnostics read-only `REFRESHED / CACHE_HIT / DEGRADED / STALE / UNAVAILABLE` ;
+- smoke réseau public Kraken Futures validé sans clé API.
+
+Rio reste un spécialiste consultatif. Il ne possède ni broker, ni Risk Engine, ni credentials, ni
+capacité d'activation LIVE. Les données analytics courantes ne sont pas utilisées rétroactivement en
+backtest historique : un futur replay Rio exigera un dataset dérivés historique horodaté et
+reproductible.

@@ -480,6 +480,33 @@ Professor que lorsqu’un spécialiste avancé est effectivement disponible.
 - Batch 18 réputation/ablation reste séparé.
 
 
+### ADR-027 — Batch 17b : Kraken Futures Analytics public comme source Rio PAPER/SHADOW
+
+**Date :** 2026-09-09  
+**Statut :** ACCEPTED
+
+**Décision :**
+Rio est alimenté par les analytics publics Kraken Futures via un adaptateur read-only sans
+authentification. Le mapping initial relie BTC/EUR, ETH/EUR et SOL/EUR aux perpetuals Kraken
+PF_XBTUSD, PF_ETHUSD et PF_SOLUSD.
+
+Le refresh est un sidecar Market Data déclenché uniquement lorsqu'une opportunité Scanner existe.
+Une panne du sidecar ne bloque pas le Market Data spot ni PAPER/SHADOW ; elle retire simplement Rio
+des spécialistes disponibles si aucun cache frais n'existe.
+
+Le volume de liquidation agrégé n'est pas transformé en split long/short. Les champs correspondants
+restent absents jusqu'à disponibilité d'une source fiable. Les analytics live ne sont pas réutilisés
+rétroactivement dans les backtests.
+
+**Conséquences :**
+- aucun credential Kraken Futures requis ;
+- aucun changement au premier LIVE Kraken Spot/EUR ;
+- aucun changement Risk Engine, broker, sizing ou kill switch ;
+- Rio devient réellement sélectionnable en PAPER/SHADOW quand le contexte est frais ;
+- un replay historique Rio exigera une source dérivés historique versionnée ;
+- Batch 18 peut mesurer Rio par ablation sans modifier son autorité.
+
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -515,6 +542,16 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+### v0.8 — 2026-09-09 — Batch 17b Rio / Kraken Futures Analytics
+- adaptateur public Kraken Futures Analytics ajouté ;
+- funding, OI, variation OI et long/short ratio normalisés ;
+- refresh sidecar PAPER/SHADOW avec cache, cooldown et staleness ;
+- Rio réellement disponible pour le Professor lorsque le contexte est utilisable ;
+- composition Rio + Denver et diagnostics read-only ajoutés ;
+- liquidations long/short non inventées ;
+- ADR-027 ajouté.
+
 
 ### v0.7 — 2026-09-09 — Batch 17a Denver / infrastructure Rio
 - Rio et Denver ajoutés comme spécialistes avancés context-gated ;

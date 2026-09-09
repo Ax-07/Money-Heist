@@ -1,0 +1,26 @@
+Batch 17b Step 2 — Rio PAPER/SHADOW integration
+
+FICHIERS MODIFIES
+- app/market/exchange/__init__.py
+- app/market/exchange/feed.py
+- app/services/orchestration/__init__.py
+- app/services/orchestration/rio_contexts.py
+- app/services/orchestration/specialist_contexts.py
+
+FICHIERS AJOUTES
+- tests/market/exchange/test_feed_sidecars.py
+- tests/orchestration/test_rio_refresh.py
+- tests/orchestration/test_specialist_context_composite.py
+- tests/orchestration/test_rio_paper_shadow_integration.py
+- README_BATCH_17B_STEP2.md
+- MANIFEST_BATCH_17B_STEP2.txt
+
+HORS PERIMETRE
+- Risk Engine
+- PaperBroker
+- LiveBroker
+- Kraken private/auth
+- margin/leverage
+- trading de futures
+- backtest historique
+- UI/dashboard

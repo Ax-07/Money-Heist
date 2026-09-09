@@ -334,7 +334,7 @@ Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiq
 
 ## 20. Batch 17 — Rio / Denver avancés
 
-### Batch 17a — Denver avancé + infrastructure commune — livré localement / en validation
+### Batch 17a — Denver avancé + infrastructure commune — livré
 
 Contenu :
 - schémas/prompts/registry Rio et Denver ;
@@ -347,15 +347,19 @@ Contenu :
 
 Denver ne calcule ni n’invente les statistiques dans le LLM.
 
-### Batch 17b — Rio avec vraies données dérivées — à faire
+### Batch 17b — Rio avec vraies données dérivées — livré
 
-Pré-requis :
-- source explicite funding / open interest / liquidations ;
-- normalisation et mapping instrument ;
-- fraîcheur et qualité ;
-- historique suffisant si Rio doit participer aux backtests.
+Contenu livré :
+- Kraken Futures Analytics public, sans credentials ;
+- funding, open interest, variation OI et long/short ratio ;
+- mapping explicite spot EUR → perpetual Kraken ;
+- cache/fraîcheur/cooldown fail-closed pour Rio ;
+- refresh sidecar PAPER/SHADOW non critique ;
+- composition de contextes Rio + Denver ;
+- observabilité explicite de disponibilité Rio ;
+- aucune invention de split long/short des liquidations.
 
-Rio reste non sélectionnable sans données dérivées fiables.
+Le replay historique Rio reste séparé et exigera un dataset dérivés historique reproductible.
 
 ---
 
@@ -445,4 +449,4 @@ Si le développement révèle qu’un batch est trop gros :
 1. Exécuter des campagnes Batch 16 sur des datasets historiques réels et versionnés.
 2. Définir avant observation finale les critères quantitatifs DESIGN/VALIDATION/OOS/walk-forward.
 3. Poursuivre PAPER/SHADOW et conserver le LIVE non armé tant que la gate n’est pas satisfaite.
-4. Finaliser **Batch 17a — Denver avancé** puis préparer **Batch 17b — Rio** uniquement après sélection d’une vraie source dérivés.
+4. Démarrer **Batch 18 — Réputation et ablation** afin de mesurer la valeur marginale réelle des spécialistes, dont Rio et Denver.

@@ -378,3 +378,16 @@ sans modification. En l’absence de contexte Rio/Denver, le plan legacy reste i
 
 Cette extension ne constitue pas un optimiseur, ne réalise pas d’ablation, ne calcule pas une
 réputation agent et n’active aucun chemin LIVE.
+
+## 20. Extension Batch 17b — frontière historique de Rio
+
+Le Batch 17b active Rio avec des analytics Kraken Futures courants pour PAPER/SHADOW, mais ne les
+injecte pas dans `HistoricalReplayRunner`.
+
+Cette séparation est volontaire : un snapshot analytics obtenu aujourd'hui ne peut pas être utilisé
+comme s'il avait été disponible au timestamp d'une bougie historique. Le replay Rio futur devra donc
+consommer un dataset dérivés historique content-addressed avec timestamps, provenance et règles de
+fraîcheur adaptées au replay.
+
+Denver reste le spécialiste avancé directement exploitable avec les preuves historiques Batch 16.
+Rio reste exploitable sur flux courant jusqu'à livraison d'une source historique dérivés dédiée.

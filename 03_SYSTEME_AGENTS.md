@@ -509,3 +509,20 @@ ou égal au snapshot marché courant.
 Les sorties Rio/Denver conservent le contrat commun : stance, confidence, evidence grounded, risks,
 invalidation et data gaps, plus les champs de spécialité. Leur `stance` n’est jamais une autorisation
 de trading.
+
+## 25. Addendum Batch 17b — Rio alimenté par données dérivés réelles
+
+Rio reste `ON_DEMAND`. Sa disponibilité est désormais déterminée par le cache backend
+`KrakenFuturesRioContextProvider` alimenté par Kraken Futures Analytics public.
+
+Le Professor peut voir Rio dans `available_agents` uniquement si un `RioContext` utilisable existe
+au timestamp de décision. Le refresh réseau est exécuté avant l'orchestration, en dehors des agents.
+Rio n'effectue donc aucun tool call exchange.
+
+Métriques actuellement projetées : funding rate, open interest, variation d'open interest et ratio
+long/short. La séparation des liquidations longues/courtes reste un `data_gap` tant qu'elle n'est pas
+fournie de manière fiable par la source sélectionnée.
+
+Les diagnostics opérateur (`REFRESHED`, `CACHE_HIT`, `DEGRADED`, `STALE`, `UNAVAILABLE`) ne sont
+jamais ajoutés artificiellement à l'analyse de Rio : ils servent à expliquer la disponibilité de son
+contexte, pas à créer un signal de marché.

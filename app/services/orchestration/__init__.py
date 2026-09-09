@@ -13,10 +13,19 @@ from .models import (
     TradeProposal,
 )
 from .pipeline import InvalidPipelineContextError, InvalidProfessorPlanError, OrchestrationPipeline
-from .specialist_contexts import SpecialistContextProvider
+from .rio_contexts import (
+    KrakenFuturesRioContextProvider,
+    RioContextDiagnostic,
+    RioContextDiagnosticStatus,
+)
+from .specialist_contexts import (
+    CompositeSpecialistContextProvider,
+    SpecialistContextProvider,
+)
 
 __all__ = [
     "AgentCallAudit",
+    "CompositeSpecialistContextProvider",
     "ComputeGate",
     "ComputeGateDecision",
     "ComputeGatePolicy",
@@ -24,6 +33,9 @@ __all__ = [
     "ComputeLevel",
     "InvalidPipelineContextError",
     "InvalidProfessorPlanError",
+    "KrakenFuturesRioContextProvider",
+    "RioContextDiagnostic",
+    "RioContextDiagnosticStatus",
     "OrchestrationPipeline",
     "OrchestrationResult",
     "PipelineFailure",
