@@ -47,6 +47,14 @@ from .historical_replay import (
     MasterHistoricalReplayPlanStatus,
     build_master_historical_replay_plan,
 )
+from .historical_replay_closure import (
+    MasterHistoricalReplayAuditReport,
+    MasterHistoricalReplayAuditStatus,
+    MasterHistoricalReplayClosureSeal,
+    MasterHistoricalReplayClosureStatus,
+    audit_master_historical_coordinated_replay,
+    seal_master_historical_coordinated_replay,
+)
 from .historical_replay_coordinator import (
     HistoricalReplayDatasetLike,
     MasterHistoricalReplayBarrier,
@@ -228,6 +236,10 @@ __all__ = [
     "MasterHistoricalVirtualLotRegistrationResult",
     "MasterHistoricalVirtualLotRegistrationStatus",
     "MasterHistoricalVirtualLotStatus",
+    "MasterHistoricalReplayAuditReport",
+    "MasterHistoricalReplayAuditStatus",
+    "MasterHistoricalReplayClosureSeal",
+    "MasterHistoricalReplayClosureStatus",
     "MasterHistoricalReplayBarrier",
     "MasterHistoricalReplayBarrierPhase",
     "MasterHistoricalReplayCoordinator",
@@ -286,6 +298,7 @@ __all__ = [
     "ReservationAdmissionReceipt",
     "ReservationAdmissionTransitionStatus",
     "apply_master_risk_gate_decision_to_reservation",
+    "audit_master_historical_coordinated_replay",
     "arbitrate_master_batch_sequentially",
     "build_master_arbitration_batch",
     "build_master_arbitration_closure_seal",
@@ -299,6 +312,7 @@ __all__ = [
     "process_master_historical_virtual_lot_barrier",
     "register_master_historical_virtual_lots",
     "run_master_historical_coordinated_replay",
+    "seal_master_historical_coordinated_replay",
     "bridge_master_historical_reservation_and_arbitration",
     "build_master_historical_capital_requirement",
     "build_master_historical_replay_plan",
