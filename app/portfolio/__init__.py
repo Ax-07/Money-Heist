@@ -71,6 +71,13 @@ from .allocation_policy_change import (
     MasterAllocationPolicyChangeCandidateStatus,
     build_master_allocation_policy_change_candidate,
 )
+from .allocation_policy_replacement import (
+    InMemoryMasterAllocationPolicyAtomicState,
+    MasterAllocationPolicyReplacementReasonCode,
+    MasterAllocationPolicyReplacementReceipt,
+    MasterAllocationPolicyReplacementStatus,
+    apply_master_allocation_policy_replacement,
+)
 from .arbitration import (
     MasterArbitrationBatch,
     MasterArbitrationBatchStatus,
@@ -341,6 +348,10 @@ __all__ = [
     "MasterAllocationPolicyChangeCandidate",
     "MasterAllocationPolicyChangeCandidateSource",
     "MasterAllocationPolicyChangeCandidateStatus",
+    "InMemoryMasterAllocationPolicyAtomicState",
+    "MasterAllocationPolicyReplacementReasonCode",
+    "MasterAllocationPolicyReplacementReceipt",
+    "MasterAllocationPolicyReplacementStatus",
     "MASTER_PROFESSOR_AGENT_ID",
     "MasterProfessorAllocationCandidate",
     "MasterProfessorAllocationCandidateSource",
@@ -429,6 +440,7 @@ __all__ = [
     "build_master_allocation_policy_application_authorization",
     "evaluate_master_allocation_policy_application_preflight",
     "build_master_allocation_policy_change_candidate",
+    "apply_master_allocation_policy_replacement",
     "build_master_professor_allocation_candidate",
     "build_master_professor_shadow_gateway_config",
     "build_master_professor_shadow_gateway_request",
