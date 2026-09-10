@@ -34,25 +34,25 @@ Les prompts définitifs seront versionnés dans le code et pourront évoluer san
 
 Fonctions obligatoires :
 
-| Fonction | Implémentation initiale |
-|---|---|
-| Orchestration | The Professor |
-| Contradiction | Palermo |
-| Economie IA | Lisbon |
+| Fonction            | Implémentation initiale  |
+| ------------------- | ------------------------ |
+| Orchestration       | The Professor            |
+| Contradiction       | Palermo                  |
+| Economie IA         | Lisbon                   |
 | Autorisation risque | Risk Engine déterministe |
-| Audit | Logger / Storage |
+| Audit               | Logger / Storage         |
 
 La fonction est obligatoire même si l’agent ou le nom évolue plus tard.
 
 ### 3.2 Spécialistes initiaux
 
-| Agent | Domaine |
-|---|---|
-| Berlin | tendance / régime |
-| Tokyo | momentum |
+| Agent   | Domaine                              |
+| ------- | ------------------------------------ |
+| Berlin  | tendance / régime                    |
+| Tokyo   | momentum                             |
 | Nairobi | price action / structure / liquidité |
-| Rio | dérivés / sentiment |
-| Denver | quant / statistiques |
+| Rio     | dérivés / sentiment                  |
+| Denver  | quant / statistiques                 |
 
 ---
 
@@ -86,6 +86,7 @@ Puis sélectionne les spécialités utiles.
 ### Contraintes
 
 The Professor ne peut pas :
+
 - modifier un profil de risque ;
 - changer un système SHADOW en LIVE ;
 - supprimer Palermo du chemin lorsque Palermo est obligatoire ;
@@ -100,6 +101,7 @@ The Professor ne peut pas :
 ### Mission
 
 Déterminer :
+
 - régime dominant ;
 - direction de tendance ;
 - maturité de la tendance ;
@@ -129,6 +131,7 @@ Déterminer :
 Evaluer la qualité du momentum.
 
 Analyse typique :
+
 - accélération ;
 - volume ;
 - breakout ;
@@ -147,6 +150,7 @@ Tokyo ne doit pas conclure qu’un breakout est valide uniquement parce que le p
 Evaluer la structure de marché et la liquidité.
 
 Analyse typique :
+
 - structure HH/HL ou LH/LL ;
 - zones de support/résistance ;
 - retests ;
@@ -163,6 +167,7 @@ Analyse typique :
 Evaluer les données dérivées lorsque celles-ci sont disponibles et fiables.
 
 Analyse typique :
+
 - funding ;
 - open interest ;
 - liquidations ;
@@ -182,11 +187,13 @@ Apporter une perspective statistique fondée sur les données internes.
 Denver ne doit pas inventer une probabilité historique.
 
 Pour formuler :
+
 > “ce setup a eu 61 % de réussite”
 
 il doit disposer d’une source interne calculée et identifiable.
 
 Sinon il répond :
+
 - données insuffisantes ;
 - échantillon insuffisant ;
 - aucune estimation robuste disponible.
@@ -200,11 +207,13 @@ Sinon il répond :
 Chercher activement pourquoi la proposition pourrait être mauvaise.
 
 Palermo reçoit :
+
 - le contexte de marché ;
 - les conclusions des spécialistes ;
 - la thèse provisoire du Professor.
 
 Palermo cherche :
+
 - biais de confirmation ;
 - signaux contradictoires ;
 - risques ignorés ;
@@ -237,6 +246,7 @@ Un `REJECT` de Palermo n’est pas nécessairement un veto constitutionnel à lu
 Mesurer si l’organisation utilise correctement son budget IA.
 
 Lisbon reçoit :
+
 - coûts ;
 - fréquences d’appel ;
 - décisions influencées ;
@@ -245,6 +255,7 @@ Lisbon reçoit :
 - comparaisons SHADOW.
 
 Lisbon peut recommander :
+
 - ACTIVE ;
 - ON_DEMAND ;
 - SHADOW ;
@@ -252,6 +263,7 @@ Lisbon peut recommander :
 - DISABLED.
 
 Lisbon ne peut pas :
+
 - changer directement le statut d’un agent Core ;
 - changer les limites de risque ;
 - promouvoir un agent en LIVE sans processus de validation ;
@@ -281,15 +293,18 @@ Un second tour de spécialistes est possible uniquement s’il apporte une valeu
 ## 13. Indépendance et contamination
 
 Premier tour :
+
 - chaque spécialiste reçoit le même snapshot de base ;
 - chaque spécialiste reçoit une mission spécifique ;
 - aucun spécialiste ne voit les réponses des autres.
 
 Second tour éventuel :
+
 - peut contenir des objections ciblées ;
 - doit être explicitement marqué comme non indépendant.
 
 Les métriques distinguent :
+
 - `independent_round` ;
 - `debate_round`.
 
@@ -300,6 +315,7 @@ Les métriques distinguent :
 La `confidence` est une mesure interne, pas une probabilité garantie.
 
 Exigences :
+
 - bornée entre 0 et 1 ;
 - accompagnée d’éléments de preuve ;
 - analysée ensuite pour calibration.
@@ -327,6 +343,7 @@ Rio       SHORT 0.68
 ```
 
 The Professor doit conserver :
+
 - les opinions individuelles ;
 - la dispersion ;
 - les arguments contradictoires.
@@ -348,6 +365,7 @@ DISABLED
 ```
 
 Toute transition est :
+
 - journalisée ;
 - justifiée ;
 - réversible.
@@ -361,6 +379,7 @@ Les agents Core ne peuvent pas être éliminés automatiquement.
 La réputation doit être multidimensionnelle.
 
 Exemples :
+
 - performance par régime ;
 - performance par symbole ;
 - calibration ;
@@ -378,6 +397,7 @@ Un seul score global peut être affiché, mais les décisions internes doivent c
 ### 18.1 Déclencheurs
 
 Un recrutement peut être proposé lorsque :
+
 - un type d’erreur se répète ;
 - une source de données n’est exploitée par aucun agent ;
 - un nouveau régime apparaît ;
@@ -423,6 +443,7 @@ SHADOW
 ## 19. Agents temporaires
 
 Un `TaskForceAgent` doit :
+
 - avoir une date d’expiration ;
 - avoir une mission étroite ;
 - disposer d’un budget ;
@@ -434,6 +455,7 @@ Un `TaskForceAgent` doit :
 ## 20. Limites de population
 
 Les valeurs exactes seront configurées plus tard, mais l’application doit prévoir :
+
 - `max_active_specialists` ;
 - `max_shadow_candidates` ;
 - `max_recruitments_per_period` ;
@@ -446,6 +468,7 @@ L’objectif est d’empêcher la prolifération incontrôlée des agents.
 ## 21. Versionnage des prompts
 
 Chaque exécution doit enregistrer :
+
 - `agent_name` ;
 - `prompt_version` ;
 - `model_id` ;
@@ -459,6 +482,7 @@ Une modification de prompt doit pouvoir être comparée en SHADOW avant promotio
 ## 22. Fail-safe agentique
 
 En cas de :
+
 - sortie vide ;
 - JSON invalide ;
 - contradiction interne ;
@@ -475,6 +499,7 @@ Aucune logique du type “interpréter au mieux et trader quand même” n’est
 ## 23. Critères d’acceptation
 
 Le système agentique est correctement implémenté si :
+
 - les spécialistes du premier tour sont indépendants ;
 - The Professor peut sélectionner dynamiquement les experts ;
 - Palermo est injecté au bon niveau ;
@@ -483,7 +508,6 @@ Le système agentique est correctement implémenté si :
 - un nouvel agent ne possède aucune autorité par défaut ;
 - les sorties critiques sont validées par schéma ;
 - les prompts sont versionnés.
-
 
 ---
 
@@ -494,6 +518,7 @@ Le cycle conceptuel de la section 18 est désormais précisé par les contrats B
 ### 23.1 Cycle candidat distinct de `AgentState`
 
 Les états Recruitment sont :
+
 - `PROPOSED` ;
 - `CANDIDATE` ;
 - `SHADOW` ;
@@ -504,6 +529,7 @@ Les états Recruitment sont :
 `CANDIDATE` et `PROMOTION_RECOMMENDED` ne sont pas ajoutés à `AgentState`. Un candidat n'est pas un `AgentRegistryEntry` avant une décision opérateur extérieure au Recruitment Engine.
 
 Actions de lifecycle disponibles :
+
 - `ENTER_SHADOW` ;
 - `EXTEND_SHADOW` ;
 - `ENTER_PROBATION` ;
@@ -519,6 +545,7 @@ Toute transition est déterministe, révisionnée et fingerprintée. Un plan sta
 ### 23.2 Fiche candidat effective
 
 `RecruitmentCandidateSpec` gèle avant l'évaluation :
+
 - identité, rôle, problème et hypothèse ;
 - données requises ;
 - allowlist d'outils ;
@@ -534,6 +561,7 @@ Les outils candidats contenant des capacités de broker/exchange/secret/Risk Eng
 ### 23.3 Population et budget
 
 `RecruitmentCapacityPolicy` reçoit explicitement :
+
 - `max_active_specialists` ;
 - `max_shadow_candidates` ;
 - `max_recruitments_per_period` ;
@@ -544,6 +572,7 @@ Un `ALLOW` de capacité ou de compute n'applique aucune transition et n'exécute
 ### 23.4 Advisory
 
 Les avis déterministes sont :
+
 - `REJECT` ;
 - `EXTEND` ;
 - `PROBATION` ;
@@ -561,6 +590,7 @@ Les agents temporaires sont désormais implémentés comme **assignations tempor
 registre**, et non comme créations autonomes d’identités IA.
 
 Les contraintes centrales sont :
+
 - états autorisés explicitement par policy ;
 - agents Core sélectionnables seulement si allowlistés par la policy ;
 - `DISABLED` jamais sélectionnable ;
