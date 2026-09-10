@@ -17,8 +17,8 @@ from .errors import (
 from .models import AIGatewayRequest, AIGatewayResult, AIUsageRecord, ProviderRequest
 from .pricing import calculate_cost_eur, estimate_max_request_cost_eur
 from .routing import ModelRoute, ModelRouter
+from .strict_schema import build_strict_json_schema
 from .usage import AIUsageRecorder, InMemoryAIUsageRecorder
-
 
 StructuredT = TypeVar("StructuredT", bound=BaseModel)
 
@@ -51,7 +51,7 @@ class AIGateway(Generic[StructuredT]):
         output_model: type[StructuredT],
     ) -> AIGatewayResult[StructuredT]:
         schema_name = self._schema_name(output_model)
-        json_schema = output_model.model_json_schema()
+        json_schema = build_strict_json_schema(output_model)
         last_error: Exception | None = None
 
         for route in self._router.route_chain(request.model_route):
@@ -79,6 +79,11 @@ class AIGateway(Generic[StructuredT]):
                     reservation_cost=reservation_cost,
                 )
             except BudgetExceededError as exc:
+                snapshot = self._budget.snapshot()
+                if snapshot.spent_eur > snapshot.hard_limit_eur:
+                    # A provider call has already been charged above the hard limit.
+                    # Never route/fallback into a second paid call.
+                    raise
                 last_error = exc
                 continue
 
@@ -115,6 +120,7 @@ class AIGateway(Generic[StructuredT]):
                 json_schema=json_schema,
                 max_output_tokens=max_output_tokens,
                 timeout_seconds=route.timeout_seconds,
+                reasoning_effort=route.reasoning_effort,
                 metadata={
                     **request.metadata,
                     "system_id": request.system_id,

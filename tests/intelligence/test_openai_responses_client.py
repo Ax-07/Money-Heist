@@ -48,9 +48,7 @@ def test_openai_client_builds_responses_api_request_and_reads_usage():
                 "output": [
                     {
                         "type": "message",
-                        "content": [
-                            {"type": "output_text", "text": '{"stance":"LONG"}'}
-                        ],
+                        "content": [{"type": "output_text", "text": '{"stance":"LONG"}'}],
                     }
                 ],
                 "usage": {
@@ -71,6 +69,7 @@ def test_openai_client_builds_responses_api_request_and_reads_usage():
     assert captured["authorization"] == "Bearer secret-test-key"
     assert captured["body"]["text"]["format"]["type"] == "json_schema"
     assert captured["body"]["text"]["format"]["strict"] is True
+    assert captured["body"]["reasoning"] == {"effort": "low"}
     assert captured["body"]["store"] is False
     assert result.output_text == '{"stance":"LONG"}'
     assert result.usage.cached_input_tokens == 20
@@ -78,7 +77,9 @@ def test_openai_client_builds_responses_api_request_and_reads_usage():
 
 def test_openai_client_retries_only_retryable_http_statuses():
     async def run(status):
-        transport = httpx.MockTransport(lambda request: httpx.Response(status, json={"error": {"message": "x"}}))
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(status, json={"error": {"message": "x"}})
+        )
         async with httpx.AsyncClient(transport=transport) as http_client:
             client = OpenAIResponsesClient(api_key="secret", http_client=http_client)
             return await client.complete(provider_request())
@@ -89,6 +90,53 @@ def test_openai_client_retries_only_retryable_http_statuses():
         asyncio.run(run(401))
 
 
+def test_openai_incomplete_response_is_non_retryable():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "resp_incomplete",
+                "status": "incomplete",
+                "incomplete_details": {"reason": "max_output_tokens"},
+                "model": "configured-model",
+                "output": [],
+                "usage": {"input_tokens": 10, "output_tokens": 200},
+            },
+        )
+
+    async def run():
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = OpenAIResponsesClient(api_key="secret", http_client=http_client)
+            return await client.complete(provider_request())
+
+    with pytest.raises(NonRetryableAIProviderError, match="max_output_tokens"):
+        asyncio.run(run())
+
+
+def test_openai_nonterminal_response_is_not_replayed_automatically():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "resp_queued",
+                "status": "queued",
+                "model": "configured-model",
+                "output": [],
+                "usage": {},
+            },
+        )
+
+    async def run():
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = OpenAIResponsesClient(api_key="secret", http_client=http_client)
+            return await client.complete(provider_request())
+
+    with pytest.raises(NonRetryableAIProviderError, match="duplicate spend"):
+        asyncio.run(run())
+
+
 def test_openai_refusal_is_non_retryable():
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -97,7 +145,10 @@ def test_openai_refusal_is_non_retryable():
                 "id": "resp_refusal",
                 "model": "configured-model",
                 "output": [
-                    {"type": "message", "content": [{"type": "refusal", "refusal": "cannot comply"}]}
+                    {
+                        "type": "message",
+                        "content": [{"type": "refusal", "refusal": "cannot comply"}],
+                    }
                 ],
                 "usage": {"input_tokens": 10, "output_tokens": 5},
             },

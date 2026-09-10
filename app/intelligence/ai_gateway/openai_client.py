@@ -8,7 +8,6 @@ import httpx
 from .errors import NonRetryableAIProviderError, RetryableAIProviderError
 from .models import ProviderRequest, ProviderResponse, TokenUsage
 
-
 _RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
@@ -47,6 +46,7 @@ class OpenAIResponsesClient:
                 }
             },
             "max_output_tokens": request.max_output_tokens,
+            "reasoning": {"effort": request.reasoning_effort},
             "store": False,
             "metadata": self._safe_metadata(request.metadata),
         }
@@ -93,6 +93,7 @@ class OpenAIResponsesClient:
         except ValueError as exc:
             raise RetryableAIProviderError("OpenAI returned invalid JSON") from exc
 
+        self._validate_response_status(body)
         output_text = self._extract_output_text(body)
         usage_raw = body.get("usage") or {}
         input_details = usage_raw.get("input_tokens_details") or {}
@@ -110,8 +111,41 @@ class OpenAIResponsesClient:
         )
 
     @staticmethod
+    def _validate_response_status(body: dict[str, Any]) -> None:
+        status = body.get("status")
+        if status in (None, "completed"):
+            if body.get("error"):
+                error = body["error"]
+                message = str(error.get("message") if isinstance(error, dict) else error)[:500]
+                raise NonRetryableAIProviderError(f"OpenAI response contained an error: {message}")
+            return
+
+        if status in {"queued", "in_progress"}:
+            raise NonRetryableAIProviderError(
+                f"OpenAI returned non-terminal status={status}; "
+                "automatic replay is disabled to avoid duplicate spend"
+            )
+
+        if status == "incomplete":
+            details = body.get("incomplete_details") or {}
+            reason = details.get("reason") if isinstance(details, dict) else str(details)
+            raise NonRetryableAIProviderError(
+                f"OpenAI response incomplete: {str(reason or 'unknown')[:300]}"
+            )
+
+        if status in {"failed", "cancelled"}:
+            error = body.get("error") or {}
+            message = error.get("message") if isinstance(error, dict) else str(error)
+            raise NonRetryableAIProviderError(
+                f"OpenAI response {status}: {str(message or 'unknown')[:500]}"
+            )
+
+        raise NonRetryableAIProviderError(f"OpenAI returned unknown response status: {status!r}")
+
+    @staticmethod
     def _safe_metadata(metadata: dict[str, str]) -> dict[str, str]:
-        # Only caller-supplied non-secret metadata is accepted; the API key never enters this mapping.
+        # Only caller-supplied non-secret metadata is accepted;
+        # the API key never enters this mapping.
         return {str(k)[:64]: str(v)[:512] for k, v in metadata.items()}
 
     @staticmethod

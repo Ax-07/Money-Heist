@@ -30,10 +30,11 @@ class ModelRoute(BaseModel):
     pricing: ModelPricing
     max_output_tokens: int = Field(default=1200, ge=1)
     timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     fallback_route_id: str | None = Field(default=None, min_length=1, max_length=100)
 
     @model_validator(mode="after")
-    def fallback_cannot_point_to_self(self) -> "ModelRoute":
+    def fallback_cannot_point_to_self(self) -> ModelRoute:
         if self.fallback_route_id == self.route_id:
             raise ValueError("fallback_route_id cannot point to the same route")
         return self
@@ -71,6 +72,7 @@ class ModelRouter:
         for route in self._routes.values():
             if route.fallback_route_id is not None and route.fallback_route_id not in self._routes:
                 raise AIConfigurationError(
-                    f"Route {route.route_id!r} references unknown fallback {route.fallback_route_id!r}"
+                    f"Route {route.route_id!r} references unknown fallback "
+                    f"{route.fallback_route_id!r}"
                 )
             self.route_chain(route.route_id)

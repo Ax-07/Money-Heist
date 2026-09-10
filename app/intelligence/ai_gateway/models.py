@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Generic, Literal, TypeVar
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 
 StructuredT = TypeVar("StructuredT", bound=BaseModel)
 
@@ -45,7 +44,7 @@ class AIUsageRecord(BaseModel):
     currency: Literal["EUR"] = "EUR"
     latency_ms: int = Field(ge=0)
     attempt: int = Field(ge=1)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AIGatewayRequest(BaseModel):
@@ -76,6 +75,7 @@ class ProviderRequest(BaseModel):
     json_schema: dict[str, Any]
     max_output_tokens: int = Field(ge=1)
     timeout_seconds: float = Field(gt=0)
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     metadata: dict[str, str] = Field(default_factory=dict)
 
 

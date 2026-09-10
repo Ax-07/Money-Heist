@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import Request
@@ -144,6 +144,7 @@ class AIInput(FrozenModel):
     mode: BacktestAIMode = BacktestAIMode.MOCK
     hard_budget_eur: Decimal = Decimal("1")
     model_id: str = "mock-backtest-v1"
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] = "low"
     input_per_million_eur: Decimal = Decimal("0")
     output_per_million_eur: Decimal = Decimal("0")
     cached_input_per_million_eur: Decimal | None = None
@@ -238,6 +239,11 @@ class CampaignRequest(FrozenModel):
     def validate_system(self) -> CampaignRequest:
         if not self.system_id.strip():
             raise ValueError("system_id must not be blank")
+        if self.ai.mode is BacktestAIMode.LIVE_EVAL and self.execution.code_version in {
+            "batch16.7-working-tree",
+            "working-tree-unknown",
+        }:
+            raise ValueError("LIVE_EVAL requires an explicit immutable execution.code_version")
         return self
 
 
@@ -608,9 +614,7 @@ class BacktestDashboardService:
                 "RUNNING",
                 "CANCEL_REQUESTED",
             }:
-                raise BacktestDashboardError(
-                    "another backtest campaign is already running"
-                )
+                raise BacktestDashboardError("another backtest campaign is already running")
         if (
             request.ai.mode is BacktestAIMode.LIVE_EVAL
             and not self.capabilities().live_eval_available
@@ -733,6 +737,7 @@ class BacktestDashboardService:
             risk_profile = self._risk_profile(request.risk)
             market_constraints = self._market_constraints(request.market)
             config = self._backtest_config(request)
+            campaign_budget = AIBudgetLedger(request.ai.hard_budget_eur)
             split = BacktestSplitPlan.create(
                 dataset=parsed.dataset_ref,
                 design_start=request.split.design_start,
@@ -744,11 +749,7 @@ class BacktestDashboardService:
                 label_prefix="dashboard",
             )
             run_set = split.runs(config)
-            runtime = (
-                self._progress_records.get(_campaign_id)
-                if _campaign_id is not None
-                else None
-            )
+            runtime = self._progress_records.get(_campaign_id) if _campaign_id is not None else None
             if runtime is not None:
                 runtime.total_work = sum(
                     self._run_work_units(parsed.candles, run_set.by_role(role))
@@ -766,6 +767,7 @@ class BacktestDashboardService:
                 risk_profile=risk_profile,
                 market_constraints=market_constraints,
                 ai=request.ai,
+                budget=campaign_budget,
                 runtime=runtime,
             )
 
@@ -794,6 +796,7 @@ class BacktestDashboardService:
                         risk_profile=risk_profile,
                         market_constraints=market_constraints,
                         ai=request.ai,
+                        budget=campaign_budget,
                         runtime=runtime,
                     )
                     return report
@@ -899,8 +902,8 @@ class BacktestDashboardService:
             self._records.pop(removed, None)
 
     def _parse_dataset(self, request: DatasetInput) -> _ParsedDataset:
-        interval_seconds = (
-            request.candle_interval_seconds or _TIMEFRAME_SECONDS.get(request.timeframe)
+        interval_seconds = request.candle_interval_seconds or _TIMEFRAME_SECONDS.get(
+            request.timeframe
         )
         if interval_seconds is None:
             raise BacktestDashboardError(
@@ -1016,9 +1019,7 @@ class BacktestDashboardService:
             "max_portfolio_risk_pct": str(request.risk.max_portfolio_risk_pct),
             "max_positions": str(request.risk.max_positions),
             "risk_max_leverage": str(request.risk.max_leverage),
-            "max_correlated_exposure_pct": str(
-                request.risk.max_correlated_exposure_pct
-            ),
+            "max_correlated_exposure_pct": str(request.risk.max_correlated_exposure_pct),
             "min_expected_rr": str(request.risk.min_expected_rr),
             "market_qty_step": str(request.market.qty_step),
             "market_min_qty": str(request.market.min_qty),
@@ -1026,11 +1027,10 @@ class BacktestDashboardService:
             "market_max_qty": str(request.market.max_qty),
             "market_max_leverage": str(request.market.max_leverage),
             "ai_hard_budget_eur": str(request.ai.hard_budget_eur),
+            "ai_reasoning_effort": request.ai.reasoning_effort,
             "ai_input_per_million_eur": str(request.ai.input_per_million_eur),
             "ai_output_per_million_eur": str(request.ai.output_per_million_eur),
-            "ai_cached_input_per_million_eur": str(
-                request.ai.cached_input_per_million_eur
-            ),
+            "ai_cached_input_per_million_eur": str(request.ai.cached_input_per_million_eur),
         }
         return BacktestConfig(
             system_id=request.system_id,
@@ -1057,6 +1057,7 @@ class BacktestDashboardService:
         risk_profile: RiskProfile,
         market_constraints: MarketConstraints,
         ai: AIInput,
+        budget: AIBudgetLedger,
         runtime: _CampaignRuntime | None = None,
     ) -> tuple[
         dict[BacktestPeriodRole, _RunExecution],
@@ -1078,6 +1079,7 @@ class BacktestDashboardService:
                 risk_profile=risk_profile,
                 market_constraints=market_constraints,
                 ai=ai,
+                budget=budget,
                 runtime=runtime,
             )
             executions[role] = execution
@@ -1113,6 +1115,7 @@ class BacktestDashboardService:
         risk_profile: RiskProfile,
         market_constraints: MarketConstraints,
         ai: AIInput,
+        budget: AIBudgetLedger,
         runtime: _CampaignRuntime | None = None,
     ) -> _RunExecution:
         clock = ReplayClock.start(run.dataset.start_at)
@@ -1134,7 +1137,6 @@ class BacktestDashboardService:
         lifecycle = HistoricalPositionLifecycle(broker=broker, system_id=run.config.system_id)
         journal = InMemoryPaperPipelineJournal()
         usage = InMemoryAIUsageRecorder()
-        budget = AIBudgetLedger(ai.hard_budget_eur)
         pricing = ModelPricing(
             input_per_million_eur=ai.input_per_million_eur,
             output_per_million_eur=ai.output_per_million_eur,
@@ -1149,6 +1151,7 @@ class BacktestDashboardService:
                     model_id=ai.model_id,
                     pricing=pricing,
                     max_output_tokens=1200,
+                    reasoning_effort=ai.reasoning_effort,
                 ),
                 ModelRoute(
                     route_id="economy",
@@ -1156,6 +1159,7 @@ class BacktestDashboardService:
                     model_id=ai.model_id,
                     pricing=pricing,
                     max_output_tokens=800,
+                    reasoning_effort=ai.reasoning_effort,
                 ),
             ]
         )
@@ -1186,9 +1190,7 @@ class BacktestDashboardService:
             risk_engine=RiskEngine(),
             paper_broker=broker,
             portfolio_provider=portfolio,
-            risk_profile_provider=InMemoryRiskProfileProvider(
-                {run.config.system_id: risk_profile}
-            ),
+            risk_profile_provider=InMemoryRiskProfileProvider({run.config.system_id: risk_profile}),
             market_constraints_provider=InMemoryMarketConstraintsProvider(
                 {run.dataset.symbol: market_constraints}
             ),
@@ -1234,11 +1236,7 @@ class BacktestDashboardService:
             run=run,
             progress_callback=on_progress if runtime is not None else None,
             point_callback=on_point if runtime is not None else None,
-            cancel_check=(
-                (lambda: runtime.cancel_event.is_set())
-                if runtime is not None
-                else None
-            ),
+            cancel_check=((lambda: runtime.cancel_event.is_set()) if runtime is not None else None),
         )
         self._raise_cached_miss(replay, run.config.ai_mode)
         evaluation = await evaluate_historical_replay(
@@ -1313,11 +1311,7 @@ class BacktestDashboardService:
             analysis = specialist.analysis
             stance = getattr(analysis, "stance", "")
             confidence = getattr(analysis, "confidence", None)
-            suffix = (
-                f" · confiance {float(confidence):.2f}"
-                if confidence is not None
-                else ""
-            )
+            suffix = f" · confiance {float(confidence):.2f}" if confidence is not None else ""
             add(
                 specialist.agent_id,
                 "ANALYSIS",

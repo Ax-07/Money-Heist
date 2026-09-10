@@ -70,13 +70,14 @@ class AIBudgetLedger:
             raise ValueError("actual_cost_eur must be non-negative")
         with self._lock:
             reserved = self._reservations.pop(reservation_id)
-            remaining_after_release = self._hard_limit - self._spent
-            if actual > reserved and actual > remaining_after_release:
-                # This should not happen when the conservative reservation is configured correctly.
-                raise BudgetExceededError(
-                    "Provider cost exceeded both its reservation and the remaining hard budget"
-                )
             self._spent += actual
+            if actual > reserved and self._spent > self._hard_limit:
+                # The provider cost has already been incurred. Keep it in accounting,
+                # block all later reservations, and fail closed.
+                raise BudgetExceededError(
+                    "Provider cost exceeded its reservation and the AI hard budget; "
+                    f"recorded_spend={self._spent} EUR, hard_limit={self._hard_limit} EUR"
+                )
 
     def release(self, reservation_id: UUID) -> None:
         with self._lock:

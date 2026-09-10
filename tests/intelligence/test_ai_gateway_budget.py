@@ -1,8 +1,20 @@
+import asyncio
 from decimal import Decimal
 
 import pytest
+from pydantic import BaseModel
 
-from app.intelligence.ai_gateway import AIBudgetLedger, BudgetExceededError
+from app.intelligence.ai_gateway import (
+    AIBudgetLedger,
+    AIGateway,
+    AIGatewayRequest,
+    BudgetExceededError,
+    ModelPricing,
+    ModelRoute,
+    ModelRouter,
+    ProviderResponse,
+    TokenUsage,
+)
 
 
 def test_budget_reservation_and_settlement():
@@ -33,3 +45,77 @@ def test_budget_can_reserve_is_non_mutating():
     ledger = AIBudgetLedger("0.10")
     assert ledger.can_reserve(Decimal("0.05")) is True
     assert ledger.snapshot().reserved_eur == Decimal("0")
+
+
+class Decision(BaseModel):
+    stance: str
+
+
+class OverspendClient:
+    provider_name = "mock"
+
+    def __init__(self) -> None:
+        self.requests = []
+
+    async def complete(self, request):
+        self.requests.append(request)
+        return ProviderResponse(
+            provider_request_id="overspend",
+            model_id=request.model_id,
+            output_text='{"stance":"LONG"}',
+            usage=TokenUsage(
+                input_tokens=1_000_000,
+                cached_input_tokens=0,
+                output_tokens=0,
+            ),
+            latency_ms=1,
+        )
+
+
+def test_provider_overspend_is_recorded_and_never_triggers_fallback():
+    ledger = AIBudgetLedger("1")
+    client = OverspendClient()
+    primary = ModelRoute(
+        route_id="primary",
+        provider="mock",
+        model_id="primary-model",
+        pricing=ModelPricing(
+            input_per_million_eur=Decimal("2"),
+            output_per_million_eur=Decimal("0"),
+        ),
+        max_output_tokens=1,
+        fallback_route_id="fallback",
+    )
+    fallback = ModelRoute(
+        route_id="fallback",
+        provider="mock",
+        model_id="fallback-model",
+        pricing=ModelPricing(
+            input_per_million_eur=Decimal("0"),
+            output_per_million_eur=Decimal("0"),
+        ),
+        max_output_tokens=1,
+    )
+    gateway = AIGateway(
+        router=ModelRouter([primary, fallback]),
+        clients={"mock": client},
+        budget=ledger,
+        max_attempts=1,
+        retry_backoff_seconds=0,
+    )
+
+    request = AIGatewayRequest(
+        system_id="balanced_v1",
+        agent_id="berlin",
+        prompt_version="test",
+        model_route="primary",
+        input_text="x",
+    )
+
+    with pytest.raises(BudgetExceededError):
+        asyncio.run(gateway.generate_structured(request, Decision))
+
+    snapshot = ledger.snapshot()
+    assert snapshot.spent_eur == Decimal("2")
+    assert snapshot.remaining_eur == Decimal("0")
+    assert len(client.requests) == 1
