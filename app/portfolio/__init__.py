@@ -55,6 +55,12 @@ from .allocation_master_professor_shadow import (
     run_master_professor_shadow_advisory,
     validate_master_professor_shadow_output,
 )
+from .allocation_policy_change import (
+    MasterAllocationPolicyChangeCandidate,
+    MasterAllocationPolicyChangeCandidateSource,
+    MasterAllocationPolicyChangeCandidateStatus,
+    build_master_allocation_policy_change_candidate,
+)
 from .arbitration import (
     MasterArbitrationBatch,
     MasterArbitrationBatchStatus,
@@ -316,6 +322,9 @@ __all__ = [
     "MasterAllocationEvidenceAnalysisReport",
     "MasterAllocationEvidenceAnalysisStatus",
     "MasterAllocationPairwiseComparison",
+    "MasterAllocationPolicyChangeCandidate",
+    "MasterAllocationPolicyChangeCandidateSource",
+    "MasterAllocationPolicyChangeCandidateStatus",
     "MASTER_PROFESSOR_AGENT_ID",
     "MasterProfessorAllocationCandidate",
     "MasterProfessorAllocationCandidateSource",
@@ -401,6 +410,7 @@ __all__ = [
     "build_master_allocation_advisory_recommendation",
     "build_master_allocation_advisory_report",
     "build_master_allocation_evidence_analysis",
+    "build_master_allocation_policy_change_candidate",
     "build_master_professor_allocation_candidate",
     "build_master_professor_shadow_gateway_config",
     "build_master_professor_shadow_gateway_request",
