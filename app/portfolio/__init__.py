@@ -65,6 +65,16 @@ from .historical_replay_preexecution import (
     MasterHistoricalDecisionBarrierStatus,
     build_master_historical_decision_barrier,
 )
+from .historical_replay_reservation_arbitration import (
+    MasterHistoricalCapitalRequirement,
+    MasterHistoricalCapitalRequirementSource,
+    MasterHistoricalReservationArbitrationResult,
+    MasterHistoricalReservationArbitrationStatus,
+    MasterHistoricalReservationAttempt,
+    MasterHistoricalReservationAttemptStatus,
+    bridge_master_historical_reservation_and_arbitration,
+    build_master_historical_capital_requirement,
+)
 from .models import (
     CrewExposureSnapshot,
     MasterCapitalSnapshot,
@@ -146,6 +156,12 @@ __all__ = [
     "MasterHistoricalCandidateSeed",
     "MasterHistoricalDecisionBarrier",
     "MasterHistoricalDecisionBarrierStatus",
+    "MasterHistoricalCapitalRequirement",
+    "MasterHistoricalCapitalRequirementSource",
+    "MasterHistoricalReservationArbitrationResult",
+    "MasterHistoricalReservationArbitrationStatus",
+    "MasterHistoricalReservationAttempt",
+    "MasterHistoricalReservationAttemptStatus",
     "MasterHistoricalReplayBarrier",
     "MasterHistoricalReplayBarrierPhase",
     "MasterHistoricalReplayCoordinator",
@@ -209,6 +225,8 @@ __all__ = [
     "build_master_arbitration_closure_seal",
     "build_master_arbitration_policy",
     "build_master_historical_decision_barrier",
+    "bridge_master_historical_reservation_and_arbitration",
+    "build_master_historical_capital_requirement",
     "build_master_historical_replay_plan",
     "build_master_historical_replay_timeline",
     "build_master_allocation_policy",
