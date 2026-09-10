@@ -28,6 +28,10 @@ from .allocation_policy_change import (
     MasterAllocationPolicyChangeCandidateStatus,
     master_allocation_policy_change_candidate_payload,
 )
+from .allocation_policy_store import (
+    MasterAllocationPolicyAtomicStore,
+    MasterAllocationPolicyAtomicSwapOutcome,
+)
 
 
 class MasterAllocationPolicyReplacementStatus(StrEnum):
@@ -85,13 +89,6 @@ def _validate_policy_integrity(
         raise ValueError(f"{context} policy fingerprint integrity failure")
 
 
-@dataclass(frozen=True, slots=True)
-class _AtomicPolicySwapOutcome:
-    swapped: bool
-    observed_policy: MasterAllocationPolicy
-    active_policy: MasterAllocationPolicy
-
-
 class InMemoryMasterAllocationPolicyAtomicState:
     """One-process atomic holder for one Master allocation policy.
 
@@ -102,6 +99,7 @@ class InMemoryMasterAllocationPolicyAtomicState:
     in_process_only = True
     durable = False
     multi_process_safe = False
+    multi_host_safe = False
     live_ready = False
 
     def __init__(self, initial_policy: MasterAllocationPolicy) -> None:
@@ -114,14 +112,14 @@ class InMemoryMasterAllocationPolicyAtomicState:
             _validate_policy_integrity(self._current_policy, context="atomic state current")
             return self._current_policy
 
-    def _compare_and_swap(
+    def compare_and_swap(
         self,
         *,
         expected_master_portfolio_id: str,
         expected_policy_id: str,
         expected_fingerprint_sha256: str,
         replacement_policy: MasterAllocationPolicy,
-    ) -> _AtomicPolicySwapOutcome:
+    ) -> MasterAllocationPolicyAtomicSwapOutcome:
         expected_master = _required_text(
             expected_master_portfolio_id,
             field_name="expected_master_portfolio_id",
@@ -144,7 +142,7 @@ class InMemoryMasterAllocationPolicyAtomicState:
                 and observed.fingerprint_sha256 == expected_fingerprint
             )
             if not matches:
-                return _AtomicPolicySwapOutcome(
+                return MasterAllocationPolicyAtomicSwapOutcome(
                     swapped=False,
                     observed_policy=observed,
                     active_policy=observed,
@@ -154,7 +152,7 @@ class InMemoryMasterAllocationPolicyAtomicState:
             ):
                 raise ValueError("atomic replacement policy cannot change membership")
             self._current_policy = replacement_policy
-            return _AtomicPolicySwapOutcome(
+            return MasterAllocationPolicyAtomicSwapOutcome(
                 swapped=True,
                 observed_policy=observed,
                 active_policy=replacement_policy,
@@ -470,7 +468,7 @@ def _build_receipt(
 
 def apply_master_allocation_policy_replacement(
     *,
-    atomic_state: InMemoryMasterAllocationPolicyAtomicState,
+    atomic_state: MasterAllocationPolicyAtomicStore,
     candidate: MasterAllocationPolicyChangeCandidate,
     authorization: MasterAllocationPolicyApplicationAuthorization,
     preflight: MasterAllocationPolicyApplicationPreflight,
@@ -505,7 +503,7 @@ def apply_master_allocation_policy_replacement(
         envelopes=candidate.proposed_envelopes,
         source_ref=normalized_source_ref,
     )
-    outcome = atomic_state._compare_and_swap(
+    outcome = atomic_state.compare_and_swap(
         expected_master_portfolio_id=candidate.master_portfolio_id,
         expected_policy_id=candidate.base_policy_id,
         expected_fingerprint_sha256=candidate.base_policy_fingerprint_sha256,

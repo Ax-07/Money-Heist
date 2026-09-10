@@ -78,6 +78,11 @@ from .allocation_policy_replacement import (
     MasterAllocationPolicyReplacementStatus,
     apply_master_allocation_policy_replacement,
 )
+from .allocation_policy_store import (
+    MasterAllocationPolicyAtomicStore,
+    MasterAllocationPolicyAtomicSwapOutcome,
+    SQLiteMasterAllocationPolicyStore,
+)
 from .arbitration import (
     MasterArbitrationBatch,
     MasterArbitrationBatchStatus,
@@ -349,6 +354,9 @@ __all__ = [
     "MasterAllocationPolicyChangeCandidateSource",
     "MasterAllocationPolicyChangeCandidateStatus",
     "InMemoryMasterAllocationPolicyAtomicState",
+    "MasterAllocationPolicyAtomicStore",
+    "MasterAllocationPolicyAtomicSwapOutcome",
+    "SQLiteMasterAllocationPolicyStore",
     "MasterAllocationPolicyReplacementReasonCode",
     "MasterAllocationPolicyReplacementReceipt",
     "MasterAllocationPolicyReplacementStatus",
