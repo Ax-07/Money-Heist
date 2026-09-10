@@ -56,6 +56,15 @@ from .historical_replay_coordinator import (
     MasterHistoricalReplayTimelineStatus,
     build_master_historical_replay_timeline,
 )
+from .historical_replay_preexecution import (
+    HistoricalCrewDecisionOutcome,
+    HistoricalCrewDecisionStatus,
+    HistoricalCrewPreExecutionEvidence,
+    MasterHistoricalCandidateSeed,
+    MasterHistoricalDecisionBarrier,
+    MasterHistoricalDecisionBarrierStatus,
+    build_master_historical_decision_barrier,
+)
 from .models import (
     CrewExposureSnapshot,
     MasterCapitalSnapshot,
@@ -130,7 +139,13 @@ __all__ = [
     "MasterSequentialArbitrationOutcome",
     "MasterSequentialArbitrationResult",
     "MasterSequentialArbitrationStatus",
+    "HistoricalCrewDecisionOutcome",
+    "HistoricalCrewDecisionStatus",
+    "HistoricalCrewPreExecutionEvidence",
     "HistoricalReplayDatasetLike",
+    "MasterHistoricalCandidateSeed",
+    "MasterHistoricalDecisionBarrier",
+    "MasterHistoricalDecisionBarrierStatus",
     "MasterHistoricalReplayBarrier",
     "MasterHistoricalReplayBarrierPhase",
     "MasterHistoricalReplayCoordinator",
@@ -193,6 +208,7 @@ __all__ = [
     "build_master_arbitration_batch",
     "build_master_arbitration_closure_seal",
     "build_master_arbitration_policy",
+    "build_master_historical_decision_barrier",
     "build_master_historical_replay_plan",
     "build_master_historical_replay_timeline",
     "build_master_allocation_policy",
