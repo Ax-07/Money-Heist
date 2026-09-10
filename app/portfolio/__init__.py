@@ -71,6 +71,14 @@ from .allocation_policy_change import (
     MasterAllocationPolicyChangeCandidateStatus,
     build_master_allocation_policy_change_candidate,
 )
+from .allocation_policy_change_closure import (
+    MasterAllocationPolicyChangeAuditReport,
+    MasterAllocationPolicyChangeAuditStatus,
+    MasterAllocationPolicyChangeClosureSeal,
+    MasterAllocationPolicyChangeClosureStatus,
+    audit_master_allocation_policy_change,
+    seal_master_allocation_policy_change,
+)
 from .allocation_policy_replacement import (
     InMemoryMasterAllocationPolicyAtomicState,
     MasterAllocationPolicyReplacementReasonCode,
@@ -353,6 +361,10 @@ __all__ = [
     "MasterAllocationPolicyChangeCandidate",
     "MasterAllocationPolicyChangeCandidateSource",
     "MasterAllocationPolicyChangeCandidateStatus",
+    "MasterAllocationPolicyChangeAuditReport",
+    "MasterAllocationPolicyChangeAuditStatus",
+    "MasterAllocationPolicyChangeClosureSeal",
+    "MasterAllocationPolicyChangeClosureStatus",
     "InMemoryMasterAllocationPolicyAtomicState",
     "MasterAllocationPolicyAtomicStore",
     "MasterAllocationPolicyAtomicSwapOutcome",
@@ -448,6 +460,8 @@ __all__ = [
     "build_master_allocation_policy_application_authorization",
     "evaluate_master_allocation_policy_application_preflight",
     "build_master_allocation_policy_change_candidate",
+    "audit_master_allocation_policy_change",
+    "seal_master_allocation_policy_change",
     "apply_master_allocation_policy_replacement",
     "build_master_professor_allocation_candidate",
     "build_master_professor_shadow_gateway_config",
