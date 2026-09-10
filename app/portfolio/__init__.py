@@ -55,6 +55,16 @@ from .allocation_master_professor_shadow import (
     run_master_professor_shadow_advisory,
     validate_master_professor_shadow_output,
 )
+from .allocation_policy_application import (
+    MasterAllocationPolicyApplicationAuthorization,
+    MasterAllocationPolicyApplicationAuthorizationAction,
+    MasterAllocationPolicyApplicationAuthorizationStatus,
+    MasterAllocationPolicyApplicationPreflight,
+    MasterAllocationPolicyApplicationPreflightReasonCode,
+    MasterAllocationPolicyApplicationPreflightStatus,
+    build_master_allocation_policy_application_authorization,
+    evaluate_master_allocation_policy_application_preflight,
+)
 from .allocation_policy_change import (
     MasterAllocationPolicyChangeCandidate,
     MasterAllocationPolicyChangeCandidateSource,
@@ -322,6 +332,12 @@ __all__ = [
     "MasterAllocationEvidenceAnalysisReport",
     "MasterAllocationEvidenceAnalysisStatus",
     "MasterAllocationPairwiseComparison",
+    "MasterAllocationPolicyApplicationAuthorization",
+    "MasterAllocationPolicyApplicationAuthorizationAction",
+    "MasterAllocationPolicyApplicationAuthorizationStatus",
+    "MasterAllocationPolicyApplicationPreflight",
+    "MasterAllocationPolicyApplicationPreflightReasonCode",
+    "MasterAllocationPolicyApplicationPreflightStatus",
     "MasterAllocationPolicyChangeCandidate",
     "MasterAllocationPolicyChangeCandidateSource",
     "MasterAllocationPolicyChangeCandidateStatus",
@@ -410,6 +426,8 @@ __all__ = [
     "build_master_allocation_advisory_recommendation",
     "build_master_allocation_advisory_report",
     "build_master_allocation_evidence_analysis",
+    "build_master_allocation_policy_application_authorization",
+    "evaluate_master_allocation_policy_application_preflight",
     "build_master_allocation_policy_change_candidate",
     "build_master_professor_allocation_candidate",
     "build_master_professor_shadow_gateway_config",
