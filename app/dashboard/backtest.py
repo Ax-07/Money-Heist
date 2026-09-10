@@ -247,6 +247,22 @@ class CampaignRequest(FrozenModel):
         return self
 
 
+class SplitIndexView(FrozenModel):
+    design_start: int = Field(ge=0)
+    design_end: int = Field(ge=0)
+    validation_start: int = Field(ge=0)
+    validation_end: int = Field(ge=0)
+    oos_start: int = Field(ge=0)
+    oos_end: int = Field(ge=0)
+
+
+class AgentDescriptorView(FrozenModel):
+    agent: str
+    role: str
+    state: str
+    core: bool
+
+
 class DatasetPreview(FrozenModel):
     dataset_id: str
     version: str
@@ -262,6 +278,8 @@ class DatasetPreview(FrozenModel):
     has_duplicates: bool
     missing_fields: tuple[str, ...]
     suggested_split: SplitInput | None = None
+    candle_close_ms: tuple[int, ...] = ()
+    suggested_split_indices: SplitIndexView | None = None
 
 
 class BacktestMetricView(FrozenModel):
@@ -313,6 +331,7 @@ class AgentTraceView(FrozenModel):
     phase: str
     title: str
     details: dict[str, Any] = Field(default_factory=dict)
+    targets: tuple[str, ...] = ()
 
 
 class CampaignProgressView(FrozenModel):
@@ -328,6 +347,7 @@ class CampaignProgressView(FrozenModel):
     opportunity_count: int = Field(ge=0)
     executed_order_count: int = Field(ge=0)
     agent_traces: tuple[AgentTraceView, ...] = ()
+    active_agents: tuple[str, ...] = ()
     error: str | None = None
     message: str = ""
     can_cancel: bool = False
@@ -363,11 +383,13 @@ class BacktestCapabilities(FrozenModel):
     live_eval_available: bool
     cache_entries: int
     supported_timeframes: tuple[str, ...]
+    agents: tuple[AgentDescriptorView, ...] = ()
     paper_only: bool = True
     live_trading: bool = False
     campaign_cancel: bool = True
     campaign_progress: bool = True
     agent_traces: bool = True
+    agent_activity: bool = True
 
 
 @dataclass(slots=True)
@@ -406,6 +428,7 @@ class _CampaignRuntime:
     executed_order_count: int = 0
     traces: list[AgentTraceView] = field(default_factory=list)
     trace_sequence: int = 0
+    active_agents: set[str] = field(default_factory=set)
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
     error: str | None = None
     message: str = ""
@@ -414,6 +437,35 @@ class _CampaignRuntime:
 
 class BacktestDashboardError(RuntimeError):
     pass
+
+
+# Batch 16.9 — Backtest Dashboard UX
+_SCHEMA_AGENT = {
+    "ProfessorPlan": "professor",
+    "ProfessorFinalDecision": "professor",
+    "PalermoReview": "palermo",
+    "BerlinAnalysis": "berlin",
+    "TokyoAnalysis": "tokyo",
+    "NairobiAnalysis": "nairobi",
+    "RioAnalysis": "rio",
+    "DenverAnalysis": "denver",
+}
+
+
+class ObservableBacktestAIClient:
+    def __init__(self, delegate: Any, runtime: _CampaignRuntime) -> None:
+        self._delegate = delegate
+        self._runtime = runtime
+
+    async def complete(self, request: ProviderRequest) -> ProviderResponse:
+        agent = _SCHEMA_AGENT.get(request.schema_name)
+        if agent is not None:
+            self._runtime.active_agents.add(agent)
+        try:
+            return await self._delegate.complete(request)
+        finally:
+            if agent is not None:
+                self._runtime.active_agents.discard(agent)
 
 
 class DeterministicBacktestMockProvider:
@@ -697,6 +749,7 @@ class BacktestDashboardService:
             opportunity_count=runtime.opportunity_count,
             executed_order_count=runtime.executed_order_count,
             agent_traces=tuple(runtime.traces[-120:]),
+            active_agents=tuple(sorted(runtime.active_agents)),
             error=runtime.error,
             message=runtime.message,
             can_cancel=runtime.status in {"QUEUED", "RUNNING"},
@@ -704,11 +757,22 @@ class BacktestDashboardService:
         )
 
     def capabilities(self) -> BacktestCapabilities:
+        entries = (*CORE_AGENT_REGISTRY.list(), *SPECIALIST_AGENT_REGISTRY.list())
+        agents = tuple(
+            AgentDescriptorView(
+                agent=entry.agent_id,
+                role=entry.role.value,
+                state=entry.state.value,
+                core=entry.core,
+            )
+            for entry in entries
+        )
         return BacktestCapabilities(
             modes=tuple(BacktestAIMode),
             live_eval_available=bool(os.getenv("OPENAI_API_KEY", "").strip()),
             cache_entries=len(self._cache),
             supported_timeframes=tuple(_TIMEFRAME_SECONDS),
+            agents=agents,
         )
 
     def preview_dataset(self, request: DatasetInput) -> DatasetPreview:
@@ -939,6 +1003,7 @@ class BacktestDashboardService:
             timeframe=request.timeframe,
             source=request.source,
         )
+        suggested_indices = self._suggest_split_indices(imported.candles)
         preview = DatasetPreview(
             dataset_id=dataset.dataset_id,
             version=dataset.version,
@@ -953,12 +1018,17 @@ class BacktestDashboardService:
             gap_count=int(imported.quality.gap_count),
             has_duplicates=bool(imported.quality.has_duplicates),
             missing_fields=tuple(imported.quality.missing_fields),
-            suggested_split=self._suggest_split(imported.candles),
+            suggested_split=self._split_from_indices(imported.candles, suggested_indices),
+            candle_close_ms=tuple(
+                int(candle.close_time.timestamp() * 1000)
+                for candle in imported.candles
+            ),
+            suggested_split_indices=suggested_indices,
         )
         return _ParsedDataset(preview=preview, dataset_ref=dataset, candles=imported.candles)
 
     @staticmethod
-    def _suggest_split(candles: tuple[Any, ...]) -> SplitInput | None:
+    def _suggest_split_indices(candles: tuple[Any, ...]) -> SplitIndexView | None:
         if len(candles) < 6:
             return None
         design_end_index = max(1, int(len(candles) * 0.60)) - 1
@@ -967,14 +1037,34 @@ class BacktestDashboardService:
         oos_start_index = validation_end_index + 1
         if oos_start_index >= len(candles):
             return None
-        return SplitInput(
-            design_start=candles[0].close_time,
-            design_end=candles[design_end_index].close_time,
-            validation_start=candles[validation_start_index].close_time,
-            validation_end=candles[validation_end_index].close_time,
-            oos_start=candles[oos_start_index].close_time,
-            oos_end=candles[-1].close_time,
+        return SplitIndexView(
+            design_start=0,
+            design_end=design_end_index,
+            validation_start=validation_start_index,
+            validation_end=validation_end_index,
+            oos_start=oos_start_index,
+            oos_end=len(candles) - 1,
         )
+
+    @staticmethod
+    def _split_from_indices(
+        candles: tuple[Any, ...],
+        indices: SplitIndexView | None,
+    ) -> SplitInput | None:
+        if indices is None:
+            return None
+        return SplitInput(
+            design_start=candles[indices.design_start].close_time,
+            design_end=candles[indices.design_end].close_time,
+            validation_start=candles[indices.validation_start].close_time,
+            validation_end=candles[indices.validation_end].close_time,
+            oos_start=candles[indices.oos_start].close_time,
+            oos_end=candles[indices.oos_end].close_time,
+        )
+
+    @classmethod
+    def _suggest_split(cls, candles: tuple[Any, ...]) -> SplitInput | None:
+        return cls._split_from_indices(candles, cls._suggest_split_indices(candles))
 
     @staticmethod
     def _risk_profile(request: RiskInput) -> RiskProfile:
@@ -1176,9 +1266,14 @@ class BacktestDashboardService:
             mock_client=mock_client if run.config.ai_mode is BacktestAIMode.MOCK else None,
             live_client=live_client,
         )
+        observable_client = (
+            ObservableBacktestAIClient(backtest_client, runtime)
+            if runtime is not None
+            else backtest_client
+        )
         gateway = AIGateway(
             router=router,
-            clients={provider_name: backtest_client},
+            clients={provider_name: observable_client},
             budget=budget,
             max_attempts=1,
             retry_backoff_seconds=0,
@@ -1272,7 +1367,14 @@ class BacktestDashboardService:
         opportunity_id = str(getattr(orchestration, "opportunity_id", ""))
         observed_at = point.observed_at
 
-        def add(agent: str, phase: str, title: str, value: Any) -> None:
+        def add(
+            agent: str,
+            phase: str,
+            title: str,
+            value: Any,
+            *,
+            targets: tuple[str, ...] = (),
+        ) -> None:
             if value is None:
                 return
             if hasattr(value, "model_dump"):
@@ -1292,6 +1394,7 @@ class BacktestDashboardService:
                     phase=phase,
                     title=title,
                     details=details,
+                    targets=targets,
                 )
             )
             if len(runtime.traces) > 160:
@@ -1305,6 +1408,7 @@ class BacktestDashboardService:
                 "PLAN",
                 f"{getattr(plan, 'decision', 'PLAN')} · {selected}",
                 plan,
+                targets=tuple(getattr(plan, "selected_agents", ())),
             )
 
         for specialist in getattr(orchestration, "specialist_runs", ()):
@@ -1317,6 +1421,7 @@ class BacktestDashboardService:
                 "ANALYSIS",
                 f"{stance}{suffix}".strip(" ·"),
                 analysis,
+                targets=("professor",),
             )
 
         palermo = getattr(orchestration, "palermo_run", None)
@@ -1328,8 +1433,10 @@ class BacktestDashboardService:
                 f"{getattr(review, 'verdict', 'REVIEW')} · sévérité "
                 f"{getattr(review, 'severity', '—')}",
                 review,
+                targets=("professor",),
             )
 
+        risk_record = getattr(pipeline_result, "risk_record", None)
         decision = getattr(orchestration, "professor_decision", None)
         if decision is not None:
             add(
@@ -1337,9 +1444,9 @@ class BacktestDashboardService:
                 "FINAL",
                 f"{decision.direction} · confiance {decision.confidence:.2f}",
                 decision,
+                targets=("risk_engine",) if risk_record is not None else (),
             )
 
-        risk_record = getattr(pipeline_result, "risk_record", None)
         if risk_record is not None:
             add("risk_engine", "RISK", "Décision Risk Engine", risk_record)
 
@@ -1402,6 +1509,7 @@ def get_backtest_dashboard_service(request: Request) -> BacktestDashboardService
 
 __all__ = [
     "AIInput",
+    "AgentDescriptorView",
     "BacktestCapabilities",
     "BacktestDashboardError",
     "BacktestDashboardService",
@@ -1411,9 +1519,11 @@ __all__ = [
     "DatasetInput",
     "DatasetPreview",
     "DeterministicBacktestMockProvider",
+    "ObservableBacktestAIClient",
     "ExecutionInput",
     "MarketConstraintsInput",
     "RiskInput",
+    "SplitIndexView",
     "SplitInput",
     "WalkForwardInput",
     "get_backtest_dashboard_service",

@@ -4,23 +4,22 @@ let csvText = "";
 let datasetPreview = null;
 let activeCampaignId = null;
 let pollTimer = null;
+let splitSelection = null;
+let suggestedSplitSelection = null;
+let agentDescriptors = [];
+let lastTraceSequence = 0;
+let traceAnimationChain = Promise.resolve();
 
 const esc = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 
-function isoLocal(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-    + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-function utcFromLocal(id) {
-  const value = $(id).value;
-  if (!value) throw new Error(`${id} est requis`);
-  return new Date(value).toISOString();
+function formatCandle(ms) {
+  if (ms === undefined || ms === null) return "—";
+  return new Date(ms).toLocaleString("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  });
 }
 
 function numberOrNull(id) {
@@ -63,14 +62,136 @@ async function api(path, options = {}) {
   return response;
 }
 
-function setSplit(split) {
-  if (!split) return;
-  $("design-start").value = isoLocal(split.design_start);
-  $("design-end").value = isoLocal(split.design_end);
-  $("validation-start").value = isoLocal(split.validation_start);
-  $("validation-end").value = isoLocal(split.validation_end);
-  $("oos-start").value = isoLocal(split.oos_start);
-  $("oos-end").value = isoLocal(split.oos_end);
+function splitPeriods() {
+  if (!splitSelection) return null;
+  const s = splitSelection;
+  return {
+    design: { start: s.start, end: s.designEnd, count: s.designEnd - s.start + 1 },
+    validation: {
+      start: s.designEnd + 1,
+      end: s.validationEnd,
+      count: s.validationEnd - s.designEnd,
+    },
+    oos: {
+      start: s.validationEnd + 1,
+      end: s.end,
+      count: s.end - s.validationEnd,
+    },
+  };
+}
+
+function normalizeSplitSelection() {
+  if (!datasetPreview || !splitSelection) return;
+  const max = datasetPreview.candle_count - 1;
+  const s = splitSelection;
+  s.start = Math.max(0, Math.min(Number(s.start), max - 2));
+  s.designEnd = Math.max(s.start, Math.min(Number(s.designEnd), max - 2));
+  s.validationEnd = Math.max(
+    s.designEnd + 1,
+    Math.min(Number(s.validationEnd), max - 1),
+  );
+  s.end = Math.max(s.validationEnd + 1, Math.min(Number(s.end), max));
+}
+
+function setRangeBounds() {
+  if (!datasetPreview || !splitSelection) return;
+  const max = datasetPreview.candle_count - 1;
+  const s = splitSelection;
+  const configure = (id, min, upper, value) => {
+    const input = $(id);
+    input.min = String(min);
+    input.max = String(Math.max(min, upper));
+    input.value = String(value);
+    input.disabled = false;
+  };
+  configure("split-start", 0, s.designEnd, s.start);
+  configure("split-design-end", s.start, s.validationEnd - 1, s.designEnd);
+  configure("split-validation-end", s.designEnd + 1, s.end - 1, s.validationEnd);
+  configure("split-end", s.validationEnd + 1, max, s.end);
+}
+
+function positionSegment(id, start, end, count) {
+  const el = $(id);
+  if (end < start) {
+    el.style.width = "0%";
+    return;
+  }
+  const left = start / count * 100;
+  const right = (end + 1) / count * 100;
+  el.style.left = `${left}%`;
+  el.style.width = `${Math.max(0, right - left)}%`;
+}
+
+function renderSplitSelection() {
+  if (!datasetPreview || !splitSelection) return;
+  normalizeSplitSelection();
+  setRangeBounds();
+  const axis = datasetPreview.candle_close_ms || [];
+  const periods = splitPeriods();
+  const count = datasetPreview.candle_count;
+  const s = splitSelection;
+
+  $("dataset-range-label").textContent =
+    `${formatCandle(axis[0])} → ${formatCandle(axis[count - 1])} · ${count} bougies`;
+  $("split-start-value").textContent = `#${s.start + 1} · ${formatCandle(axis[s.start])}`;
+  $("split-design-end-value").textContent =
+    `#${s.designEnd + 1} · ${formatCandle(axis[s.designEnd])}`;
+  $("split-validation-end-value").textContent =
+    `#${s.validationEnd + 1} · ${formatCandle(axis[s.validationEnd])}`;
+  $("split-end-value").textContent = `#${s.end + 1} · ${formatCandle(axis[s.end])}`;
+
+  $("design-bars").textContent = `${periods.design.count} bougies`;
+  $("validation-bars").textContent = `${periods.validation.count} bougies`;
+  $("oos-bars").textContent = `${periods.oos.count} bougies`;
+  $("design-dates").textContent =
+    `${formatCandle(axis[periods.design.start])} → ${formatCandle(axis[periods.design.end])}`;
+  $("validation-dates").textContent =
+    `${formatCandle(axis[periods.validation.start])} → ${formatCandle(axis[periods.validation.end])}`;
+  $("oos-dates").textContent =
+    `${formatCandle(axis[periods.oos.start])} → ${formatCandle(axis[periods.oos.end])}`;
+
+  positionSegment("segment-before", 0, s.start - 1, count);
+  positionSegment("segment-design", periods.design.start, periods.design.end, count);
+  positionSegment("segment-validation", periods.validation.start, periods.validation.end, count);
+  positionSegment("segment-oos", periods.oos.start, periods.oos.end, count);
+  positionSegment("segment-after", s.end + 1, count - 1, count);
+}
+
+function initializeSplitSelector(preview) {
+  const suggested = preview.suggested_split_indices;
+  const editor = $("split-editor");
+  if (!suggested || !preview.candle_close_ms?.length || preview.candle_count < 3) {
+    splitSelection = null;
+    suggestedSplitSelection = null;
+    editor.classList.add("is-disabled");
+    return;
+  }
+  suggestedSplitSelection = {
+    start: suggested.design_start,
+    designEnd: suggested.design_end,
+    validationEnd: suggested.validation_end,
+    end: suggested.oos_end,
+  };
+  splitSelection = { ...suggestedSplitSelection };
+  editor.classList.remove("is-disabled");
+  renderSplitSelection();
+}
+
+function splitPayload() {
+  if (!datasetPreview || !splitSelection) {
+    throw new Error("Prévisualise le dataset avant de choisir les périodes.");
+  }
+  const axis = datasetPreview.candle_close_ms;
+  const periods = splitPeriods();
+  const at = (index) => new Date(axis[index]).toISOString();
+  return {
+    design_start: at(periods.design.start),
+    design_end: at(periods.design.end),
+    validation_start: at(periods.validation.start),
+    validation_end: at(periods.validation.end),
+    oos_start: at(periods.oos.start),
+    oos_end: at(periods.oos.end),
+  };
 }
 
 function renderPreview(data) {
@@ -81,7 +202,7 @@ function renderPreview(data) {
     + `${esc(data.candle_count)} bougies · ${esc(data.start_at)} → ${esc(data.end_at)}<br>`
     + `SHA-256 ${esc(data.content_sha256)}<br>`
     + `Qualité: ${data.is_valid ? "VALID" : "INVALID"} · gaps=${esc(data.gap_count)}`;
-  setSplit(data.suggested_split);
+  initializeSplitSelector(data);
 }
 
 async function preview() {
@@ -103,14 +224,7 @@ function campaignPayload() {
   if (!datasetPreview.is_valid) throw new Error("Le dataset n'est pas valide.");
   return {
     dataset: datasetPayload(),
-    split: {
-      design_start: utcFromLocal("design-start"),
-      design_end: utcFromLocal("design-end"),
-      validation_start: utcFromLocal("validation-start"),
-      validation_end: utcFromLocal("validation-end"),
-      oos_start: utcFromLocal("oos-start"),
-      oos_end: utcFromLocal("oos-end"),
-    },
+    split: splitPayload(),
     risk: {
       risk_profile_id: "dashboard_balanced_dev",
       risk_version: "dashboard-balanced-dev-v1",
@@ -197,6 +311,126 @@ function equityChart(points) {
 }
 
 
+const AGENT_ORDER = {
+  professor: 0,
+  berlin: 10,
+  tokyo: 11,
+  nairobi: 12,
+  rio: 13,
+  denver: 14,
+  palermo: 20,
+  lisbon: 21,
+  risk_engine: 30,
+};
+
+const ROLE_LABELS = {
+  orchestration: "Orchestration",
+  red_team: "Red Team",
+  ai_economics: "Économie IA",
+  trend_regime: "Trend / Regime",
+  momentum: "Momentum",
+  market_structure: "Structure / Liquidité",
+  derivatives_positioning: "Dérivés / Sentiment",
+  historical_statistics: "Quant / Statistiques",
+  DETERMINISTIC_RISK: "Service déterministe",
+};
+
+function renderCrew(descriptors) {
+  agentDescriptors = [...(descriptors || [])];
+  if (!agentDescriptors.some((item) => item.agent === "risk_engine")) {
+    agentDescriptors.push({
+      agent: "risk_engine",
+      role: "DETERMINISTIC_RISK",
+      state: "SYSTEM",
+      core: true,
+    });
+  }
+  agentDescriptors.sort(
+    (a, b) => (AGENT_ORDER[a.agent] ?? 100) - (AGENT_ORDER[b.agent] ?? 100),
+  );
+  $("agent-cards").innerHTML = agentDescriptors.map((item) => {
+    const service = item.agent === "risk_engine" ? " service" : "";
+    return `<article id="agent-card-${esc(item.agent)}" class="agent-card${service}" data-agent="${esc(item.agent)}">`
+      + `<div class="agent-card-head"><span class="agent-name">${esc(item.agent)}</span>`
+      + `<span class="agent-registry-state">${esc(item.state)}</span></div>`
+      + `<div class="agent-role">${esc(ROLE_LABELS[item.role] || item.role)}</div>`
+      + `<div class="agent-runtime-state">IDLE</div>`
+      + `<div class="agent-last-message">Aucun événement dans cette campagne.</div>`
+      + `</article>`;
+  }).join("");
+}
+
+function setActiveAgents(activeAgents) {
+  const active = new Set(activeAgents || []);
+  for (const item of agentDescriptors) {
+    const card = $(`agent-card-${item.agent}`);
+    if (!card) continue;
+    const isActive = active.has(item.agent);
+    card.classList.toggle("is-active", isActive);
+    const state = card.querySelector(".agent-runtime-state");
+    if (isActive) state.textContent = "WORKING";
+    else if (state.textContent === "WORKING") state.textContent = "IDLE";
+  }
+}
+
+function updateAgentCard(trace) {
+  const card = $(`agent-card-${trace.agent}`);
+  if (!card) return;
+  card.querySelector(".agent-last-message").textContent = trace.title || trace.phase;
+  const state = card.querySelector(".agent-runtime-state");
+  if (!card.classList.contains("is-active")) {
+    state.textContent = trace.phase === "FAILED" ? "FAILED" : "DONE";
+  }
+}
+
+function animateCommunication(sourceAgent, targetAgent) {
+  const stage = $("crew-stage");
+  const svg = $("crew-links");
+  const source = $(`agent-card-${sourceAgent}`);
+  const target = $(`agent-card-${targetAgent}`);
+  if (!stage || !svg || !source || !target) return;
+
+  const stageRect = stage.getBoundingClientRect();
+  const a = source.getBoundingClientRect();
+  const b = target.getBoundingClientRect();
+  const x1 = a.left + a.width / 2 - stageRect.left;
+  const y1 = a.top + a.height / 2 - stageRect.top;
+  const x2 = b.left + b.width / 2 - stageRect.left;
+  const y2 = b.top + b.height / 2 - stageRect.top;
+  const bend = Math.max(18, Math.abs(y2 - y1) * 0.32);
+  const midY = (y1 + y2) / 2;
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${midY - bend}, ${x2} ${midY + bend}, ${x2} ${y2}`);
+  path.setAttribute("class", "communication-path");
+  path.setAttribute("marker-end", "url(#flow-arrow)");
+  svg.appendChild(path);
+  setTimeout(() => path.remove(), 950);
+}
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function playTraceAnimation(trace) {
+  updateAgentCard(trace);
+  const card = $(`agent-card-${trace.agent}`);
+  if (card) card.classList.add("is-recent");
+  for (const target of trace.targets || []) {
+    animateCommunication(trace.agent, target);
+  }
+  await delay(360);
+  if (card) card.classList.remove("is-recent");
+}
+
+function enqueueTraceAnimations(traces) {
+  const fresh = [...(traces || [])]
+    .filter((trace) => Number(trace.sequence) > lastTraceSequence)
+    .sort((a, b) => Number(a.sequence) - Number(b.sequence));
+  for (const trace of fresh) {
+    traceAnimationChain = traceAnimationChain.then(() => playTraceAnimation(trace));
+  }
+  if (fresh.length) lastTraceSequence = Number(fresh.at(-1).sequence);
+}
+
 function renderAgentTraces(traces) {
   const el = $("agent-traces");
   if (!traces?.length) {
@@ -236,6 +470,8 @@ function renderProgress(data) {
     + ` · opportunités ${data.opportunity_count} · ordres ${data.executed_order_count}`
     + (data.message ? ` · ${data.message}` : "");
 
+  setActiveAgents(data.active_agents || []);
+  enqueueTraceAnimations(data.agent_traces || []);
   renderAgentTraces(data.agent_traces || []);
 }
 
@@ -332,7 +568,18 @@ async function runCampaign(event) {
   $("run-status").textContent = "QUEUED";
   $("results").className = "empty";
   $("results").textContent = "Campagne en cours…";
+  lastTraceSequence = 0;
+  traceAnimationChain = Promise.resolve();
   renderAgentTraces([]);
+  setActiveAgents([]);
+  for (const item of agentDescriptors) {
+    const card = $(`agent-card-${item.agent}`);
+    if (!card) continue;
+    card.classList.remove("is-active", "is-recent");
+    card.querySelector(".agent-runtime-state").textContent = "IDLE";
+    card.querySelector(".agent-last-message").textContent =
+      "Aucun événement dans cette campagne.";
+  }
 
   try {
     if (!csvText) await readCsv();
@@ -367,6 +614,7 @@ async function refreshCapabilities() {
   $("live-eval-state").textContent = data.live_eval_available
     ? "LIVE_EVAL backend prêt" : "LIVE_EVAL sans clé backend";
   $("cache-count").textContent = `${data.cache_entries} entrée(s) cache`;
+  renderCrew(data.agents || []);
 }
 
 async function refreshHistory() {
@@ -407,6 +655,32 @@ async function importCache(file) {
   await refreshCapabilities();
 }
 
+function onSplitInput(id, key) {
+  $(id).addEventListener("input", () => {
+    if (!splitSelection) return;
+    splitSelection[key] = Number($(id).value);
+    renderSplitSelection();
+  });
+}
+
+onSplitInput("split-start", "start");
+onSplitInput("split-design-end", "designEnd");
+onSplitInput("split-validation-end", "validationEnd");
+onSplitInput("split-end", "end");
+
+$("split-full").addEventListener("click", () => {
+  if (!datasetPreview || !splitSelection) return;
+  splitSelection.start = 0;
+  splitSelection.end = datasetPreview.candle_count - 1;
+  renderSplitSelection();
+});
+
+$("split-reset").addEventListener("click", () => {
+  if (!suggestedSplitSelection) return;
+  splitSelection = { ...suggestedSplitSelection };
+  renderSplitSelection();
+});
+
 $("stop-button").addEventListener("click", () => stopCampaign().catch(showError));
 $("preview-button").addEventListener("click", preview);
 $("campaign-form").addEventListener("submit", runCampaign);
@@ -414,7 +688,16 @@ $("refresh-history").addEventListener("click", () => refreshHistory().catch(show
 $("cache-export").addEventListener("click", () => exportCache().catch(showError));
 $("cache-import").addEventListener("change", (event) =>
   importCache(event.target.files[0]).catch(showError));
-$("csv-file").addEventListener("change", () => { csvText = ""; datasetPreview = null; });
+$("csv-file").addEventListener("change", () => {
+  csvText = "";
+  datasetPreview = null;
+  splitSelection = null;
+  suggestedSplitSelection = null;
+  $("split-editor").classList.add("is-disabled");
+  for (const id of ["split-start", "split-design-end", "split-validation-end", "split-end"]) {
+    $(id).disabled = true;
+  }
+});
 $("ai-mode").addEventListener("change", () => {
   if ($("ai-mode").value === "MOCK" && !$("model-id").value.trim()) {
     $("model-id").value = "mock-backtest-v1";

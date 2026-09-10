@@ -65,15 +65,53 @@
         <div class="section-title spaced">
           <div><p class="label">2 · Périodes</p><h2>DESIGN / VALIDATION / OOS</h2></div>
         </div>
-        <div class="grid three">
-          <label>DESIGN début<input id="design-start" type="datetime-local" step="1" required></label>
-          <label>DESIGN fin<input id="design-end" type="datetime-local" step="1" required></label>
-          <span></span>
-          <label>VALIDATION début<input id="validation-start" type="datetime-local" step="1" required></label>
-          <label>VALIDATION fin<input id="validation-end" type="datetime-local" step="1" required></label>
-          <span></span>
-          <label>OOS début<input id="oos-start" type="datetime-local" step="1" required></label>
-          <label>OOS fin<input id="oos-end" type="datetime-local" step="1" required></label>
+        <div id="split-editor" class="split-editor is-disabled">
+          <div class="split-toolbar">
+            <div>
+              <span class="muted">Plage réellement disponible</span>
+              <strong id="dataset-range-label">Prévisualise un dataset pour activer la timeline.</strong>
+            </div>
+            <div class="split-actions">
+              <button type="button" id="split-full" class="secondary">Tout le dataset</button>
+              <button type="button" id="split-reset" class="secondary">Réinitialiser 60 / 20 / 20</button>
+            </div>
+          </div>
+          <div class="split-timeline" aria-label="Répartition DESIGN VALIDATION OOS">
+            <div id="segment-before" class="split-segment unused"></div>
+            <div id="segment-design" class="split-segment design"><span>DESIGN</span></div>
+            <div id="segment-validation" class="split-segment validation"><span>VALIDATION</span></div>
+            <div id="segment-oos" class="split-segment oos"><span>OOS</span></div>
+            <div id="segment-after" class="split-segment unused"></div>
+          </div>
+          <div class="split-control-grid">
+            <label>Début de la plage
+              <input id="split-start" type="range" min="0" max="1" value="0" disabled>
+              <span id="split-start-value" class="range-value">—</span>
+            </label>
+            <label>Fin DESIGN
+              <input id="split-design-end" type="range" min="0" max="1" value="0" disabled>
+              <span id="split-design-end-value" class="range-value">—</span>
+            </label>
+            <label>Fin VALIDATION
+              <input id="split-validation-end" type="range" min="0" max="1" value="0" disabled>
+              <span id="split-validation-end-value" class="range-value">—</span>
+            </label>
+            <label>Fin de la plage OOS
+              <input id="split-end" type="range" min="0" max="1" value="1" disabled>
+              <span id="split-end-value" class="range-value">—</span>
+            </label>
+          </div>
+          <div class="split-summary">
+            <article class="split-card design">
+              <span>DESIGN</span><strong id="design-bars">—</strong><div id="design-dates">—</div>
+            </article>
+            <article class="split-card validation">
+              <span>VALIDATION</span><strong id="validation-bars">—</strong><div id="validation-dates">—</div>
+            </article>
+            <article class="split-card oos">
+              <span>OOS</span><strong id="oos-bars">—</strong><div id="oos-dates">—</div>
+            </article>
+          </div>
         </div>
 
         <div class="section-title spaced">
@@ -202,9 +240,27 @@
         (Professor, spécialistes, Palermo, Risk Engine). Il n'affiche pas de
         chaîne de pensée privée.
       </p>
-      <div id="agent-traces" class="agent-traces empty">
-        Aucune trace agent pour le moment.
+      <div class="crew-legend">
+        <span><i class="legend-dot live"></i> appel en cours</span>
+        <span><i class="legend-dot recent"></i> événement audité récent</span>
+        <span><i class="legend-dot idle"></i> disponible / inactif</span>
       </div>
+      <div id="crew-stage" class="crew-stage">
+        <svg id="crew-links" class="crew-links" aria-hidden="true">
+          <defs>
+            <marker id="flow-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z"></path>
+            </marker>
+          </defs>
+        </svg>
+        <div id="agent-cards" class="agent-card-grid"></div>
+      </div>
+      <details class="trace-journal" open>
+        <summary>Journal structuré audité</summary>
+        <div id="agent-traces" class="agent-traces empty">
+          Aucune trace agent pour le moment.
+        </div>
+      </details>
     </section>
 
     <section class="panel history-panel">
