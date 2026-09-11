@@ -9,6 +9,52 @@ from .errors import AIConfigurationError
 
 _MISSING = object()
 
+_UNSUPPORTED_REGEX_LOOKAROUNDS = ("(?=", "(?!", "(?<=", "(?<!")
+
+
+def _has_unsupported_regex_lookaround(pattern: str) -> bool:
+    return any(marker in pattern for marker in _UNSUPPORTED_REGEX_LOOKAROUNDS)
+
+
+def _normalize_pydantic_decimal_compatibility_union(node: dict[str, Any]) -> None:
+    # Pydantic represents Decimal as number | string(pattern=...).
+    # The generated decimal-string regex uses negative lookahead, which OpenAI
+    # strict Structured Outputs rejects. Keep Decimal in the business model,
+    # but narrow the provider-facing schema to JSON numbers.
+    variants = node.get("anyOf")
+    if not isinstance(variants, list):
+        return
+
+    has_number_variant = any(
+        isinstance(variant, dict) and variant.get("type") == "number"
+        for variant in variants
+    )
+    if not has_number_variant:
+        return
+
+    compatible_variants: list[Any] = []
+    removed_decimal_string_variant = False
+    for variant in variants:
+        if isinstance(variant, dict) and variant.get("type") == "string":
+            pattern = variant.get("pattern")
+            if isinstance(pattern, str) and _has_unsupported_regex_lookaround(pattern):
+                removed_decimal_string_variant = True
+                continue
+        compatible_variants.append(variant)
+
+    if not removed_decimal_string_variant:
+        return
+
+    if len(compatible_variants) == 1 and isinstance(compatible_variants[0], dict):
+        annotations = {key: value for key, value in node.items() if key != "anyOf"}
+        replacement = deepcopy(compatible_variants[0])
+        replacement.update(annotations)
+        node.clear()
+        node.update(replacement)
+        return
+
+    node["anyOf"] = compatible_variants
+
 
 def build_strict_json_schema(model: type[BaseModel]) -> dict[str, Any]:
     """Normalize a Pydantic schema for OpenAI strict Structured Outputs."""
@@ -77,6 +123,8 @@ def _ensure_strict(
             path=(*path, "items"),
         )
 
+    _normalize_pydantic_decimal_compatibility_union(node)
+
     for union_key in ("anyOf", "oneOf"):
         variants = node.get(union_key)
         if isinstance(variants, list):
@@ -112,6 +160,13 @@ def _ensure_strict(
                 else variant
                 for index, variant in enumerate(all_of)
             ]
+
+    pattern = node.get("pattern")
+    if isinstance(pattern, str) and _has_unsupported_regex_lookaround(pattern):
+        raise AIConfigurationError(
+            "OpenAI strict Structured Outputs does not support regex lookaround "
+            f"at {'/'.join(path)}"
+        )
 
     if node.get("default", _MISSING) is None:
         node.pop("default", None)
