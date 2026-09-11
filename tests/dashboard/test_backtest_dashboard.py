@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -149,3 +150,152 @@ def test_mock_campaign_executes_real_batch16_stack_without_live_trading() -> Non
     assert "oos-equity.csv" in result.exports
     assert "split-report.json" in result.exports
     assert svc.capabilities().live_trading is False
+
+
+def test_mock_campaign_exports_denver_setup_stats_catalog() -> None:
+    from app.services.backtest.setup_stats import HistoricalSetupStatsCatalog
+
+    svc = service()
+    dataset = DatasetInput(
+        csv_text=csv_series(),
+        symbol="BTC/EUR",
+        timeframe="1m",
+        source="test_csv",
+    )
+    preview = svc.preview_dataset(dataset)
+    assert preview.suggested_split is not None
+    request = CampaignRequest(
+        dataset=dataset,
+        split=preview.suggested_split,
+        risk=RiskInput(),
+        market=MarketConstraintsInput(
+            qty_step=Decimal("0.000001"),
+            min_qty=Decimal("0.000001"),
+            min_notional=Decimal("0.01"),
+            max_leverage=Decimal("1"),
+        ),
+        ai=AIInput(),
+        execution=ExecutionInput(),
+        walk_forward=WalkForwardInput(enabled=False),
+    )
+
+    result = asyncio.run(svc.run_campaign(request))
+    name = "denver-setup-stats-catalog.json"
+
+    assert name in result.exports
+    exported = svc.get_export(result.campaign_id, name)
+    assert exported is not None
+    media_type, content = exported
+    assert media_type == "application/json"
+
+    catalog = HistoricalSetupStatsCatalog.from_json(content)
+    assert catalog.to_json() == content
+    assert all(
+        item.period_role.value in {"DESIGN", "VALIDATION", "OOS"}
+        for item in catalog.observations
+    )
+
+
+def test_denver_catalog_export_downloads_through_existing_api() -> None:
+    from app.services.backtest.setup_stats import HistoricalSetupStatsCatalog
+
+    svc = service()
+    app = FastAPI()
+    app.state.backtest_dashboard_service = svc
+    app.include_router(router)
+
+    dataset = DatasetInput(
+        csv_text=csv_series(),
+        symbol="BTC/EUR",
+        timeframe="1m",
+        source="test_csv",
+    )
+    preview = svc.preview_dataset(dataset)
+    assert preview.suggested_split is not None
+    request = CampaignRequest(
+        dataset=dataset,
+        split=preview.suggested_split,
+        risk=RiskInput(),
+        market=MarketConstraintsInput(
+            qty_step=Decimal("0.000001"),
+            min_qty=Decimal("0.000001"),
+            min_notional=Decimal("0.01"),
+            max_leverage=Decimal("1"),
+        ),
+        ai=AIInput(),
+        execution=ExecutionInput(),
+        walk_forward=WalkForwardInput(enabled=False),
+    )
+    result = asyncio.run(svc.run_campaign(request))
+
+    with TestClient(app) as api:
+        response = api.get(
+            f"/api/dashboard/backtest/runs/{result.campaign_id}"
+            "/exports/denver-setup-stats-catalog.json"
+        )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert "denver-setup-stats-catalog.json" in response.headers[
+        "content-disposition"
+    ]
+    restored = HistoricalSetupStatsCatalog.from_json(response.text)
+    assert restored.to_json() == response.text
+
+
+def test_denver_catalog_attribution_failure_does_not_fail_campaign(monkeypatch) -> None:
+    from app.services.backtest.setup_stats import (
+        HistoricalSetupAttributionError,
+    )
+
+    svc = service()
+    dataset = DatasetInput(
+        csv_text=csv_series(),
+        symbol="BTC/EUR",
+        timeframe="1m",
+        source="test_csv",
+    )
+    preview = svc.preview_dataset(dataset)
+    assert preview.suggested_split is not None
+    request = CampaignRequest(
+        dataset=dataset,
+        split=preview.suggested_split,
+        risk=RiskInput(),
+        market=MarketConstraintsInput(
+            qty_step=Decimal("0.000001"),
+            min_qty=Decimal("0.000001"),
+            min_notional=Decimal("0.01"),
+            max_leverage=Decimal("1"),
+        ),
+        ai=AIInput(),
+        execution=ExecutionInput(),
+        walk_forward=WalkForwardInput(enabled=False),
+    )
+
+    def fail_catalog(_sources):
+        raise HistoricalSetupAttributionError(
+            "closed trade cannot be attributed to exactly one setup entry"
+        )
+
+    monkeypatch.setattr(
+        "app.dashboard.backtest.catalog_from_historical_runs",
+        fail_catalog,
+    )
+
+    result = asyncio.run(svc.run_campaign(request))
+
+    assert result.status == "COMPLETED"
+    assert "denver-setup-stats-catalog.json" not in result.exports
+    assert "denver-setup-stats-status.json" in result.exports
+
+    exported = svc.get_export(
+        result.campaign_id,
+        "denver-setup-stats-status.json",
+    )
+    assert exported is not None
+    media_type, content = exported
+    assert media_type == "application/json"
+
+    payload = json.loads(content)
+    assert payload["status"] == "UNAVAILABLE"
+    assert payload["reason"] == "AMBIGUOUS_TRADE_ATTRIBUTION"

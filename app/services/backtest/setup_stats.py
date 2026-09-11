@@ -17,6 +17,10 @@ CATALOG_SCHEMA = "money-heist.denver-setup-stats.v1"
 ZERO = Decimal("0")
 
 
+class HistoricalSetupAttributionError(ValueError):
+    """A closed trade cannot be mapped to exactly one historical setup."""
+
+
 def _value(value: Any) -> Any:
     return getattr(value, "value", value)
 
@@ -501,7 +505,7 @@ def observations_from_historical_replay(
             and entry.quantity == Decimal(str(trade.quantity))
         ]
         if len(candidates) != 1:
-            raise ValueError(
+            raise HistoricalSetupAttributionError(
                 f"closed trade {trade.trade_id} cannot be attributed to exactly one setup entry"
             )
         entry = candidates[0]
@@ -539,6 +543,7 @@ def catalog_from_historical_runs(
 
 
 __all__ = [
+    "HistoricalSetupAttributionError",
     "CATALOG_SCHEMA",
     "SETUP_DEFINITION_VERSION",
     "HistoricalSetupKey",

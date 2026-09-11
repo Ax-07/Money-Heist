@@ -423,3 +423,68 @@ def test_ambiguous_scaled_trade_attribution_fails_closed() -> None:
             evaluation,
             period_role=BacktestPeriodRole.DESIGN,
         )
+
+
+def test_ambiguous_attribution_uses_dedicated_denver_exception() -> None:
+    from app.services.backtest.setup_stats import (
+        HistoricalSetupAttributionError,
+    )
+
+    market = make_market(observed_at=datetime(2026, 1, 5, tzinfo=UTC))
+    opportunity = make_opportunity()
+    entry_at = datetime(2026, 1, 5, tzinfo=UTC)
+    pipeline_result = SimpleNamespace(
+        orchestration_result=SimpleNamespace(
+            trade_proposal=SimpleNamespace(side="LONG")
+        ),
+        order=SimpleNamespace(side=SimpleNamespace(value="BUY")),
+        fill=SimpleNamespace(
+            price=Decimal("100"),
+            quantity=Decimal("1"),
+            filled_at=entry_at,
+        ),
+    )
+    replay = SimpleNamespace(
+        backtest_result=SimpleNamespace(
+            run=SimpleNamespace(
+                run_id="run-real-1",
+                dataset=SimpleNamespace(dataset_id="dataset-real-1"),
+                config=SimpleNamespace(
+                    canonical_payload=lambda: {
+                        "system_id": "balanced_v1",
+                        "code_version": "test",
+                    }
+                ),
+            )
+        ),
+        points=(
+            SimpleNamespace(
+                opportunity=opportunity,
+                feature_snapshot=market,
+                pipeline_result=pipeline_result,
+            ),
+        ),
+    )
+    trade = SimpleNamespace(
+        trade_id="scaled-close",
+        system_id="balanced_v1",
+        symbol="BTC/EUR",
+        side="LONG",
+        quantity=Decimal("0.5"),
+        entry_price=Decimal("100"),
+        opened_at=entry_at,
+        closed_at=entry_at + timedelta(hours=4),
+        net_pnl=Decimal("1"),
+    )
+    evaluation = SimpleNamespace(
+        report=SimpleNamespace(
+            trading=SimpleNamespace(closed_trades=(trade,))
+        )
+    )
+
+    with pytest.raises(HistoricalSetupAttributionError):
+        observations_from_historical_replay(
+            replay,
+            evaluation,
+            period_role=BacktestPeriodRole.DESIGN,
+        )

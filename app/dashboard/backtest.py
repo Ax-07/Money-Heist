@@ -36,12 +36,14 @@ from app.services.backtest import (
     BacktestSplitReport,
     DatasetRef,
     HistoricalPositionLifecycle,
+    HistoricalSetupAttributionError,
     HistoricalReplayRunner,
     ReplayClock,
     ReplayIdFactory,
     WalkForwardReport,
     build_run_manifest,
     build_walk_forward_plan,
+    catalog_from_historical_runs,
     closed_trades_to_csv,
     equity_curve_to_csv,
     evaluate_historical_replay,
@@ -1381,6 +1383,51 @@ class BacktestDashboardService:
             exports[f"{prefix}-closed-trades.csv"] = (
                 "text/csv",
                 closed_trades_to_csv(execution.evaluation.report),
+            )
+
+        denver_sources = tuple(
+            (
+                executions[role].replay,
+                executions[role].evaluation,
+                role,
+            )
+            for role in BacktestPeriodRole
+        )
+        try:
+            denver_catalog = catalog_from_historical_runs(
+                denver_sources
+            )
+        except HistoricalSetupAttributionError as exc:
+            exports["denver-setup-stats-status.json"] = (
+                "application/json",
+                json.dumps(
+                    {
+                        "status": "UNAVAILABLE",
+                        "reason": "AMBIGUOUS_TRADE_ATTRIBUTION",
+                        "message": str(exc),
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            )
+        else:
+            exports["denver-setup-stats-catalog.json"] = (
+                "application/json",
+                denver_catalog.to_json(),
+            )
+            exports["denver-setup-stats-status.json"] = (
+                "application/json",
+                json.dumps(
+                    {
+                        "status": "AVAILABLE",
+                        "catalog_id": denver_catalog.catalog_id,
+                        "observation_count": len(
+                            denver_catalog.observations
+                        ),
+                    },
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
             )
 
         report = BacktestSplitReport.create(
