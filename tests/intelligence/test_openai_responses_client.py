@@ -169,3 +169,17 @@ def test_openai_refusal_is_non_retryable():
 
     with pytest.raises(NonRetryableAIProviderError):
         asyncio.run(run())
+
+
+def test_openai_transport_error_reports_exception_type():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("", request=request)
+
+    async def run():
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = OpenAIResponsesClient(api_key="secret", http_client=http_client)
+            return await client.complete(provider_request())
+
+    with pytest.raises(RetryableAIProviderError, match="ReadTimeout"):
+        asyncio.run(run())

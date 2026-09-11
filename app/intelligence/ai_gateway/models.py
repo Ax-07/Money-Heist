@@ -58,6 +58,7 @@ class AIGatewayRequest(BaseModel):
     input_text: str = Field(min_length=1)
     instructions: str | None = None
     max_output_tokens: int | None = Field(default=None, ge=1)
+    timeout_seconds: float | None = Field(default=None, gt=0, le=300)
     opportunity_id: UUID | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
 

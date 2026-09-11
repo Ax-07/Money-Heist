@@ -15,6 +15,7 @@ from .registry import CORE_AGENT_REGISTRY, AgentRegistry
 T = TypeVar("T", bound=BaseModel)
 
 PALERMO_MAX_OUTPUT_TOKENS = 8192
+PALERMO_TIMEOUT_SECONDS = 90.0
 
 
 class StructuredGateway(Protocol):
@@ -50,6 +51,7 @@ class CoreAgent:
         phase: str,
         opportunity_id: UUID | None = None,
         max_output_tokens: int | None = None,
+        timeout_seconds: float | None = None,
     ) -> AIGatewayResult[T]:
         request = AIGatewayRequest(
             system_id=system_id,
@@ -59,6 +61,7 @@ class CoreAgent:
             input_text=json.dumps(payload, sort_keys=True, default=str),
             instructions=self.prompt.instructions,
             max_output_tokens=max_output_tokens,
+            timeout_seconds=timeout_seconds,
             opportunity_id=opportunity_id,
             metadata={
                 "agent_role": self.entry.role.value,
@@ -171,6 +174,7 @@ class Palermo(CoreAgent):
             opportunity_id=opportunity_id,
             phase="red_team",
             max_output_tokens=PALERMO_MAX_OUTPUT_TOKENS,
+            timeout_seconds=PALERMO_TIMEOUT_SECONDS,
         )
 
 

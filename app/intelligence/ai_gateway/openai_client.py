@@ -80,7 +80,9 @@ class OpenAIResponsesClient:
                         headers=headers,
                     )
         except (httpx.TimeoutException, httpx.NetworkError) as exc:
-            raise RetryableAIProviderError(f"OpenAI transport failure: {exc}") from exc
+            detail = str(exc).strip()
+            failure = type(exc).__name__ if not detail else f"{type(exc).__name__}: {detail}"
+            raise RetryableAIProviderError(f"OpenAI transport failure: {failure}") from exc
         latency_ms = max(int((time.perf_counter() - started) * 1000), 0)
 
         if response.status_code >= 400:

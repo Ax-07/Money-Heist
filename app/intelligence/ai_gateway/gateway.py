@@ -126,7 +126,7 @@ class AIGateway(Generic[StructuredT]):
                 schema_name=schema_name,
                 json_schema=json_schema,
                 max_output_tokens=max_output_tokens,
-                timeout_seconds=route.timeout_seconds,
+                timeout_seconds=request.timeout_seconds or route.timeout_seconds,
                 reasoning_effort=route.reasoning_effort,
                 metadata={
                     **request.metadata,

@@ -170,7 +170,9 @@ def test_palermo_has_targeted_output_headroom_without_changing_lisbon() -> None:
 
         assert gateway.requests[0].agent_id == "palermo"
         assert gateway.requests[0].max_output_tokens == 8192
+        assert gateway.requests[0].timeout_seconds == 90.0
         assert gateway.requests[1].agent_id == "lisbon"
         assert gateway.requests[1].max_output_tokens is None
+        assert gateway.requests[1].timeout_seconds is None
 
     asyncio.run(scenario())
