@@ -688,6 +688,160 @@ $("refresh-history").addEventListener("click", () => refreshHistory().catch(show
 $("cache-export").addEventListener("click", () => exportCache().catch(showError));
 $("cache-import").addEventListener("change", (event) =>
   importCache(event.target.files[0]).catch(showError));
+// Batch 16.10 — Dataset-aware defaults
+const MARKET_PRESETS = {
+  "BTC/USDC": {
+    label: "Binance Spot BTC/USDC · 2026-09-11",
+    source: "binance_spot_csv",
+    qtyStep: "0.00001",
+    minQty: "0.00001",
+    minNotional: "5",
+    maxQty: "9000",
+    maxLeverage: "1",
+  },
+};
+
+function normalizeDatasetFilename(filename) {
+  return String(filename || "")
+    .toUpperCase()
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^A-Z0-9]+/g, "_");
+}
+
+function detectDatasetIdentity(filename) {
+  const normalized = normalizeDatasetFilename(filename);
+  let symbol = null;
+  let timeframe = null;
+  let source = null;
+
+  if (
+    normalized.includes("BTCUSDC")
+    || normalized.includes("BTC_USDC")
+    || normalized.includes("BTC_USD_C")
+  ) {
+    symbol = "BTC/USDC";
+  }
+
+  if (
+    /(^|_)1H($|_)/.test(normalized)
+    || /(^|_)H1($|_)/.test(normalized)
+    || /(^|_)60M($|_)/.test(normalized)
+  ) {
+    timeframe = "1h";
+  } else if (/(^|_)4H($|_)/.test(normalized) || /(^|_)H4($|_)/.test(normalized)) {
+    timeframe = "4h";
+  } else if (/(^|_)15M($|_)/.test(normalized)) {
+    timeframe = "15m";
+  } else if (/(^|_)5M($|_)/.test(normalized)) {
+    timeframe = "5m";
+  } else if (/(^|_)1M($|_)/.test(normalized)) {
+    timeframe = "1m";
+  }
+
+  if (normalized.includes("BINANCE")) {
+    source = "binance_spot_csv";
+  }
+  return { symbol, timeframe, source };
+}
+
+function quoteAsset(symbol) {
+  const parts = String(symbol || "").split("/");
+  return parts.length === 2 ? parts[1] : "quote";
+}
+
+function applyMarketPreset(symbol, { forceSource = false } = {}) {
+  const preset = MARKET_PRESETS[symbol];
+  $("min-notional-unit").textContent = quoteAsset(symbol);
+
+  if (!preset) {
+    $("market-preset-state").textContent =
+      `Aucun preset versionné pour ${symbol || "ce symbole"} — vérification manuelle requise`;
+    return;
+  }
+
+  $("qty-step").value = preset.qtyStep;
+  $("min-qty").value = preset.minQty;
+  $("min-notional").value = preset.minNotional;
+  $("max-qty").value = preset.maxQty;
+  $("market-leverage").value = preset.maxLeverage;
+  $("market-preset-state").textContent = `Preset ${preset.label}`;
+
+  if (forceSource && preset.source) {
+    $("source").value = preset.source;
+  }
+}
+
+function applyDatasetDefaultsFromFile(file) {
+  if (!file) return;
+  const detected = detectDatasetIdentity(file.name);
+
+  if (detected.symbol) {
+    $("symbol").value = detected.symbol;
+    applyMarketPreset(detected.symbol, { forceSource: true });
+  }
+  if (detected.timeframe) {
+    $("timeframe").value = detected.timeframe;
+  }
+  if (detected.source) {
+    $("source").value = detected.source;
+  }
+}
+
+
+// Batch 16.10 — Quick test preset
+function applyQuickTestSplit() {
+  if (!datasetPreview || !datasetPreview.candle_count || !splitSelection) {
+    throw new Error("Prévisualise d'abord le dataset avant d'utiliser Test rapide.");
+  }
+
+  const available = datasetPreview.candle_count;
+  const warmupBars = 35;
+  const targetTestBars = 100;
+  const minimumTestBars = 6;
+
+  if (available < warmupBars + minimumTestBars) {
+    throw new Error(
+      `Test rapide nécessite au moins ${warmupBars + minimumTestBars} bougies `
+      + `(${warmupBars} warm-up + ${minimumTestBars} test).`,
+    );
+  }
+
+  // Smoke test multi-agents :
+  // - les 35 premières bougies servent de warm-up aux features ;
+  // - puis on teste au maximum 100 bougies ;
+  // - DESIGN / VALIDATION / OOS = 60 / 20 / 20.
+  // La fenêtre est volontairement placée près du début du dataset afin que le
+  // HistoricalReplayRunner n'ait pas à parcourir inutilement tout l'historique.
+  const start = warmupBars;
+  const testBars = Math.min(targetTestBars, available - start);
+
+  const designBars = Math.max(1, Math.floor(testBars * 0.60));
+  const validationBoundaryBars = Math.max(
+    designBars + 1,
+    Math.floor(testBars * 0.80),
+  );
+
+  splitSelection = {
+    start,
+    designEnd: start + designBars - 1,
+    validationEnd: start + validationBoundaryBars - 1,
+    end: start + testBars - 1,
+  };
+  renderSplitSelection();
+}
+
+$("symbol").addEventListener("change", () => {
+  applyMarketPreset($("symbol").value.trim());
+});
+
+$("split-quick-test").addEventListener("click", () => {
+  try {
+    applyQuickTestSplit();
+  } catch (error) {
+    showError(error);
+  }
+});
+
 $("csv-file").addEventListener("change", () => {
   csvText = "";
   datasetPreview = null;
@@ -697,6 +851,7 @@ $("csv-file").addEventListener("change", () => {
   for (const id of ["split-start", "split-design-end", "split-validation-end", "split-end"]) {
     $(id).disabled = true;
   }
+  applyDatasetDefaultsFromFile($("csv-file").files?.[0]);
 });
 $("ai-mode").addEventListener("change", () => {
   if ($("ai-mode").value === "MOCK" && !$("model-id").value.trim()) {
