@@ -160,6 +160,7 @@ def _mtf_assumptions():
         "mtf_policy_version": "mtf-utc-closed-v1",
         "mtf_feature_context_version": "mtf-feature-context-v1",
         "decision_context_version": "decision-context-v1",
+        "agent_context_binding_version": "decision-context-agent-binding-v1",
         "lifecycle_timeframe": "1m",
     }
 
@@ -276,8 +277,15 @@ class _RecordingPipeline:
     def __init__(self):
         self.calls = []
 
-    async def run(self, *, opportunity, market_context, now=None):
-        self.calls.append((opportunity, market_context, now))
+    async def run(
+        self,
+        *,
+        opportunity,
+        market_context,
+        now=None,
+        decision_context=None,
+    ):
+        self.calls.append((opportunity, market_context, now, decision_context))
         return SimpleNamespace(status=SimpleNamespace(value="NO_TRADE"))
 
 
@@ -360,3 +368,4 @@ async def test_decision_context_is_frozen_on_opportunity_without_changing_pipeli
     assert len(pipeline.calls) == 1
     assert pipeline.calls[0][1] is point.feature_snapshot
     assert pipeline.calls[0][1].timeframe == "1h"
+    assert pipeline.calls[0][3] is context

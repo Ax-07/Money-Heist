@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from typing import Any, Protocol, TypeVar
 from uuid import UUID
 
@@ -53,6 +54,31 @@ class CoreAgent:
         max_output_tokens: int | None = None,
         timeout_seconds: float | None = None,
     ) -> AIGatewayResult[T]:
+        metadata = {
+            "agent_role": self.entry.role.value,
+            "phase": phase,
+        }
+        market_context = payload.get("market_context")
+        if isinstance(market_context, Mapping):
+            decision_context = market_context.get("decision_context")
+            if isinstance(decision_context, Mapping):
+                from app.services.decision_context import (
+                    AGENT_CONTEXT_BINDING_VERSION,
+                )
+
+                context_id = decision_context.get("context_id")
+                fingerprint = decision_context.get("context_fingerprint")
+                if context_id and fingerprint:
+                    metadata.update(
+                        {
+                            "decision_context_id": str(context_id),
+                            "decision_context_fingerprint": str(fingerprint),
+                            "decision_context_binding_version": (
+                                AGENT_CONTEXT_BINDING_VERSION
+                            ),
+                        }
+                    )
+
         request = AIGatewayRequest(
             system_id=system_id,
             agent_id=self.agent_id,
@@ -63,10 +89,7 @@ class CoreAgent:
             max_output_tokens=max_output_tokens,
             timeout_seconds=timeout_seconds,
             opportunity_id=opportunity_id,
-            metadata={
-                "agent_role": self.entry.role.value,
-                "phase": phase,
-            },
+            metadata=metadata,
         )
         return await self.gateway.generate_structured(request, output_model)
 

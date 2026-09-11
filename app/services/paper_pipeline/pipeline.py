@@ -6,6 +6,7 @@ from typing import Callable
 
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
+from app.services.decision_context import DecisionContextV1
 from app.services.orchestration.models import PipelineStatus
 from app.trading.paper.broker import PaperBroker, PaperBrokerError
 from app.trading.paper.models import Fill, OrderStatus, Position
@@ -71,6 +72,7 @@ class PaperTradingPipeline:
         opportunity: CandidateOpportunity,
         market_context: FeatureSnapshot,
         now: datetime | None = None,
+        decision_context: DecisionContextV1 | None = None,
     ) -> PaperPipelineResult:
         events: list[PaperPipelineEvent] = []
         orchestration_result = None
@@ -149,10 +151,15 @@ class PaperTradingPipeline:
             return fail(PaperPipelineFailureCode.AUDIT_UNAVAILABLE, "audit_preflight", str(exc))
 
         try:
+            orchestration_kwargs = {
+                "opportunity": opportunity,
+                "market_context": market_context,
+                "now": effective_now,
+            }
+            if decision_context is not None:
+                orchestration_kwargs["decision_context"] = decision_context
             orchestration_result = await self.orchestration.run(
-                opportunity=opportunity,
-                market_context=market_context,
-                now=effective_now,
+                **orchestration_kwargs
             )
         except Exception as exc:
             try:

@@ -654,3 +654,112 @@ async def test_professor_final_evidence_must_reference_supplied_context():
     assert result.status is PipelineStatus.FAILED
     assert result.failure.code is PipelineFailureCode.UNGROUNDED_EVIDENCE
     assert result.trade_proposal is None
+
+
+def _decision_context_for_market(market_context):
+    from app.market.features.multitimeframe import MultiTimeframeFeatureContext
+    from app.services.decision_context import build_decision_context
+
+    mtf = MultiTimeframeFeatureContext(
+        symbol=market_context.symbol,
+        observed_at=market_context.observed_at,
+        decision_timeframe=market_context.timeframe,
+        feature_version=market_context.feature_version,
+        context_version="mtf-feature-context-v1",
+        source_cursor_fingerprint="a" * 64,
+        requested_timeframes=(market_context.timeframe,),
+        snapshots={market_context.timeframe: market_context},
+        missing_timeframes=(),
+        warmup_incomplete_timeframes=(),
+        context_fingerprint="b" * 64,
+    )
+    return build_decision_context(
+        system_id="balanced_v1",
+        as_of=market_context.observed_at,
+        primary_timeframe=market_context.timeframe,
+        timeframe_policy_version="mtf-utc-closed-v1",
+        market=mtf,
+    )
+
+
+@sync_test
+async def test_frozen_decision_context_is_identical_across_full_crew_requests():
+    from app.services.decision_context import (
+        AGENT_CONTEXT_BINDING_VERSION,
+        decision_context_payload,
+    )
+
+    script = nominal_script()
+    script[("berlin", "specialist_independent_round_1")] = [
+        berlin(
+            source_key=(
+                "market_context.decision_context.market."
+                "snapshots.1m.regime"
+            )
+        )
+    ]
+    pipeline, client, _ = make_pipeline(script)
+    market_context = make_context()
+    decision_context = _decision_context_for_market(market_context)
+    expected = decision_context_payload(decision_context)
+
+    result = await pipeline.run(
+        opportunity=make_opportunity(),
+        market_context=market_context,
+        decision_context=decision_context,
+    )
+
+    assert result.status is PipelineStatus.TRADE_PROPOSAL
+    assert len(client.requests) == 6
+    phases = [
+        (request.agent_id, request.metadata["phase"])
+        for request in client.requests
+    ]
+    assert ("professor", "plan") in phases
+    assert ("berlin", "specialist_independent_round_1") in phases
+    assert ("tokyo", "specialist_independent_round_1") in phases
+    assert ("nairobi", "specialist_independent_round_1") in phases
+    assert ("palermo", "red_team") in phases
+    assert ("professor", "finalize") in phases
+
+    for request in client.requests:
+        payload = json.loads(request.input_text)
+        supplied = payload["market_context"]["decision_context"]
+        assert supplied == expected
+        assert supplied["context_id"] == decision_context.context_id
+        assert supplied["context_fingerprint"] == decision_context.context_fingerprint
+        assert request.metadata["decision_context_id"] == decision_context.context_id
+        assert (
+            request.metadata["decision_context_fingerprint"]
+            == decision_context.context_fingerprint
+        )
+        assert (
+            request.metadata["decision_context_binding_version"]
+            == AGENT_CONTEXT_BINDING_VERSION
+        )
+
+
+@sync_test
+async def test_incoherent_decision_context_fails_before_any_ai_call():
+    from app.services.decision_context import build_decision_context
+
+    market_context = make_context()
+    decision_context = _decision_context_for_market(market_context)
+    incompatible = build_decision_context(
+        system_id="other_system",
+        as_of=market_context.observed_at,
+        primary_timeframe=market_context.timeframe,
+        timeframe_policy_version="mtf-utc-closed-v1",
+        market=decision_context.market,
+    )
+
+    pipeline, client, _ = make_pipeline(nominal_script())
+    result = await pipeline.run(
+        opportunity=make_opportunity(),
+        market_context=market_context,
+        decision_context=incompatible,
+    )
+
+    assert result.status is PipelineStatus.FAILED
+    assert result.failure.code is PipelineFailureCode.INVALID_CONTEXT
+    assert client.requests == []

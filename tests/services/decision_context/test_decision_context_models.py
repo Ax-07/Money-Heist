@@ -149,3 +149,24 @@ def test_portfolio_and_constraints_are_typed_and_fingerprinted():
     assert "market_constraints" in context.provenance
     assert "portfolio_summary" not in context.missing_components
     assert "market_constraints" not in context.missing_components
+
+
+def test_agent_payload_is_json_safe_and_preserves_feature_numbers():
+    import json
+    from app.services.decision_context import decision_context_payload
+
+    market = _market_context()
+    context = build_decision_context(
+        system_id="balanced_v1",
+        as_of=market.observed_at,
+        primary_timeframe="1h",
+        timeframe_policy_version="mtf-utc-closed-v1",
+        market=market,
+    )
+    payload = decision_context_payload(context)
+
+    assert payload["context_id"] == context.context_id
+    assert payload["context_fingerprint"] == context.context_fingerprint
+    assert payload["market"]["snapshots"]["1h"]["timeframe"] == "1h"
+    assert isinstance(payload["market"]["snapshots"]["1h"]["close"], float)
+    json.dumps(payload, sort_keys=True)

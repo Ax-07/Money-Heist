@@ -66,10 +66,19 @@ class StubOrchestration:
     def __init__(self, result: OrchestrationResult):
         self.result = result
         self.calls = 0
+        self.last_decision_context = None
 
-    async def run(self, *, opportunity, market_context, now=None):
+    async def run(
+        self,
+        *,
+        opportunity,
+        market_context,
+        now=None,
+        decision_context=None,
+    ):
         del opportunity, market_context, now
         self.calls += 1
+        self.last_decision_context = decision_context
         return self.result
 
 
@@ -750,3 +759,19 @@ async def test_missing_kill_switch_state_fails_closed_before_risk_and_broker():
     assert result.failure.code is PaperPipelineFailureCode.KILL_SWITCH_UNAVAILABLE
     assert risk.calls == 0
     assert broker.submit_calls == 0
+
+
+@sync_test
+async def test_decision_context_is_forwarded_to_orchestration_without_rebuild():
+    service, orchestration, _, _ = make_service(orchestration_no_analysis())
+    sentinel = object()
+
+    result = await service.run(
+        opportunity=make_opportunity(),
+        market_context=make_context(),
+        now=NOW,
+        decision_context=sentinel,
+    )
+
+    assert result.status is PaperPipelineStatus.NO_ANALYSIS
+    assert orchestration.last_decision_context is sentinel

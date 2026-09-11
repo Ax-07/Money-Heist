@@ -4,6 +4,7 @@ from typing import Protocol
 
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
+from app.services.decision_context import DecisionContextV1
 from app.services.orchestration.models import OrchestrationResult
 from app.trading.risk.models import (
     KillSwitchState,
@@ -22,6 +23,7 @@ class OrchestrationPort(Protocol):
         opportunity: CandidateOpportunity,
         market_context: FeatureSnapshot,
         now=None,
+        decision_context: DecisionContextV1 | None = None,
     ) -> OrchestrationResult: ...
 
 

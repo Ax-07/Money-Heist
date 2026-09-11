@@ -28,6 +28,10 @@ from app.intelligence.ai_gateway.errors import (
 from app.intelligence.ai_gateway.models import AIGatewayResult
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
+from app.services.decision_context import (
+    DecisionContextV1,
+    decision_context_payload,
+)
 from app.task_force.aggregation import TaskForceReport
 
 from .compute_gate import ComputeGate
@@ -176,6 +180,7 @@ class OrchestrationPipeline:
         now: datetime | None = None,
         specialist_contexts: Mapping[str, Any] | None = None,
         task_force_report: TaskForceReport | None = None,
+        decision_context: DecisionContextV1 | None = None,
     ) -> OrchestrationResult:
         events: list[PipelineAuditEvent] = []
         calls: list[AgentCallAudit] = []
@@ -196,7 +201,11 @@ class OrchestrationPipeline:
             )
 
         try:
-            opportunity_uuid = self._validate_context(opportunity, market_context)
+            opportunity_uuid = self._validate_context(
+                opportunity,
+                market_context,
+                decision_context,
+            )
         except (ValueError, InvalidPipelineContextError) as exc:
             event("context", "FAILED", reason=str(exc))
             return self._result(
@@ -220,6 +229,10 @@ class OrchestrationPipeline:
         opportunity_payload = opportunity.model_dump(mode="json")
         # Critical: absent optional market fields are omitted, so they cannot be cited as evidence.
         market_payload = market_context.model_dump(mode="json", exclude_none=True)
+        if decision_context is not None:
+            market_payload["decision_context"] = decision_context_payload(
+                decision_context
+            )
         event(
             "context",
             "COMPLETED",
@@ -227,6 +240,12 @@ class OrchestrationPipeline:
             snapshot_id=market_context.snapshot_id,
             feature_version=market_context.feature_version,
             scanner_version=opportunity.scanner_version,
+            decision_context_id=(
+                decision_context.context_id if decision_context is not None else ""
+            ),
+            decision_context_fingerprint=(
+                decision_context.context_fingerprint if decision_context is not None else ""
+            ),
         )
 
         task_force_payload = None
@@ -769,6 +788,7 @@ class OrchestrationPipeline:
     def _validate_context(
         opportunity: CandidateOpportunity,
         market_context: FeatureSnapshot,
+        decision_context: DecisionContextV1 | None = None,
     ) -> UUID:
         try:
             opportunity_uuid = UUID(opportunity.opportunity_id)
@@ -784,6 +804,34 @@ class OrchestrationPipeline:
             raise InvalidPipelineContextError("opportunity timeframe does not match market context")
         if not market_context.quality.warmup_complete:
             raise InvalidPipelineContextError("feature warmup is incomplete")
+
+        if decision_context is not None:
+            if decision_context.system_id != opportunity.system_id:
+                raise InvalidPipelineContextError(
+                    "DecisionContext system_id does not match opportunity"
+                )
+            if decision_context.symbol != market_context.symbol:
+                raise InvalidPipelineContextError(
+                    "DecisionContext symbol does not match market context"
+                )
+            if decision_context.primary_timeframe != market_context.timeframe:
+                raise InvalidPipelineContextError(
+                    "DecisionContext primary timeframe does not match market context"
+                )
+            if decision_context.as_of != market_context.observed_at:
+                raise InvalidPipelineContextError(
+                    "DecisionContext as_of does not match market observed_at"
+                )
+            primary = decision_context.market.decision_snapshot
+            if primary.snapshot_id != market_context.snapshot_id:
+                raise InvalidPipelineContextError(
+                    "DecisionContext primary snapshot_id does not match market context"
+                )
+            if primary.feature_version != market_context.feature_version:
+                raise InvalidPipelineContextError(
+                    "DecisionContext feature version does not match market context"
+                )
+
         return opportunity_uuid
 
     def _provider_specialist_contexts(

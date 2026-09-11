@@ -15,6 +15,9 @@ from app.market.features.multitimeframe import MultiTimeframeFeatureContext
 from app.trading.risk.models import MarketConstraints, PortfolioRiskState
 
 
+AGENT_CONTEXT_BINDING_VERSION = "decision-context-agent-binding-v1"
+
+
 class ContextAvailability(StrEnum):
     AVAILABLE = "AVAILABLE"
     UNAVAILABLE = "UNAVAILABLE"
@@ -70,6 +73,47 @@ def _stable_digest(value: Any) -> str:
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
+
+def _json_safe_payload(value: Any) -> Any:
+    """Serialize DecisionContext content for agent input without changing floats."""
+    if is_dataclass(value) and not isinstance(value, type):
+        return {
+            field.name: _json_safe_payload(getattr(value, field.name))
+            for field in fields(value)
+            if not field.name.startswith("_")
+        }
+    if hasattr(value, "model_dump"):
+        return _json_safe_payload(value.model_dump(mode="json"))
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("payload decimals must be finite")
+        return format(value, "f")
+    if isinstance(value, datetime):
+        return _as_utc(value, field="payload datetime").isoformat().replace(
+            "+00:00", "Z"
+        )
+    if isinstance(value, StrEnum):
+        return value.value
+    if isinstance(value, Mapping):
+        return {
+            str(key): _json_safe_payload(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, (tuple, list)):
+        return [_json_safe_payload(item) for item in value]
+    if value is None or isinstance(value, (str, int, bool, float)):
+        return value
+    raise TypeError(f"unsupported payload value: {type(value).__name__}")
+
+
+def decision_context_payload(context: DecisionContextV1) -> dict[str, Any]:
+    """Return the stable JSON-safe representation supplied to AI agents."""
+    if not isinstance(context, DecisionContextV1):
+        raise TypeError("context must be DecisionContextV1")
+    payload = _json_safe_payload(context)
+    if not isinstance(payload, dict):
+        raise TypeError("DecisionContext payload must serialize to a mapping")
+    return payload
 
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:

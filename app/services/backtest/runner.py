@@ -11,7 +11,10 @@ from app.market.features.multitimeframe import (
     build_multi_timeframe_feature_context,
 )
 from app.market.models import Candle
-from app.services.decision_context import build_decision_context
+from app.services.decision_context import (
+    AGENT_CONTEXT_BINDING_VERSION,
+    build_decision_context,
+)
 from app.market.multitimeframe import (
     HistoricalMultiTimeframeCursor,
     timeframe_interval,
@@ -55,6 +58,7 @@ class PaperPipelinePort(Protocol):
         opportunity: Any,
         market_context: Any,
         now: datetime | None = None,
+        decision_context: Any | None = None,
     ) -> Any: ...
 
 
@@ -178,6 +182,7 @@ class HistoricalReplayRunner:
         mtf_policy_version: str = "mtf-utc-closed-v1",
         mtf_feature_context_version: str = "mtf-feature-context-v1",
         decision_context_version: str = "decision-context-v1",
+        agent_context_binding_version: str = AGENT_CONTEXT_BINDING_VERSION,
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -222,6 +227,7 @@ class HistoricalReplayRunner:
             mtf_feature_context_version.strip()
         )
         self.decision_context_version = decision_context_version.strip()
+        self.agent_context_binding_version = agent_context_binding_version.strip()
 
     async def run(
         self,
@@ -375,10 +381,15 @@ class HistoricalReplayRunner:
                         market=mtf_feature_context,
                         context_version=self.decision_context_version,
                     )
+                pipeline_kwargs = {
+                    "opportunity": opportunity,
+                    "market_context": feature,
+                    "now": clock.now(),
+                }
+                if decision_context is not None:
+                    pipeline_kwargs["decision_context"] = decision_context
                 pipeline_result = await self.paper_pipeline.run(
-                    opportunity=opportunity,
-                    market_context=feature,
-                    now=clock.now(),
+                    **pipeline_kwargs
                 )
                 if self._is_executed(pipeline_result):
                     executed_order_count += 1
@@ -505,6 +516,8 @@ class HistoricalReplayRunner:
             raise ValueError("mtf_feature_context_version must not be empty")
         if not self.decision_context_version:
             raise ValueError("decision_context_version must not be empty")
+        if not self.agent_context_binding_version:
+            raise ValueError("agent_context_binding_version must not be empty")
         if not self.mtf_timeframes:
             raise ValueError("mtf_timeframes must not be empty")
         if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
@@ -534,6 +547,7 @@ class HistoricalReplayRunner:
             "mtf_policy_version": self.mtf_policy_version,
             "mtf_feature_context_version": self.mtf_feature_context_version,
             "decision_context_version": self.decision_context_version,
+            "agent_context_binding_version": self.agent_context_binding_version,
             "lifecycle_timeframe": run.dataset.timeframe,
         }
         assumptions = run.config.execution_assumptions
