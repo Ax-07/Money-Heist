@@ -95,3 +95,24 @@ def test_ai_mode_presets_are_safe_and_prefilled() -> None:
     assert js.count('outputPrice: "1.20"') == 2
     assert js.count('cachedPrice: "0.02"') == 2
 
+
+def test_historical_rio_controls_are_explicit_and_off_by_default() -> None:
+    root = Path(__file__).resolve().parents[2]
+    html = (root / "app/dashboard/static/backtest.html").read_text(
+        encoding="utf-8"
+    )
+    js = (root / "app/dashboard/static/backtest.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'id="derivatives-enabled" type="checkbox"' in html
+    assert 'id="derivatives-file" type="file"' in html
+    assert 'id="derivatives-max-age"' in html
+    assert 'value="7200"' in html
+    assert 'id="derivatives-enabled" type="checkbox" checked' not in html
+
+    assert 'let derivativesCsvText = "";' in js
+    assert "function derivativesPayload()" in js
+    assert "derivatives: derivativesPayload()" in js
+    assert '["1m", "5m", "15m"]' in js
+    assert '$("derivatives-enabled").checked' in js

@@ -64,6 +64,29 @@
         <div id="dataset-preview" class="preview empty">Aucun dataset validé.</div>
 
         <div class="section-title spaced">
+          <div><p class="label">1b · Rio historique</p><h2>Analytics Kraken Derivatives</h2></div>
+          <label class="toggle">
+            <input id="derivatives-enabled" type="checkbox"> Activer Rio historique
+          </label>
+        </div>
+        <p class="notice">
+          Activation explicite uniquement. Fournis l'archive canonique Kraken générée par
+          Money Heist. Compatible avec une source OHLCV 1m / 5m / 15m ; aucune donnée
+          dérivés n'est découverte automatiquement sur le disque.
+        </p>
+        <div class="grid three">
+          <label>CSV dérivés canonique
+            <input id="derivatives-file" type="file" accept=".csv,text/csv" disabled>
+          </label>
+          <label>Fraîcheur max secondes
+            <input id="derivatives-max-age" type="number" min="1" value="7200" disabled>
+          </label>
+          <div id="derivatives-state" class="preview empty">
+            Rio historique désactivé.
+          </div>
+        </div>
+
+        <div class="section-title spaced">
           <div><p class="label">2 · Périodes</p><h2>DESIGN / VALIDATION / OOS</h2></div>
         </div>
         <div id="split-editor" class="split-editor is-disabled">

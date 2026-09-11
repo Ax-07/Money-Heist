@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const endpoint = "/api/dashboard/backtest";
 let csvText = "";
+let derivativesCsvText = "";
 let datasetPreview = null;
 let activeCampaignId = null;
 let pollTimer = null;
@@ -69,6 +70,66 @@ async function readCsv() {
   csvText = await file.text();
   if (!csvText.trim()) throw new Error("Le CSV est vide.");
   return csvText;
+}
+
+async function readDerivativesCsv() {
+  if (!$("derivatives-enabled").checked) return null;
+  const file = $("derivatives-file").files[0];
+  if (!file) {
+    throw new Error(
+      "Rio historique est activé : sélectionne le CSV dérivés canonique."
+    );
+  }
+  derivativesCsvText = await file.text();
+  if (!derivativesCsvText.trim()) throw new Error("Le CSV dérivés est vide.");
+  return derivativesCsvText;
+}
+
+function derivativesPayload() {
+  if (!$("derivatives-enabled").checked) return null;
+  const supported = ["1m", "5m", "15m"];
+  const timeframe = $("timeframe").value;
+  if (!supported.includes(timeframe)) {
+    throw new Error(
+      "Rio historique nécessite une source OHLCV 1m, 5m ou 15m."
+    );
+  }
+  if (!derivativesCsvText.trim()) {
+    throw new Error(
+      "Rio historique est activé mais l'archive dérivés n'a pas été chargée."
+    );
+  }
+  const maxAge = Number($("derivatives-max-age").value);
+  if (!Number.isInteger(maxAge) || maxAge <= 0) {
+    throw new Error("Fraîcheur dérivés max doit être un entier positif.");
+  }
+  return {
+    csv_text: derivativesCsvText,
+    max_age_seconds: maxAge,
+  };
+}
+
+function updateDerivativesUi() {
+  const enabled = $("derivatives-enabled").checked;
+  $("derivatives-file").disabled = !enabled;
+  $("derivatives-max-age").disabled = !enabled;
+  const state = $("derivatives-state");
+  if (!enabled) {
+    state.className = "preview empty";
+    state.textContent = "Rio historique désactivé.";
+    return;
+  }
+  const supported = ["1m", "5m", "15m"];
+  if (!supported.includes($("timeframe").value)) {
+    state.className = "preview bad";
+    state.textContent = "Source incompatible : utilise 1m, 5m ou 15m.";
+    return;
+  }
+  const file = $("derivatives-file").files?.[0];
+  state.className = "preview";
+  state.textContent = file
+    ? `Archive sélectionnée : ${file.name}`
+    : "Activation prête : sélectionne l'archive canonique Kraken.";
 }
 
 function datasetPayload() {
@@ -261,6 +322,7 @@ function campaignPayload() {
   return {
     dataset: datasetPayload(),
     split: splitPayload(),
+    derivatives: derivativesPayload(),
     risk: {
       risk_profile_id: "dashboard_balanced_dev",
       risk_version: "dashboard-balanced-dev-v1",
@@ -620,6 +682,9 @@ async function runCampaign(event) {
 
   try {
     if (!csvText) await readCsv();
+    if ($("derivatives-enabled").checked && !derivativesCsvText) {
+      await readDerivativesCsv();
+    }
     const response = await api(`${endpoint}/runs`, {
       method: "POST",
       body: JSON.stringify(campaignPayload()),
@@ -720,6 +785,17 @@ $("split-reset").addEventListener("click", () => {
   splitSelection = { ...suggestedSplitSelection };
   renderSplitSelection();
 });
+
+$("derivatives-enabled").addEventListener("change", () => {
+  if (!$("derivatives-enabled").checked) derivativesCsvText = "";
+  updateDerivativesUi();
+});
+$("derivatives-file").addEventListener("change", () => {
+  derivativesCsvText = "";
+  updateDerivativesUi();
+});
+$("timeframe").addEventListener("change", updateDerivativesUi);
+updateDerivativesUi();
 
 $("stop-button").addEventListener("click", () => stopCampaign().catch(showError));
 $("preview-button").addEventListener("click", preview);

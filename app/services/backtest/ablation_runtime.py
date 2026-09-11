@@ -13,6 +13,12 @@ from app.intelligence.ai_gateway.gateway import AIGateway
 from app.intelligence.ai_gateway.routing import ModelPricing, ModelRoute, ModelRouter
 from app.intelligence.ai_gateway.usage import InMemoryAIUsageRecorder
 from app.services.backtest.mtf_runtime import mtf_runner_kwargs
+from app.services.backtest.derivatives_runtime import (
+    historical_derivatives_runner_kwargs,
+)
+from app.services.backtest.historical_derivatives_analytics import (
+    HistoricalDerivativesAnalyticsArchive,
+)
 from app.services.backtest.ai_modes import BacktestAIClient
 from app.services.backtest.cache import BacktestResponseCache
 from app.services.backtest.clock import ReplayClock
@@ -88,6 +94,9 @@ class PaperAblationRuntimeSettings:
     mock_client: AIClient | None = None
     live_client: AIClient | None = None
     specialist_context_provider: Any | None = None
+    historical_derivatives_archive: (
+        HistoricalDerivativesAnalyticsArchive | None
+    ) = None
     core_max_output_tokens: int = 1200
     economy_max_output_tokens: int = 800
 
@@ -184,13 +193,22 @@ class PaperAblationRuntimeFactory:
             journal=journal,
             clock=clock,
         )
+        runner_kwargs = mtf_runner_kwargs(
+            run.config.execution_assumptions
+        )
+        runner_kwargs.update(
+            historical_derivatives_runner_kwargs(
+                run.config.execution_assumptions,
+                self.settings.historical_derivatives_archive,
+            )
+        )
         runner = HistoricalReplayRunner(
             paper_pipeline=pipeline,
             clock=clock,
             portfolio_provider=portfolio,
             market_constraints_provider=market_constraints_provider,
             position_lifecycle=lifecycle,
-            **mtf_runner_kwargs(run.config.execution_assumptions),
+            **runner_kwargs,
         )
         return AblationVariantRuntime.from_components(
             runner=runner,

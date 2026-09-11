@@ -52,9 +52,17 @@ from app.services.backtest import (
 )
 from app.services.backtest.advanced_mock import DeterministicAdvancedSpecialistMockProvider
 from app.services.backtest.runner import HistoricalReplayCancelledError
+from app.services.backtest.historical_derivatives_analytics import (
+    HistoricalDerivativesAnalyticsArchive,
+)
+from app.services.backtest.derivatives_runtime import (
+    historical_derivatives_execution_assumptions,
+    historical_derivatives_runner_kwargs,
+)
 from app.services.backtest.mtf_runtime import (
     mtf_execution_assumptions,
     mtf_runner_kwargs,
+    supports_full_mtf_source,
 )
 from app.services.orchestration import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
@@ -100,6 +108,21 @@ class DatasetInput(FrozenModel):
             if not value:
                 raise ValueError(f"{field_name} must not be blank")
             object.__setattr__(self, field_name, value)
+        return self
+
+
+class HistoricalDerivativesInput(FrozenModel):
+    csv_text: str = Field(min_length=1)
+    max_age_seconds: int = Field(default=7200, ge=1)
+
+    @model_validator(mode="after")
+    def validate_archive_input(self) -> HistoricalDerivativesInput:
+        if len(self.csv_text.encode("utf-8")) > MAX_CSV_BYTES:
+            raise ValueError(
+                "historical derivatives csv_text exceeds the 25 MB dashboard limit"
+            )
+        if not self.csv_text.strip():
+            raise ValueError("historical derivatives csv_text must not be blank")
         return self
 
 
@@ -241,12 +264,21 @@ class CampaignRequest(FrozenModel):
     ai: AIInput = Field(default_factory=AIInput)
     execution: ExecutionInput = Field(default_factory=ExecutionInput)
     walk_forward: WalkForwardInput = Field(default_factory=WalkForwardInput)
+    derivatives: HistoricalDerivativesInput | None = None
     system_id: str = "balanced_v1"
 
     @model_validator(mode="after")
     def validate_system(self) -> CampaignRequest:
         if not self.system_id.strip():
             raise ValueError("system_id must not be blank")
+        if (
+            self.derivatives is not None
+            and not supports_full_mtf_source(self.dataset.timeframe)
+        ):
+            raise ValueError(
+                "historical derivatives activation requires source timeframe "
+                "1m, 5m, or 15m"
+            )
         if self.ai.mode is BacktestAIMode.LIVE_EVAL and self.execution.code_version in {
             "batch16.7-working-tree",
             "working-tree-unknown",
@@ -879,7 +911,23 @@ class BacktestDashboardService:
 
             risk_profile = self._risk_profile(request.risk)
             market_constraints = self._market_constraints(request.market)
-            config = self._backtest_config(request)
+            historical_derivatives_archive = (
+                self._parse_historical_derivatives(request.derivatives)
+                if request.derivatives is not None
+                else None
+            )
+            if (
+                historical_derivatives_archive is not None
+                and historical_derivatives_archive.symbol
+                != parsed.dataset_ref.symbol
+            ):
+                raise BacktestDashboardError(
+                    "historical derivatives archive symbol does not match dataset"
+                )
+            config = self._backtest_config(
+                request,
+                historical_derivatives_archive=historical_derivatives_archive,
+            )
             campaign_budget = AIBudgetLedger(request.ai.hard_budget_eur)
             split = BacktestSplitPlan.create(
                 dataset=parsed.dataset_ref,
@@ -911,6 +959,9 @@ class BacktestDashboardService:
                 market_constraints=market_constraints,
                 ai=request.ai,
                 budget=campaign_budget,
+                historical_derivatives_archive=(
+                    historical_derivatives_archive
+                ),
                 runtime=runtime,
             )
 
@@ -940,6 +991,9 @@ class BacktestDashboardService:
                         market_constraints=market_constraints,
                         ai=request.ai,
                         budget=campaign_budget,
+                        historical_derivatives_archive=(
+                            historical_derivatives_archive
+                        ),
                         runtime=runtime,
                     )
                     return report
@@ -1043,6 +1097,32 @@ class BacktestDashboardService:
         while len(self._order) > self._history_limit:
             removed = self._order.pop(0)
             self._records.pop(removed, None)
+
+    @staticmethod
+    def _parse_historical_derivatives(
+        request: HistoricalDerivativesInput,
+    ) -> HistoricalDerivativesAnalyticsArchive:
+        temp_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".csv",
+                delete=False,
+                encoding="utf-8-sig",
+                newline="",
+            ) as handle:
+                handle.write(request.csv_text)
+                temp_path = Path(handle.name)
+            return HistoricalDerivativesAnalyticsArchive.from_canonical_csv(
+                temp_path
+            )
+        except (OSError, ValueError) as exc:
+            raise BacktestDashboardError(
+                f"historical derivatives archive is invalid: {exc}"
+            ) from exc
+        finally:
+            if temp_path is not None:
+                temp_path.unlink(missing_ok=True)
 
     def _parse_dataset(self, request: DatasetInput) -> _ParsedDataset:
         interval_seconds = request.candle_interval_seconds or _TIMEFRAME_SECONDS.get(
@@ -1174,7 +1254,14 @@ class BacktestDashboardService:
         entries = (*CORE_AGENT_REGISTRY.list(), *SPECIALIST_AGENT_REGISTRY.list())
         return {entry.agent_id: entry.prompt_version for entry in entries}
 
-    def _backtest_config(self, request: CampaignRequest) -> BacktestConfig:
+    def _backtest_config(
+        self,
+        request: CampaignRequest,
+        *,
+        historical_derivatives_archive: (
+            HistoricalDerivativesAnalyticsArchive | None
+        ) = None,
+    ) -> BacktestConfig:
         model_versions = {
             entry.agent_id: request.ai.model_id
             for entry in (*CORE_AGENT_REGISTRY.list(), *SPECIALIST_AGENT_REGISTRY.list())
@@ -1204,6 +1291,26 @@ class BacktestDashboardService:
         assumptions.update(
             mtf_execution_assumptions(request.dataset.timeframe)
         )
+        if request.derivatives is not None:
+            archive = historical_derivatives_archive
+            if archive is None:
+                archive = self._parse_historical_derivatives(
+                    request.derivatives
+                )
+            if archive.symbol != request.dataset.symbol.strip().upper():
+                raise BacktestDashboardError(
+                    "historical derivatives archive symbol does not match dataset"
+                )
+            assumptions.update(
+                historical_derivatives_execution_assumptions(
+                    archive,
+                    max_age_seconds=request.derivatives.max_age_seconds,
+                )
+            )
+        elif historical_derivatives_archive is not None:
+            raise BacktestDashboardError(
+                "derivatives archive supplied without explicit request.derivatives"
+            )
         return BacktestConfig(
             system_id=request.system_id,
             risk_version=request.risk.risk_version,
@@ -1230,6 +1337,9 @@ class BacktestDashboardService:
         market_constraints: MarketConstraints,
         ai: AIInput,
         budget: AIBudgetLedger,
+        historical_derivatives_archive: (
+            HistoricalDerivativesAnalyticsArchive | None
+        ) = None,
         runtime: _CampaignRuntime | None = None,
     ) -> tuple[
         dict[BacktestPeriodRole, _RunExecution],
@@ -1252,6 +1362,9 @@ class BacktestDashboardService:
                 market_constraints=market_constraints,
                 ai=ai,
                 budget=budget,
+                historical_derivatives_archive=(
+                    historical_derivatives_archive
+                ),
                 runtime=runtime,
             )
             executions[role] = execution
@@ -1288,6 +1401,9 @@ class BacktestDashboardService:
         market_constraints: MarketConstraints,
         ai: AIInput,
         budget: AIBudgetLedger,
+        historical_derivatives_archive: (
+            HistoricalDerivativesAnalyticsArchive | None
+        ) = None,
         runtime: _CampaignRuntime | None = None,
     ) -> _RunExecution:
         clock = ReplayClock.start(run.dataset.start_at)
@@ -1382,13 +1498,22 @@ class BacktestDashboardService:
             journal=journal,
             clock=clock,
         )
+        runner_kwargs = mtf_runner_kwargs(
+            run.config.execution_assumptions
+        )
+        runner_kwargs.update(
+            historical_derivatives_runner_kwargs(
+                run.config.execution_assumptions,
+                historical_derivatives_archive,
+            )
+        )
         runner = HistoricalReplayRunner(
             paper_pipeline=pipeline,
             clock=clock,
             portfolio_provider=portfolio,
             market_constraints_provider=market_constraints_provider,
             position_lifecycle=lifecycle,
-            **mtf_runner_kwargs(run.config.execution_assumptions),
+            **runner_kwargs,
         )
         last_progress = 0
 

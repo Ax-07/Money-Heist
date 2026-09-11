@@ -279,3 +279,96 @@ def test_execute_helper_uses_plan_baseline_factories(monkeypatch) -> None:
     assert captured["plan"] is plan
     assert tuple(captured["specialists"]) == plan.baseline_agents
     assert captured["role"] is BacktestPeriodRole.OOS
+
+
+def test_ablation_runtime_reuses_exact_bound_derivatives_archive(tmp_path) -> None:
+    from app.services.backtest.derivatives_runtime import (
+        historical_derivatives_execution_assumptions,
+    )
+    from app.services.backtest.historical_derivatives_analytics import (
+        HistoricalDerivativesAnalyticsArchive,
+    )
+    from app.services.backtest.mtf_runtime import mtf_execution_assumptions
+
+    path = tmp_path / "derivatives.csv"
+    path.write_text(
+        "\n".join(
+            [
+                (
+                    "symbol,instrument,observed_at,available_at,funding_rate,"
+                    "open_interest,open_interest_change_pct,long_short_ratio"
+                ),
+                (
+                    "BTC/USDC,PF_XBTUSD,2026-01-01T00:00:00Z,"
+                    "2026-01-01T01:00:00Z,,1000,1,1.1"
+                ),
+                (
+                    "BTC/USDC,PF_XBTUSD,2026-01-01T01:00:00Z,"
+                    "2026-01-01T02:00:00Z,0.0001,1010,1,1.2"
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    archive = HistoricalDerivativesAnalyticsArchive.from_canonical_csv(path)
+
+    assumptions = mtf_execution_assumptions("1m")
+    assumptions.update(
+        historical_derivatives_execution_assumptions(
+            archive,
+            max_age_seconds=7200,
+        )
+    )
+    dataset = DatasetRef(
+        dataset_id="dataset-btc-m1",
+        version="v1",
+        content_sha256="b" * 64,
+        symbol="BTC/USDC",
+        timeframe="1m",
+        source="fixture",
+        candle_count=500,
+        start_at=datetime(2026, 1, 1, tzinfo=UTC),
+        end_at=datetime(2026, 1, 2, tzinfo=UTC),
+    )
+    config = BacktestConfig(
+        system_id="money-heist",
+        risk_version="risk-v1",
+        random_seed=7,
+        ai_mode=BacktestAIMode.MOCK,
+        initial_balance=Decimal("1000"),
+        prompt_versions={
+            "professor": "v1",
+            "palermo": "v1",
+            "berlin": "v1",
+            "rio": "v1",
+        },
+        model_versions={
+            "professor": "mock-model-v1",
+            "palermo": "mock-model-v1",
+            "berlin": "mock-model-v1",
+            "rio": "mock-model-v1",
+        },
+        execution_assumptions=assumptions,
+    )
+    run = BacktestRun.create(
+        dataset=dataset,
+        config=config,
+        period_start=datetime(2026, 1, 1, 1, tzinfo=UTC),
+        period_end=datetime(2026, 1, 1, 12, tzinfo=UTC),
+    )
+    plan = build_ablation_campaign(
+        run,
+        included_agents=["berlin", "rio"],
+        target_agents=["rio"],
+    )
+    factory = PaperAblationRuntimeFactory(
+        _settings(historical_derivatives_archive=archive)
+    )
+    runtime = factory(
+        variant=plan.baseline,
+        specialists=v1_specialist_factories(plan.baseline_agents),
+    )
+
+    assert runtime.runner.historical_derivatives_archive is archive
+    assert runtime.runner.derivatives_max_age_seconds == 7200

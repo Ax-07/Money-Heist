@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+import pytest
+
 from app.dashboard.backtest import (
     BacktestDashboardService,
     CampaignRequest,
@@ -62,3 +64,73 @@ def test_dashboard_1h_config_stays_legacy_without_fake_15m():
     assert "mtf_runtime_version" not in assumptions
     assert "decision_timeframe" not in assumptions
     assert "mtf_timeframes" not in assumptions
+
+
+def _derivatives_csv() -> str:
+    return "\n".join(
+        [
+            (
+                "symbol,instrument,observed_at,available_at,funding_rate,"
+                "open_interest,open_interest_change_pct,long_short_ratio"
+            ),
+            (
+                "BTC/USDC,PF_XBTUSD,2026-01-01T00:00:00Z,"
+                "2026-01-01T01:00:00Z,,1000,1,1.1"
+            ),
+            (
+                "BTC/USDC,PF_XBTUSD,2026-01-01T01:00:00Z,"
+                "2026-01-01T02:00:00Z,0.0001,1010,1,1.2"
+            ),
+        ]
+    ) + "\n"
+
+
+def test_dashboard_derivatives_activation_is_explicit_and_bound():
+    from app.dashboard.backtest import HistoricalDerivativesInput
+    from app.services.backtest.derivatives_runtime import (
+        historical_derivatives_runner_kwargs,
+    )
+
+    service = BacktestDashboardService()
+    derivatives = HistoricalDerivativesInput(
+        csv_text=_derivatives_csv(),
+        max_age_seconds=7200,
+    )
+    request = _request("1m").model_copy(
+        update={"derivatives": derivatives}
+    )
+    archive = service._parse_historical_derivatives(derivatives)
+    config = service._backtest_config(
+        request,
+        historical_derivatives_archive=archive,
+    )
+
+    assumptions = config.execution_assumptions
+    assert assumptions["derivatives_runtime_version"] == (
+        "historical-derivatives-runtime-v1"
+    )
+    assert assumptions["derivatives_context_binding_version"] == (
+        "historical-derivatives-rio-v1"
+    )
+    assert assumptions["derivatives_archive_fingerprint"] == (
+        archive.dataset_fingerprint
+    )
+    assert assumptions["derivatives_max_age_seconds"] == "7200"
+
+    kwargs = historical_derivatives_runner_kwargs(assumptions, archive)
+    assert kwargs["historical_derivatives_archive"] is archive
+    assert int(kwargs["derivatives_max_age"].total_seconds()) == 7200
+
+
+def test_dashboard_rejects_derivatives_for_native_1h_source():
+    from app.dashboard.backtest import HistoricalDerivativesInput
+
+    base = _request("1h")
+    payload = base.model_dump(mode="python")
+    payload["derivatives"] = HistoricalDerivativesInput(
+        csv_text=_derivatives_csv(),
+        max_age_seconds=7200,
+    )
+
+    with pytest.raises(ValueError, match="requires source timeframe"):
+        CampaignRequest.model_validate(payload)
