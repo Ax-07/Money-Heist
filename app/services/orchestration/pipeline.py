@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import re
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -73,6 +74,13 @@ def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
     return paths
 
 
+_NUMERIC_BRACKET_INDEX = re.compile(r"\[(\d+)\](?=\.|$)")
+
+
+def _canonical_evidence_source_key(source_key: str) -> str:
+    return _NUMERIC_BRACKET_INDEX.sub(r".\1", source_key)
+
+
 def _specialist_alias_paths(
     specialist_analyses: list[dict[str, Any]],
 ) -> set[str]:
@@ -119,7 +127,11 @@ def _assert_grounded_final_evidence(
         grounded_inputs["task_force_report"] = task_force_report
     available = _grounded_json_paths(grounded_inputs)
     available.update(_specialist_alias_paths(specialist_analyses))
-    missing = sorted(item.source_key for item in evidence if item.source_key not in available)
+    missing = sorted(
+        item.source_key
+        for item in evidence
+        if _canonical_evidence_source_key(item.source_key) not in available
+    )
     if missing:
         raise UngroundedEvidenceError(
             "Professor evidence references unavailable input fields: " + ", ".join(missing)

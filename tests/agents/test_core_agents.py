@@ -137,3 +137,41 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
 def test_prompt_registry_rejects_unknown_version():
     with pytest.raises(KeyError):
         CORE_PROMPTS.get("professor", "v999")
+
+
+def test_palermo_has_targeted_output_headroom_without_changing_lisbon() -> None:
+    async def scenario():
+        gateway = FakeGateway(
+            [
+                PalermoReview(
+                    verdict="CAUTION",
+                    severity=0.5,
+                    critical_objections=["needs confirmation"],
+                ),
+                LisbonReport(
+                    total_ai_cost_eur=0.1,
+                    cost_per_decision_eur=0.1,
+                    additional_analysis_justified=False,
+                ),
+            ]
+        )
+
+        await Palermo(gateway).review(
+            system_id="balanced_v1",
+            market_context={},
+            specialist_analyses=[],
+            provisional_thesis={"direction": "NO_TRADE"},
+        )
+        await Lisbon(gateway).assess(
+            system_id="balanced_v1",
+            ai_metrics={"cost": 0.1},
+            agent_metrics=[],
+        )
+
+        assert gateway.requests[0].agent_id == "palermo"
+        assert gateway.requests[0].max_output_tokens == 2400
+        assert gateway.requests[1].agent_id == "lisbon"
+        assert gateway.requests[1].max_output_tokens is None
+
+    asyncio.run(scenario())
+

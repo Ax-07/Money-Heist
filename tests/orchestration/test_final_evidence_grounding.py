@@ -90,3 +90,29 @@ def test_duplicate_specialist_agent_alias_fails_closed() -> None:
             _evidence("tokyo.breakout_quality"),
             **values,
         )
+
+
+def test_final_grounding_accepts_numeric_bracket_index_notation() -> None:
+    values = _inputs()
+    _assert_grounded_final_evidence(
+        _evidence("specialist_analyses[1].breakout_quality"),
+        **values,
+    )
+
+
+@pytest.mark.parametrize(
+    "source_key",
+    [
+        "specialist_analyses[9].breakout_quality",
+        "specialist_analyses[tokyo].breakout_quality",
+        "specialist_analyses[-1].breakout_quality",
+    ],
+)
+def test_final_grounding_rejects_invalid_or_missing_bracket_paths(source_key: str) -> None:
+    values = _inputs()
+    with pytest.raises(UngroundedEvidenceError, match="unavailable input fields"):
+        _assert_grounded_final_evidence(
+            _evidence(source_key),
+            **values,
+        )
+
