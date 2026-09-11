@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from app.intelligence.ai_gateway import (
+    IncompleteAIProviderError,
     NonRetryableAIProviderError,
     OpenAIResponsesClient,
     ProviderRequest,
@@ -110,8 +111,14 @@ def test_openai_incomplete_response_is_non_retryable():
             client = OpenAIResponsesClient(api_key="secret", http_client=http_client)
             return await client.complete(provider_request())
 
-    with pytest.raises(NonRetryableAIProviderError, match="max_output_tokens"):
+    with pytest.raises(IncompleteAIProviderError, match="max_output_tokens") as caught:
         asyncio.run(run())
+
+    assert caught.value.input_tokens == 10
+    assert caught.value.cached_input_tokens == 0
+    assert caught.value.output_tokens == 200
+    assert caught.value.provider_request_id == "resp_incomplete"
+    assert caught.value.model_id == "configured-model"
 
 
 def test_openai_nonterminal_response_is_not_replayed_automatically():

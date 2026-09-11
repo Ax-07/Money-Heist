@@ -5,7 +5,11 @@ from typing import Any
 
 import httpx
 
-from .errors import NonRetryableAIProviderError, RetryableAIProviderError
+from .errors import (
+    IncompleteAIProviderError,
+    NonRetryableAIProviderError,
+    RetryableAIProviderError,
+)
 from .models import ProviderRequest, ProviderResponse, TokenUsage
 
 _RETRYABLE_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
@@ -93,8 +97,6 @@ class OpenAIResponsesClient:
         except ValueError as exc:
             raise RetryableAIProviderError("OpenAI returned invalid JSON") from exc
 
-        self._validate_response_status(body)
-        output_text = self._extract_output_text(body)
         usage_raw = body.get("usage") or {}
         input_details = usage_raw.get("input_tokens_details") or {}
         usage = TokenUsage(
@@ -102,6 +104,24 @@ class OpenAIResponsesClient:
             cached_input_tokens=int(input_details.get("cached_tokens") or 0),
             output_tokens=int(usage_raw.get("output_tokens") or 0),
         )
+
+        status = body.get("status")
+        if status == "incomplete":
+            details = body.get("incomplete_details") or {}
+            reason = details.get("reason") if isinstance(details, dict) else str(details)
+            if reason == "max_output_tokens":
+                raise IncompleteAIProviderError(
+                    "OpenAI response incomplete: max_output_tokens",
+                    input_tokens=usage.input_tokens,
+                    cached_input_tokens=usage.cached_input_tokens,
+                    output_tokens=usage.output_tokens,
+                    latency_ms=latency_ms,
+                    provider_request_id=body.get("id"),
+                    model_id=str(body.get("model") or request.model_id),
+                )
+
+        self._validate_response_status(body)
+        output_text = self._extract_output_text(body)
         return ProviderResponse(
             provider_request_id=body.get("id"),
             model_id=str(body.get("model") or request.model_id),

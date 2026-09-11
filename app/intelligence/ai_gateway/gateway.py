@@ -11,10 +11,17 @@ from .client import AIClient
 from .errors import (
     AIConfigurationError,
     BudgetExceededError,
+    IncompleteAIProviderError,
     RetryableAIProviderError,
     StructuredOutputError,
 )
-from .models import AIGatewayRequest, AIGatewayResult, AIUsageRecord, ProviderRequest
+from .models import (
+    AIGatewayRequest,
+    AIGatewayResult,
+    AIUsageRecord,
+    ProviderRequest,
+    TokenUsage,
+)
 from .pricing import calculate_cost_eur, estimate_max_request_cost_eur
 from .routing import ModelRoute, ModelRouter
 from .strict_schema import build_strict_json_schema
@@ -132,6 +139,38 @@ class AIGateway(Generic[StructuredT]):
 
             try:
                 provider_response = await client.complete(provider_request)
+            except IncompleteAIProviderError as exc:
+                incomplete_usage = TokenUsage(
+                    input_tokens=exc.input_tokens,
+                    cached_input_tokens=exc.cached_input_tokens,
+                    output_tokens=exc.output_tokens,
+                )
+                actual_cost = calculate_cost_eur(incomplete_usage, route.pricing)
+
+                settle_error: BudgetExceededError | None = None
+                try:
+                    self._budget.settle(reservation_id, actual_cost)
+                except BudgetExceededError as budget_exc:
+                    settle_error = budget_exc
+
+                usage_record = AIUsageRecord(
+                    request_id=request.request_id,
+                    system_id=request.system_id,
+                    agent_id=request.agent_id,
+                    route_id=route.route_id,
+                    model_id=exc.model_id,
+                    input_tokens=incomplete_usage.input_tokens,
+                    cached_input_tokens=incomplete_usage.cached_input_tokens,
+                    output_tokens=incomplete_usage.output_tokens,
+                    estimated_cost=actual_cost,
+                    latency_ms=exc.latency_ms,
+                    attempt=attempt,
+                )
+                await self._usage_recorder.record(usage_record)
+
+                if settle_error is not None:
+                    raise settle_error
+                raise
             except RetryableAIProviderError:
                 self._budget.release(reservation_id)
                 if attempt >= self._max_attempts:

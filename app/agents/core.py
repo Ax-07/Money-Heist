@@ -14,7 +14,7 @@ from .registry import CORE_AGENT_REGISTRY, AgentRegistry
 
 T = TypeVar("T", bound=BaseModel)
 
-PALERMO_MAX_OUTPUT_TOKENS = 2400
+PALERMO_MAX_OUTPUT_TOKENS = 8192
 
 
 class StructuredGateway(Protocol):
