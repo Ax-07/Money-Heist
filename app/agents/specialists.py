@@ -78,22 +78,28 @@ def _assert_independent_input(*values: Any) -> None:
         )
 
 
-def _leaf_paths(value: Any, prefix: str = "") -> set[str]:
+def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
+    # Return every real input JSON path, including container paths.
     paths: set[str] = set()
+    if prefix:
+        paths.add(prefix)
+
     if isinstance(value, dict):
         for key, nested in value.items():
             child = f"{prefix}.{key}" if prefix else str(key)
-            paths.update(_leaf_paths(nested, child))
+            paths.update(_grounded_json_paths(nested, child))
     elif isinstance(value, BaseModel):
         paths.update(
-            _leaf_paths(value.model_dump(mode="json", exclude_none=True), prefix)
+            _grounded_json_paths(
+                value.model_dump(mode="json", exclude_none=True),
+                prefix,
+            )
         )
     elif isinstance(value, (list, tuple)):
         for index, nested in enumerate(value):
             child = f"{prefix}.{index}" if prefix else str(index)
-            paths.update(_leaf_paths(nested, child))
-    elif prefix:
-        paths.add(prefix)
+            paths.update(_grounded_json_paths(nested, child))
+
     return paths
 
 
@@ -110,7 +116,7 @@ def _assert_grounded_evidence(
     }
     if specialist_context is not None:
         payload["specialist_context"] = specialist_context
-    available_paths = _leaf_paths(payload)
+    available_paths = _grounded_json_paths(payload)
     missing = sorted(
         evidence.source_key
         for evidence in analysis.evidence

@@ -199,6 +199,42 @@ def test_evidence_must_reference_an_existing_input_field():
     asyncio.run(scenario())
 
 
+def test_evidence_may_reference_existing_container_field():
+    async def scenario():
+        gateway = FakeGateway([_berlin_output("opportunity.triggers")])
+        result = await Berlin(gateway).analyze(
+            system_id="balanced_v1",
+            opportunity={
+                "symbol": "BTCUSDT",
+                "triggers": ["BREAKOUT", "VOLUME_EXPANSION"],
+            },
+            market_context={"features": {"adx": 28.0}},
+        )
+
+        assert result.output.evidence[0].source_key == "opportunity.triggers"
+        assert len(gateway.requests) == 1
+
+    asyncio.run(scenario())
+
+
+def test_container_grounding_does_not_allow_missing_sibling_path():
+    async def scenario():
+        gateway = FakeGateway([_berlin_output("opportunity.nonexistent")])
+        with pytest.raises(UngroundedEvidenceError):
+            await Berlin(gateway).analyze(
+                system_id="balanced_v1",
+                opportunity={
+                    "symbol": "BTCUSDT",
+                    "triggers": ["BREAKOUT"],
+                },
+                market_context={"features": {"adx": 28.0}},
+            )
+
+        assert len(gateway.requests) == 1
+
+    asyncio.run(scenario())
+
+
 def test_missing_data_can_be_reported_without_fabricated_evidence():
     async def scenario():
         output = TokyoAnalysis(
