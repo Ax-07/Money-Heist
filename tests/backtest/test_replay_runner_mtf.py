@@ -158,6 +158,7 @@ def _mtf_assumptions():
         "decision_timeframe": "1h",
         "mtf_timeframes": "15m,1h,4h,1d",
         "mtf_policy_version": "mtf-utc-closed-v1",
+        "mtf_feature_context_version": "mtf-feature-context-v1",
         "lifecycle_timeframe": "1m",
     }
 
@@ -248,3 +249,72 @@ async def test_1m_mtf_decision_series_matches_direct_1h_replay():
 
     assert mtf_engine.calls == direct_engine.calls
     assert mtf_scanner.calls == direct_scanner.calls
+
+
+class _OneOpportunityScanner:
+    def __init__(self):
+        self.config = _ScannerConfig()
+        self.emitted = False
+
+    def scan(self, current, *, system_id, previous=None):
+        del previous
+        opportunity = None
+        if not self.emitted:
+            self.emitted = True
+            opportunity = SimpleNamespace(
+                opportunity_id="mtf-feature-context-opportunity",
+                snapshot_id=current.snapshot_id,
+                system_id=system_id,
+                symbol=current.symbol,
+                timeframe=current.timeframe,
+            )
+        return SimpleNamespace(opportunity=opportunity)
+
+
+class _RecordingPipeline:
+    def __init__(self):
+        self.calls = []
+
+    async def run(self, *, opportunity, market_context, now=None):
+        self.calls.append((opportunity, market_context, now))
+        return SimpleNamespace(status=SimpleNamespace(value="NO_TRADE"))
+
+
+@_sync_test
+async def test_mtf_feature_context_is_built_only_for_opportunity_and_pipeline_stays_1h():
+    from app.market.features import FeatureEngine
+
+    candles = _minute_candles(36 * 60)
+    pipeline = _RecordingPipeline()
+    scanner = _OneOpportunityScanner()
+    runner = HistoricalReplayRunner(
+        paper_pipeline=pipeline,
+        feature_engine=FeatureEngine(),
+        scanner=scanner,
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+    )
+
+    result = await runner.run(
+        candles=candles,
+        run=_run(
+            candles,
+            timeframe="1m",
+            assumptions=_mtf_assumptions(),
+        ),
+    )
+
+    opportunity_points = [
+        point for point in result.points if point.opportunity is not None
+    ]
+    assert len(opportunity_points) == 1
+    point = opportunity_points[0]
+    context = point.mtf_feature_context
+    assert context is not None
+    assert context.decision_timeframe == "1h"
+    assert context.decision_snapshot is point.feature_snapshot
+    assert set(context.snapshots) == {"15m", "1h", "4h", "1d"}
+    assert "1d" in context.warmup_incomplete_timeframes
+    assert len(pipeline.calls) == 1
+    assert pipeline.calls[0][1] is point.feature_snapshot
+    assert pipeline.calls[0][1].timeframe == "1h"

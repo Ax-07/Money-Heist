@@ -7,6 +7,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
+from app.market.features.multitimeframe import (
+    build_multi_timeframe_feature_context,
+)
 from app.market.models import Candle
 from app.market.multitimeframe import (
     HistoricalMultiTimeframeCursor,
@@ -111,6 +114,7 @@ class HistoricalReplayPoint:
     decision_visible_candle_count: int | None = None
     mtf_cursor_fingerprint: str | None = None
     mtf_candle_counts: tuple[tuple[str, int], ...] = ()
+    mtf_feature_context: Any | None = None
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
@@ -170,6 +174,7 @@ class HistoricalReplayRunner:
             "15m", "1h", "4h", "1d"
         ),
         mtf_policy_version: str = "mtf-utc-closed-v1",
+        mtf_feature_context_version: str = "mtf-feature-context-v1",
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -210,6 +215,9 @@ class HistoricalReplayRunner:
             item.strip().lower() for item in mtf_timeframes
         )
         self.mtf_policy_version = mtf_policy_version.strip()
+        self.mtf_feature_context_version = (
+            mtf_feature_context_version.strip()
+        )
 
     async def run(
         self,
@@ -338,10 +346,22 @@ class HistoricalReplayRunner:
             if observed_at < run.period_start:
                 continue
 
+            mtf_feature_context = None
             opportunity = getattr(scan_result, "opportunity", None)
             pipeline_result = None
             if opportunity is not None:
                 opportunity_count += 1
+                if mtf_cursor is not None:
+                    mtf_feature_context = (
+                        build_multi_timeframe_feature_context(
+                            feature_engine=self.feature_engine,
+                            mtf_cursor=mtf_cursor,
+                            observed_at=clock.now(),
+                            decision_timeframe=self.decision_timeframe,
+                            decision_feature=feature,
+                            context_version=self.mtf_feature_context_version,
+                        )
+                    )
                 pipeline_result = await self.paper_pipeline.run(
                     opportunity=opportunity,
                     market_context=feature,
@@ -372,6 +392,7 @@ class HistoricalReplayRunner:
                     if mtf_state is not None
                     else ()
                 ),
+                mtf_feature_context=mtf_feature_context,
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
                 portfolio_state=self._current_portfolio_state(run.config.system_id),
@@ -466,6 +487,8 @@ class HistoricalReplayRunner:
             return
         if not self.mtf_policy_version:
             raise ValueError("mtf_policy_version must not be empty")
+        if not self.mtf_feature_context_version:
+            raise ValueError("mtf_feature_context_version must not be empty")
         if not self.mtf_timeframes:
             raise ValueError("mtf_timeframes must not be empty")
         if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
@@ -493,6 +516,7 @@ class HistoricalReplayRunner:
             "decision_timeframe": self.decision_timeframe,
             "mtf_timeframes": ",".join(self.mtf_timeframes),
             "mtf_policy_version": self.mtf_policy_version,
+            "mtf_feature_context_version": self.mtf_feature_context_version,
             "lifecycle_timeframe": run.dataset.timeframe,
         }
         assumptions = run.config.execution_assumptions
