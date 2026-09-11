@@ -3,6 +3,8 @@
 from .historical import HistoricalImportError, import_candles_csv
 from .models import Candle, HistoricalImportResult, MarketSnapshot, SnapshotQuality
 from .multitimeframe import (
+    HistoricalMultiTimeframeCursor,
+    HistoricalMultiTimeframeCursorState,
     HistoricalMultiTimeframeSlice,
     MultiTimeframeError,
     build_historical_mtf_slice,
@@ -24,6 +26,8 @@ __all__ = [
     "MarketSnapshot",
     "SnapshotQuality",
     "create_market_snapshot",
+    "HistoricalMultiTimeframeCursor",
+    "HistoricalMultiTimeframeCursorState",
     "HistoricalMultiTimeframeSlice",
     "MultiTimeframeError",
     "build_historical_mtf_slice",

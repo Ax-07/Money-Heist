@@ -7,6 +7,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
+from app.market.models import Candle
+from app.market.multitimeframe import (
+    HistoricalMultiTimeframeCursor,
+    timeframe_interval,
+)
+
 from .clock import ReplayClock, as_utc
 from .dataset import DatasetRef, canonical_candle_rows
 from .models import BacktestResult, BacktestRun, BacktestRunStatus
@@ -101,6 +107,10 @@ class HistoricalReplayPoint:
     visible_candle_count: int
     feature_snapshot: Any
     scan_result: Any
+    decision_timeframe: str | None = None
+    decision_visible_candle_count: int | None = None
+    mtf_cursor_fingerprint: str | None = None
+    mtf_candle_counts: tuple[tuple[str, int], ...] = ()
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
@@ -155,6 +165,11 @@ class HistoricalReplayRunner:
         min_history: int | None = None,
         portfolio_provider: DynamicPortfolioProviderPort | None = None,
         position_lifecycle: PositionLifecyclePort | None = None,
+        decision_timeframe: str | None = None,
+        mtf_timeframes: Sequence[str] = (
+            "15m", "1h", "4h", "1d"
+        ),
+        mtf_policy_version: str = "mtf-utc-closed-v1",
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -186,6 +201,15 @@ class HistoricalReplayRunner:
         self.min_history = min_history
         self.portfolio_provider = portfolio_provider
         self.position_lifecycle = position_lifecycle
+        self.decision_timeframe = (
+            decision_timeframe.strip().lower()
+            if decision_timeframe is not None
+            else None
+        )
+        self.mtf_timeframes = tuple(
+            item.strip().lower() for item in mtf_timeframes
+        )
+        self.mtf_policy_version = mtf_policy_version.strip()
 
     async def run(
         self,
@@ -199,6 +223,7 @@ class HistoricalReplayRunner:
         rows = self._validated_rows(candles, run)
         self._validate_component_versions(run)
         self._validate_dynamic_stack(run)
+        self._validate_mtf_mode(run)
 
         min_history = (
             self.min_history if self.min_history is not None else self._default_min_history()
@@ -210,6 +235,7 @@ class HistoricalReplayRunner:
         visible: list[dict[str, Any]] = []
         points: list[HistoricalReplayPoint] = []
         previous_feature: Any | None = None
+        mtf_cursor = self._mtf_cursor_for_run(run)
         processed_candles = 0
         opportunity_count = 0
         executed_order_count = 0
@@ -273,13 +299,33 @@ class HistoricalReplayRunner:
                 )
                 await self._refresh_dynamic_portfolio(clock.now())
 
-            if len(visible) < min_history:
-                continue
+            mtf_state = None
+            decision_visible_count: int | None = None
+            if mtf_cursor is not None:
+                emitted = mtf_cursor.push(
+                    self._row_to_candle(row, run)
+                )
+                if self.decision_timeframe not in emitted:
+                    continue
+                decision_series = mtf_cursor.series(
+                    self.decision_timeframe
+                )
+                decision_visible_count = len(decision_series)
+                if decision_visible_count < min_history:
+                    continue
+                feature_input = decision_series
+                feature_timeframe = self.decision_timeframe
+                mtf_state = mtf_cursor.state()
+            else:
+                if len(visible) < min_history:
+                    continue
+                feature_input = tuple(visible)
+                feature_timeframe = run.dataset.timeframe
 
             feature = self.feature_engine.compute(
-                tuple(visible),
+                feature_input,
                 symbol=run.dataset.symbol,
-                timeframe=run.dataset.timeframe,
+                timeframe=feature_timeframe,
                 observed_at=clock.now(),
             )
             scan_result = self.scanner.scan(
@@ -314,6 +360,18 @@ class HistoricalReplayRunner:
                 observed_at=clock.now(),
                 visible_candle_count=len(visible),
                 feature_snapshot=feature,
+                decision_timeframe=self.decision_timeframe,
+                decision_visible_candle_count=decision_visible_count,
+                mtf_cursor_fingerprint=(
+                    mtf_state.cursor_fingerprint
+                    if mtf_state is not None
+                    else None
+                ),
+                mtf_candle_counts=(
+                    mtf_state.candle_counts
+                    if mtf_state is not None
+                    else ()
+                ),
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
                 portfolio_state=self._current_portfolio_state(run.config.system_id),
@@ -402,6 +460,78 @@ class HistoricalReplayRunner:
             )
         if scanner_version != run.config.scanner_version:
             raise ValueError("Scanner version does not match BacktestConfig.scanner_version")
+
+    def _validate_mtf_mode(self, run: BacktestRun) -> None:
+        if self.decision_timeframe is None:
+            return
+        if not self.mtf_policy_version:
+            raise ValueError("mtf_policy_version must not be empty")
+        if not self.mtf_timeframes:
+            raise ValueError("mtf_timeframes must not be empty")
+        if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
+            raise ValueError("mtf_timeframes must be unique")
+        if self.decision_timeframe not in self.mtf_timeframes:
+            raise ValueError(
+                "decision_timeframe must be included in mtf_timeframes"
+            )
+
+        source_interval = timeframe_interval(run.dataset.timeframe)
+        decision_interval = timeframe_interval(self.decision_timeframe)
+        source_seconds = int(source_interval.total_seconds())
+        decision_seconds = int(decision_interval.total_seconds())
+        if decision_seconds < source_seconds:
+            raise ValueError(
+                "decision_timeframe cannot be smaller than dataset timeframe"
+            )
+        if decision_seconds % source_seconds != 0:
+            raise ValueError(
+                "decision_timeframe must be divisible by dataset timeframe"
+            )
+
+        expected = {
+            "historical_source_timeframe": run.dataset.timeframe,
+            "decision_timeframe": self.decision_timeframe,
+            "mtf_timeframes": ",".join(self.mtf_timeframes),
+            "mtf_policy_version": self.mtf_policy_version,
+            "lifecycle_timeframe": run.dataset.timeframe,
+        }
+        assumptions = run.config.execution_assumptions
+        for key, value in expected.items():
+            if assumptions.get(key) != value:
+                raise ValueError(
+                    "MTF replay requires execution_assumptions "
+                    f"{key}={value!r}"
+                )
+
+    def _mtf_cursor_for_run(
+        self,
+        run: BacktestRun,
+    ) -> HistoricalMultiTimeframeCursor | None:
+        if self.decision_timeframe is None:
+            return None
+        return HistoricalMultiTimeframeCursor(
+            source_timeframe=run.dataset.timeframe,
+            target_timeframes=self.mtf_timeframes,
+            policy_version=self.mtf_policy_version,
+        )
+
+    def _row_to_candle(
+        self,
+        row: dict[str, Any],
+        run: BacktestRun,
+    ) -> Candle:
+        return Candle(
+            symbol=run.dataset.symbol,
+            timeframe=run.dataset.timeframe,
+            open_time=self._row_time(row, "open_time"),
+            close_time=self._row_time(row, "close_time"),
+            open=Decimal(str(row["open"])),
+            high=Decimal(str(row["high"])),
+            low=Decimal(str(row["low"])),
+            close=Decimal(str(row["close"])),
+            volume=Decimal(str(row["volume"])),
+            is_closed=bool(row["is_closed"]),
+        )
 
     def _validate_dynamic_stack(self, run: BacktestRun) -> None:
         if self.portfolio_provider is None or self.position_lifecycle is None:

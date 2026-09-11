@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
 from .models import Candle
 
@@ -386,3 +387,279 @@ def build_historical_mtf_slice(
         candles_by_timeframe=frozen,
         fingerprint=fingerprint,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalMultiTimeframeCursorState:
+    """Compact immutable state of one incremental historical MTF cursor."""
+
+    symbol: str
+    source_timeframe: str
+    source_candle_count: int
+    target_timeframes: tuple[str, ...]
+    as_of: datetime
+    policy_version: str
+    source_fingerprint: str
+    cursor_fingerprint: str
+    candle_counts: tuple[tuple[str, int], ...]
+    latest_close_times: tuple[tuple[str, datetime], ...]
+
+
+class HistoricalMultiTimeframeCursor:
+    """Incrementally build closed UTC MTF candles from one source stream."""
+
+    def __init__(
+        self,
+        *,
+        source_timeframe: str,
+        target_timeframes: Sequence[str] = ("15m", "1h", "4h", "1d"),
+        policy_version: str = "mtf-utc-closed-v1",
+    ) -> None:
+        self.source_timeframe = source_timeframe.strip().lower()
+        self.source_interval = timeframe_interval(self.source_timeframe)
+        self.target_timeframes = tuple(
+            item.strip().lower() for item in target_timeframes
+        )
+        self.policy_version = policy_version.strip()
+
+        if not self.target_timeframes:
+            raise MultiTimeframeError("target_timeframes must not be empty")
+        if any(not item for item in self.target_timeframes):
+            raise MultiTimeframeError(
+                "target_timeframes must not contain blanks"
+            )
+        if len(set(self.target_timeframes)) != len(self.target_timeframes):
+            raise MultiTimeframeError("target_timeframes must be unique")
+        if not self.policy_version:
+            raise MultiTimeframeError("policy_version must not be empty")
+
+        source_seconds = int(self.source_interval.total_seconds())
+        self._target_intervals: dict[str, timedelta] = {}
+        self._expected_counts: dict[str, int] = {}
+        for target in self.target_timeframes:
+            interval = timeframe_interval(target)
+            seconds = int(interval.total_seconds())
+            if seconds < source_seconds:
+                raise MultiTimeframeError(
+                    f"target timeframe {target} is smaller than source "
+                    f"{self.source_timeframe}"
+                )
+            if seconds % source_seconds != 0:
+                raise MultiTimeframeError(
+                    f"target timeframe {target} is not divisible by source "
+                    f"{self.source_timeframe}"
+                )
+            self._target_intervals[target] = interval
+            self._expected_counts[target] = seconds // source_seconds
+
+        self._symbol: str | None = None
+        self._last_source: Candle | None = None
+        self._source_count = 0
+        self._as_of: datetime | None = None
+        self._series: dict[str, list[Candle]] = {
+            target: [] for target in self.target_timeframes
+        }
+        self._pending: dict[str, tuple[datetime, list[Candle]] | None] = {
+            target: None for target in self.target_timeframes
+        }
+
+        self._source_hasher = hashlib.sha256()
+        self._source_hasher.update(
+            b"money-heist.visible-source-candles.v1\n"
+        )
+        self._target_hashers: dict[str, Any] = {}
+        for target in self.target_timeframes:
+            hasher = hashlib.sha256()
+            hasher.update(
+                (
+                    "money-heist.incremental-mtf-series.v1:"
+                    f"{target}\n"
+                ).encode("utf-8")
+            )
+            self._target_hashers[target] = hasher
+
+    @property
+    def source_candle_count(self) -> int:
+        return self._source_count
+
+    @property
+    def as_of(self) -> datetime | None:
+        return self._as_of
+
+    def series(self, timeframe: str) -> tuple[Candle, ...]:
+        key = timeframe.strip().lower()
+        if key not in self._series:
+            raise MultiTimeframeError(
+                f"timeframe {timeframe!r} is not configured on this cursor"
+            )
+        return tuple(self._series[key])
+
+    def push(self, candle: Candle) -> tuple[str, ...]:
+        """Consume one next closed source candle and return emitted timeframes."""
+
+        if candle.timeframe != self.source_timeframe:
+            raise MultiTimeframeError(
+                "cursor source candle timeframe does not match configuration"
+            )
+        if not candle.is_closed:
+            raise MultiTimeframeError(
+                "cursor accepts closed source candles only"
+            )
+        if candle.close_time - candle.open_time != self.source_interval:
+            raise MultiTimeframeError(
+                "source candle duration does not match cursor timeframe"
+            )
+
+        if self._symbol is None:
+            self._symbol = candle.symbol
+        elif candle.symbol != self._symbol:
+            raise MultiTimeframeError(
+                "cursor source candles must contain one symbol"
+            )
+
+        if self._last_source is not None:
+            expected_open = self._last_source.open_time + self.source_interval
+            if candle.open_time != expected_open:
+                raise MultiTimeframeError(
+                    "cursor source candles contain a gap or are out of order"
+                )
+            if self._last_source.close_time != candle.open_time:
+                raise MultiTimeframeError(
+                    "cursor source candle boundaries are not contiguous"
+                )
+
+        self._hash_candle(self._source_hasher, candle)
+        self._source_count += 1
+        self._as_of = candle.close_time
+        self._last_source = candle
+
+        emitted: list[str] = []
+        for target in self.target_timeframes:
+            target_interval = self._target_intervals[target]
+            expected_count = self._expected_counts[target]
+
+            if expected_count == 1:
+                derived = Candle(
+                    symbol=candle.symbol,
+                    timeframe=target,
+                    open_time=candle.open_time,
+                    close_time=candle.close_time,
+                    open=candle.open,
+                    high=candle.high,
+                    low=candle.low,
+                    close=candle.close,
+                    volume=candle.volume,
+                    is_closed=True,
+                )
+                self._emit(target, derived)
+                emitted.append(target)
+                continue
+
+            bucket_start = _bucket_start(
+                candle.open_time,
+                target_interval,
+            )
+            current = self._pending[target]
+            if current is None or current[0] != bucket_start:
+                current = (bucket_start, [])
+                self._pending[target] = current
+
+            current[1].append(candle)
+            bucket_end = bucket_start + target_interval
+            if candle.close_time != bucket_end:
+                continue
+
+            bucket = current[1]
+            self._pending[target] = None
+            if len(bucket) != expected_count:
+                continue
+            if (
+                bucket[0].open_time != bucket_start
+                or bucket[-1].close_time != bucket_end
+            ):
+                continue
+
+            derived = _aggregate_bucket(
+                bucket,
+                target_timeframe=target,
+                bucket_start=bucket_start,
+                target_interval=target_interval,
+            )
+            self._emit(target, derived)
+            emitted.append(target)
+
+        return tuple(emitted)
+
+    def state(self) -> HistoricalMultiTimeframeCursorState:
+        if (
+            self._symbol is None
+            or self._as_of is None
+            or self._source_count <= 0
+        ):
+            raise MultiTimeframeError("cursor has not consumed source data")
+
+        source_fingerprint = self._source_hasher.copy().hexdigest()
+        series_fingerprints = tuple(
+            (
+                target,
+                self._target_hashers[target].copy().hexdigest(),
+                len(self._series[target]),
+            )
+            for target in self.target_timeframes
+        )
+        payload = {
+            "schema": "money-heist.historical-mtf-cursor.v1",
+            "symbol": self._symbol,
+            "source_timeframe": self.source_timeframe,
+            "source_candle_count": self._source_count,
+            "source_fingerprint": source_fingerprint,
+            "target_timeframes": self.target_timeframes,
+            "series_fingerprints": series_fingerprints,
+            "as_of": self._as_of.isoformat().replace("+00:00", "Z"),
+            "policy_version": self.policy_version,
+        }
+        cursor_fingerprint = hashlib.sha256(
+            json.dumps(
+                payload,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            ).encode("utf-8")
+        ).hexdigest()
+
+        counts = tuple(
+            (target, len(self._series[target]))
+            for target in self.target_timeframes
+        )
+        latest = tuple(
+            (target, self._series[target][-1].close_time)
+            for target in self.target_timeframes
+            if self._series[target]
+        )
+        return HistoricalMultiTimeframeCursorState(
+            symbol=self._symbol,
+            source_timeframe=self.source_timeframe,
+            source_candle_count=self._source_count,
+            target_timeframes=self.target_timeframes,
+            as_of=self._as_of,
+            policy_version=self.policy_version,
+            source_fingerprint=source_fingerprint,
+            cursor_fingerprint=cursor_fingerprint,
+            candle_counts=counts,
+            latest_close_times=latest,
+        )
+
+    def _emit(self, timeframe: str, candle: Candle) -> None:
+        self._series[timeframe].append(candle)
+        self._hash_candle(self._target_hashers[timeframe], candle)
+
+    @staticmethod
+    def _hash_candle(hasher: Any, candle: Candle) -> None:
+        encoded = json.dumps(
+            _canonical_candle(candle),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("utf-8")
+        hasher.update(encoded)
+        hasher.update(b"\n")
