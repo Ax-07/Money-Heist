@@ -52,6 +52,10 @@ from app.services.backtest import (
 )
 from app.services.backtest.advanced_mock import DeterministicAdvancedSpecialistMockProvider
 from app.services.backtest.runner import HistoricalReplayCancelledError
+from app.services.backtest.mtf_runtime import (
+    mtf_execution_assumptions,
+    mtf_runner_kwargs,
+)
 from app.services.orchestration import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
 from app.services.paper_pipeline.pipeline import PaperTradingPipeline
@@ -1197,6 +1201,9 @@ class BacktestDashboardService:
             "ai_output_per_million_eur": str(request.ai.output_per_million_eur),
             "ai_cached_input_per_million_eur": str(request.ai.cached_input_per_million_eur),
         }
+        assumptions.update(
+            mtf_execution_assumptions(request.dataset.timeframe)
+        )
         return BacktestConfig(
             system_id=request.system_id,
             risk_version=request.risk.risk_version,
@@ -1379,6 +1386,7 @@ class BacktestDashboardService:
             clock=clock,
             portfolio_provider=portfolio,
             position_lifecycle=lifecycle,
+            **mtf_runner_kwargs(run.config.execution_assumptions),
         )
         last_progress = 0
 

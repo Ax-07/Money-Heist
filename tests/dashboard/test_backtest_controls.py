@@ -28,7 +28,7 @@ def csv_series(count: int = 180) -> str:
     rows = ["timestamp,open,high,low,close,volume"]
     price = Decimal("100")
     for index in range(count):
-        opened = START + timedelta(minutes=index)
+        opened = START + timedelta(hours=index)
         drift = Decimal("0.35") if (index // 20) % 2 == 0 else Decimal("-0.25")
         close = price + drift
         high = max(price, close) + Decimal("0.20")
@@ -44,7 +44,7 @@ def request_for(service: BacktestDashboardService) -> CampaignRequest:
     dataset = DatasetInput(
         csv_text=csv_series(),
         symbol="BTC/EUR",
-        timeframe="1m",
+        timeframe="1h",
         source="controls_test",
     )
     preview = service.preview_dataset(dataset)

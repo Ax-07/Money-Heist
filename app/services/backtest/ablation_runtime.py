@@ -12,6 +12,7 @@ from app.intelligence.ai_gateway.client import AIClient
 from app.intelligence.ai_gateway.gateway import AIGateway
 from app.intelligence.ai_gateway.routing import ModelPricing, ModelRoute, ModelRouter
 from app.intelligence.ai_gateway.usage import InMemoryAIUsageRecorder
+from app.services.backtest.mtf_runtime import mtf_runner_kwargs
 from app.services.backtest.ai_modes import BacktestAIClient
 from app.services.backtest.cache import BacktestResponseCache
 from app.services.backtest.clock import ReplayClock
@@ -187,6 +188,7 @@ class PaperAblationRuntimeFactory:
             clock=clock,
             portfolio_provider=portfolio,
             position_lifecycle=lifecycle,
+            **mtf_runner_kwargs(run.config.execution_assumptions),
         )
         return AblationVariantRuntime.from_components(
             runner=runner,
