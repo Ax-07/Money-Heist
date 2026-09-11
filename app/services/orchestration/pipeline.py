@@ -536,6 +536,7 @@ class OrchestrationPipeline:
                 market_context=market_payload,
                 specialist_analyses=specialist_payloads,
                 provisional_thesis=provisional_thesis,
+                opportunity=copy.deepcopy(opportunity_payload),
                 opportunity_id=opportunity_uuid,
             )
             calls.append(self._call_audit(palermo_result, self.palermo, "palermo_red_team"))

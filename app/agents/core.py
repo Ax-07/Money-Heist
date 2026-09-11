@@ -161,15 +161,20 @@ class Palermo(CoreAgent):
         market_context: dict[str, Any],
         specialist_analyses: list[dict[str, Any]],
         provisional_thesis: dict[str, Any],
+        opportunity: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[PalermoReview]:
+        payload = {
+            "market_context": market_context,
+            "specialist_analyses": specialist_analyses,
+            "provisional_thesis": provisional_thesis,
+        }
+        if opportunity is not None:
+            payload["opportunity"] = opportunity
+
         return await self._run(
             system_id=system_id,
-            payload={
-                "market_context": market_context,
-                "specialist_analyses": specialist_analyses,
-                "provisional_thesis": provisional_thesis,
-            },
+            payload=payload,
             output_model=PalermoReview,
             opportunity_id=opportunity_id,
             phase="red_team",

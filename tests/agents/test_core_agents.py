@@ -1,4 +1,5 @@
 import asyncio
+import json
 from decimal import Decimal
 from uuid import uuid4
 
@@ -76,7 +77,7 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
 
         assert plan.output.decision == "MINI_CREW"
         assert final.output.direction == "NO_TRADE"
-        assert [request.prompt_version for request in gateway.requests] == ["v1", "v1"]
+        assert [request.prompt_version for request in gateway.requests] == ["v2", "v2"]
         assert all(request.agent_id == "professor" for request in gateway.requests)
         assert gateway.requests[0].opportunity_id == opportunity_id
 
@@ -105,6 +106,7 @@ def test_palermo_and_lisbon_use_gateway_without_privileged_tools():
             market_context={},
             specialist_analyses=[],
             provisional_thesis={"direction": "LONG"},
+            opportunity={"symbol": "BTCUSDT", "timeframe": "1h"},
         )
         report = await Lisbon(gateway).assess(
             system_id="balanced_v1",
@@ -128,15 +130,53 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
     assert CORE_AGENT_REGISTRY.get("professor").state.value == "ACTIVE"
     assert CORE_AGENT_REGISTRY.get("palermo").state.value == "ACTIVE"
 
+    expected_versions = {"professor": "v2", "palermo": "v2", "lisbon": "v1"}
     for entry in CORE_AGENT_REGISTRY.list():
         assert entry.core is True
         assert entry.allowed_tools == ()
-        assert CORE_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v1"
+        assert entry.prompt_version == expected_versions[entry.agent_id]
+        assert CORE_PROMPTS.get(entry.agent_id, entry.prompt_version).version == entry.prompt_version
 
 
 def test_prompt_registry_rejects_unknown_version():
     with pytest.raises(KeyError):
         CORE_PROMPTS.get("professor", "v999")
+
+
+def test_decision_contract_v2_is_versioned_and_preserves_v1():
+    assert CORE_PROMPTS.versions("professor") == ("v1", "v2")
+    assert CORE_PROMPTS.versions("palermo") == ("v1", "v2")
+
+    professor = CORE_PROMPTS.get("professor", "v2").instructions
+    palermo = CORE_PROMPTS.get("palermo", "v2").instructions
+
+    assert "future candles" in professor
+    assert "entry_price" in professor
+    assert "deterministic Risk Engine" in professor
+    assert "no trade" in professor.lower()
+
+    assert "future candle" in palermo
+    assert "Do not require entry" in palermo
+    assert "optional missing context" in palermo
+    assert "deterministic Risk Engine" in palermo
+
+
+def test_palermo_payload_can_include_current_opportunity():
+    async def scenario():
+        gateway = FakeGateway([PalermoReview(verdict="CAUTION", severity=0.4)])
+        await Palermo(gateway).review(
+            system_id="balanced_v1",
+            market_context={"regime": "range"},
+            specialist_analyses=[],
+            provisional_thesis={"direction": "LONG"},
+            opportunity={"symbol": "BTCUSDT", "timeframe": "1h", "priority_score": 61},
+        )
+        payload = json.loads(gateway.requests[0].input_text)
+        assert payload["opportunity"]["symbol"] == "BTCUSDT"
+        assert payload["opportunity"]["priority_score"] == 61
+        assert gateway.requests[0].prompt_version == "v2"
+
+    asyncio.run(scenario())
 
 
 def test_palermo_has_targeted_output_headroom_without_changing_lisbon() -> None:
