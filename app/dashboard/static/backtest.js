@@ -11,6 +11,30 @@ let lastTraceSequence = 0;
 let traceAnimationChain = Promise.resolve();
 let mockAgentCoverage = false;
 
+const AI_MODE_PRESETS = Object.freeze({
+  MOCK: Object.freeze({
+    budget: "1",
+    modelId: "mock-backtest-v1",
+    inputPrice: "0",
+    outputPrice: "0",
+    cachedPrice: "",
+  }),
+  CACHED: Object.freeze({
+    budget: "0.25",
+    modelId: "gpt-5.6-luna",
+    inputPrice: "0.20",
+    outputPrice: "1.20",
+    cachedPrice: "0.02",
+  }),
+  LIVE_EVAL: Object.freeze({
+    budget: "0.25",
+    modelId: "gpt-5.6-luna",
+    inputPrice: "0.20",
+    outputPrice: "1.20",
+    cachedPrice: "0.02",
+  }),
+});
+
 const esc = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
   .replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -26,6 +50,17 @@ function formatCandle(ms) {
 function numberOrNull(id) {
   const raw = $(id).value.trim();
   return raw === "" ? null : raw;
+}
+
+function applyAIModePreset(mode) {
+  const preset = AI_MODE_PRESETS[mode];
+  if (!preset) return;
+
+  $("ai-budget").value = preset.budget;
+  $("model-id").value = preset.modelId;
+  $("input-price").value = preset.inputPrice;
+  $("output-price").value = preset.outputPrice;
+  $("cached-price").value = preset.cachedPrice;
 }
 
 async function readCsv() {
@@ -861,10 +896,9 @@ $("csv-file").addEventListener("change", () => {
   applyDatasetDefaultsFromFile($("csv-file").files?.[0]);
 });
 $("ai-mode").addEventListener("change", () => {
+  const mode = $("ai-mode").value;
   if ($("ai-mode").value !== "MOCK") mockAgentCoverage = false;
-  if ($("ai-mode").value === "MOCK" && !$("model-id").value.trim()) {
-    $("model-id").value = "mock-backtest-v1";
-  }
+  applyAIModePreset(mode);
 });
 
 Promise.all([refreshCapabilities(), refreshHistory()]).catch(showError);

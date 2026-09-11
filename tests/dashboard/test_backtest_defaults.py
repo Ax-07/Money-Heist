@@ -67,3 +67,31 @@ def test_dataset_defaults_do_not_add_secrets_or_live_execution() -> None:
     assert 'type="password"' not in html.lower()
     assert "live broker" not in js.lower()
     assert "live broker" not in html.lower()
+
+
+def test_ai_mode_presets_are_safe_and_prefilled() -> None:
+    root = Path(__file__).resolve().parents[2]
+    html = (root / "app/dashboard/static/backtest.html").read_text(encoding="utf-8")
+    js = (root / "app/dashboard/static/backtest.js").read_text(encoding="utf-8")
+
+    # Safety invariant: opening the dashboard must not arm paid LIVE_EVAL.
+    assert '<option selected>MOCK</option>' in html
+
+    # Mode changes deterministically switch the whole AI pricing preset.
+    assert "const AI_MODE_PRESETS" in js
+    assert "function applyAIModePreset(mode)" in js
+    assert 'applyAIModePreset(mode);' in js
+
+    # MOCK remains free/deterministic from the dashboard accounting perspective.
+    assert 'budget: "1"' in js
+    assert 'modelId: "mock-backtest-v1"' in js
+    assert 'inputPrice: "0"' in js
+    assert 'outputPrice: "0"' in js
+
+    # CACHED / LIVE_EVAL use the Luna preset shown to the operator.
+    assert js.count('modelId: "gpt-5.6-luna"') == 2
+    assert js.count('budget: "0.25"') == 2
+    assert js.count('inputPrice: "0.20"') == 2
+    assert js.count('outputPrice: "1.20"') == 2
+    assert js.count('cachedPrice: "0.02"') == 2
+
