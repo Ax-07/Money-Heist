@@ -3,7 +3,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from app.market.structure import MARKET_STRUCTURE_VERSION
-from app.services.decision_context import AGENT_CONTEXT_BINDING_VERSION
+from app.services.decision_context import (
+    AGENT_CONTEXT_BINDING_VERSION,
+    RISK_CONTEXT_BINDING_VERSION,
+)
 
 
 MTF_RUNTIME_VERSION = "historical-mtf-runtime-v1"
@@ -34,6 +37,7 @@ def mtf_execution_assumptions(source_timeframe: str) -> dict[str, str]:
         "mtf_feature_context_version": MTF_FEATURE_CONTEXT_VERSION,
         "decision_context_version": DECISION_CONTEXT_VERSION,
         "agent_context_binding_version": AGENT_CONTEXT_BINDING_VERSION,
+        "risk_context_binding_version": RISK_CONTEXT_BINDING_VERSION,
         "market_structure_version": MARKET_STRUCTURE_VERSION,
         "lifecycle_timeframe": source,
     }
@@ -52,6 +56,7 @@ def mtf_runner_kwargs(
         "mtf_feature_context_version": MTF_FEATURE_CONTEXT_VERSION,
         "decision_context_version": DECISION_CONTEXT_VERSION,
         "agent_context_binding_version": AGENT_CONTEXT_BINDING_VERSION,
+        "risk_context_binding_version": RISK_CONTEXT_BINDING_VERSION,
         "market_structure_version": MARKET_STRUCTURE_VERSION,
     }
     for key, expected in required.items():
@@ -69,5 +74,6 @@ def mtf_runner_kwargs(
         "mtf_feature_context_version": MTF_FEATURE_CONTEXT_VERSION,
         "decision_context_version": DECISION_CONTEXT_VERSION,
         "agent_context_binding_version": AGENT_CONTEXT_BINDING_VERSION,
+        "risk_context_binding_version": RISK_CONTEXT_BINDING_VERSION,
         "market_structure_version": MARKET_STRUCTURE_VERSION,
     }

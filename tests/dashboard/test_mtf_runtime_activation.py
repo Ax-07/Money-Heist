@@ -49,6 +49,9 @@ def test_dashboard_1m_config_enables_versioned_mtf_runtime():
     assert assumptions["decision_timeframe"] == "1h"
     assert assumptions["mtf_timeframes"] == "15m,1h,4h,1d"
     assert assumptions["market_structure_version"] == "market-structure-v1"
+    assert assumptions["risk_context_binding_version"] == (
+        "portfolio-market-constraints-v1"
+    )
 
 
 def test_dashboard_1h_config_stays_legacy_without_fake_15m():

@@ -166,6 +166,9 @@ class PaperAblationRuntimeFactory:
             specialists=specialist_instances,
             specialist_context_provider=self.settings.specialist_context_provider,
         )
+        market_constraints_provider = InMemoryMarketConstraintsProvider(
+            {run.dataset.symbol: self.settings.market_constraints}
+        )
         pipeline = PaperTradingPipeline(
             orchestration=orchestration,
             risk_engine=RiskEngine(),
@@ -174,9 +177,7 @@ class PaperAblationRuntimeFactory:
             risk_profile_provider=InMemoryRiskProfileProvider(
                 {run.config.system_id: self.settings.risk_profile}
             ),
-            market_constraints_provider=InMemoryMarketConstraintsProvider(
-                {run.dataset.symbol: self.settings.market_constraints}
-            ),
+            market_constraints_provider=market_constraints_provider,
             kill_switch_provider=InMemoryKillSwitchStateProvider(
                 {run.config.system_id: KillSwitchState()}
             ),
@@ -187,6 +188,7 @@ class PaperAblationRuntimeFactory:
             paper_pipeline=pipeline,
             clock=clock,
             portfolio_provider=portfolio,
+            market_constraints_provider=market_constraints_provider,
             position_lifecycle=lifecycle,
             **mtf_runner_kwargs(run.config.execution_assumptions),
         )

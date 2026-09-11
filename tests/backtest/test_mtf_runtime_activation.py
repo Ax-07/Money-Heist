@@ -29,6 +29,7 @@ def test_supported_source_binds_complete_runtime_contract():
         "mtf_feature_context_version": "mtf-feature-context-v1",
         "decision_context_version": "decision-context-v1",
         "agent_context_binding_version": "decision-context-agent-binding-v1",
+        "risk_context_binding_version": "portfolio-market-constraints-v1",
         "market_structure_version": "market-structure-v1",
         "lifecycle_timeframe": "1m",
     }
@@ -36,6 +37,9 @@ def test_supported_source_binds_complete_runtime_contract():
     kwargs = mtf_runner_kwargs(assumptions)
     assert kwargs["decision_timeframe"] == "1h"
     assert kwargs["mtf_timeframes"] == ("15m", "1h", "4h", "1d")
+    assert kwargs["risk_context_binding_version"] == (
+        "portfolio-market-constraints-v1"
+    )
 
 
 def test_native_1h_source_remains_legacy():

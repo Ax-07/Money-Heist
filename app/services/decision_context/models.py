@@ -16,6 +16,7 @@ from app.trading.risk.models import MarketConstraints, PortfolioRiskState
 
 
 AGENT_CONTEXT_BINDING_VERSION = "decision-context-agent-binding-v1"
+RISK_CONTEXT_BINDING_VERSION = "portfolio-market-constraints-v1"
 
 
 class ContextAvailability(StrEnum):

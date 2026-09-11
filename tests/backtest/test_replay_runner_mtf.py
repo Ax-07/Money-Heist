@@ -162,6 +162,7 @@ def _mtf_assumptions():
         "decision_context_version": "decision-context-v1",
         "agent_context_binding_version": "decision-context-agent-binding-v1",
         "market_structure_version": "market-structure-v1",
+        "risk_context_binding_version": "portfolio-market-constraints-v1",
         "lifecycle_timeframe": "1m",
     }
 
@@ -415,3 +416,134 @@ async def test_market_structure_is_available_in_frozen_decision_context():
     for summary in structure.timeframes.values():
         assert summary.orderbook_available is False
         assert summary.liquidation_data_available is False
+
+class _StaticPortfolioProvider:
+    def __init__(self, state):
+        self.system_id = SYSTEM_ID
+        self.initial_balance = state.equity
+        self.last_account_state = None
+        self.state = state
+
+    def get_portfolio_state(self, *, system_id):
+        return self.state if system_id == self.system_id else None
+
+    async def refresh_from_broker(
+        self,
+        broker,
+        *,
+        observed_at,
+        open_risk_amount,
+        correlated_risk_amount=None,
+    ):
+        del broker, observed_at, open_risk_amount, correlated_risk_amount
+        return self.state
+
+
+class _StaticLifecycle:
+    def __init__(self):
+        self.broker = object()
+        self.system_id = SYSTEM_ID
+
+    async def process_candle_open(self, row, *, observed_at, policy):
+        del row, observed_at, policy
+        return ()
+
+    async def process_candle_close(self, row, *, observed_at, policy):
+        del row, observed_at, policy
+        return ()
+
+    async def register_execution(self, pipeline_result, *, observed_at):
+        del pipeline_result, observed_at
+        return None
+
+    async def open_risk_amount(self):
+        return Decimal("0")
+
+
+class _StaticMarketConstraintsProvider:
+    def __init__(self, constraints):
+        self.constraints = constraints
+        self.calls = 0
+
+    def get_market_constraints(self, *, symbol):
+        self.calls += 1
+        return self.constraints if symbol == SYMBOL else None
+
+
+@_sync_test
+async def test_decision_context_freezes_portfolio_and_market_constraints_pre_ai():
+    from app.market.features import FeatureEngine
+    from app.trading.risk.models import MarketConstraints, PortfolioRiskState
+
+    portfolio_state = PortfolioRiskState(
+        equity=Decimal("987.65"),
+        day_start_equity=Decimal("1000"),
+        equity_peak=Decimal("1025"),
+        daily_pnl=Decimal("-12.35"),
+        open_positions=2,
+        open_risk_amount=Decimal("7.5"),
+        correlated_risk_amount=Decimal("5"),
+        gross_exposure_amount=Decimal("320"),
+    )
+    constraints = MarketConstraints(
+        qty_step=Decimal("0.00001"),
+        min_qty=Decimal("0.0001"),
+        min_notional=Decimal("10"),
+        max_qty=Decimal("5"),
+        max_leverage=Decimal("2"),
+    )
+    portfolio = _StaticPortfolioProvider(portfolio_state)
+    lifecycle = _StaticLifecycle()
+    market_constraints = _StaticMarketConstraintsProvider(constraints)
+    pipeline = _RecordingPipeline()
+    scanner = _OneOpportunityScanner()
+    candles = _minute_candles(36 * 60)
+
+    runner = HistoricalReplayRunner(
+        paper_pipeline=pipeline,
+        feature_engine=FeatureEngine(),
+        scanner=scanner,
+        portfolio_provider=portfolio,
+        position_lifecycle=lifecycle,
+        market_constraints_provider=market_constraints,
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+    )
+
+    result = await runner.run(
+        candles=candles,
+        run=_run(
+            candles,
+            timeframe="1m",
+            assumptions=_mtf_assumptions(),
+        ),
+    )
+
+    point = next(point for point in result.points if point.opportunity is not None)
+    context = point.decision_context
+    assert context is not None
+    assert point.decision_portfolio_state is portfolio_state
+    assert point.decision_market_constraints is constraints
+
+    summary = context.portfolio_summary
+    assert summary is not None
+    assert summary.equity == portfolio_state.equity
+    assert summary.daily_pnl == portfolio_state.daily_pnl
+    assert summary.open_positions == portfolio_state.open_positions
+    assert summary.open_risk_amount == portfolio_state.open_risk_amount
+    assert summary.gross_exposure_amount == portfolio_state.gross_exposure_amount
+
+    market = context.market_constraints
+    assert market is not None
+    assert market.qty_step == constraints.qty_step
+    assert market.min_qty == constraints.min_qty
+    assert market.min_notional == constraints.min_notional
+    assert market.max_qty == constraints.max_qty
+    assert market.max_leverage == constraints.max_leverage
+
+    assert "portfolio_summary" not in context.missing_components
+    assert "market_constraints" not in context.missing_components
+    assert context.provenance["portfolio_summary"].source == "portfolio_risk_state"
+    assert context.provenance["market_constraints"].source == "market_constraints_provider"
+    assert pipeline.calls[0][3] is context
+    assert market_constraints.calls == 1

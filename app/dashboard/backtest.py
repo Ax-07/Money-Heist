@@ -1366,15 +1366,16 @@ class BacktestDashboardService:
             usage_recorder=usage,
         )
         orchestration = OrchestrationPipeline(gateway=gateway, budget=budget)
+        market_constraints_provider = InMemoryMarketConstraintsProvider(
+            {run.dataset.symbol: market_constraints}
+        )
         pipeline = PaperTradingPipeline(
             orchestration=orchestration,
             risk_engine=RiskEngine(),
             paper_broker=broker,
             portfolio_provider=portfolio,
             risk_profile_provider=InMemoryRiskProfileProvider({run.config.system_id: risk_profile}),
-            market_constraints_provider=InMemoryMarketConstraintsProvider(
-                {run.dataset.symbol: market_constraints}
-            ),
+            market_constraints_provider=market_constraints_provider,
             kill_switch_provider=InMemoryKillSwitchStateProvider(
                 {run.config.system_id: KillSwitchState()}
             ),
@@ -1385,6 +1386,7 @@ class BacktestDashboardService:
             paper_pipeline=pipeline,
             clock=clock,
             portfolio_provider=portfolio,
+            market_constraints_provider=market_constraints_provider,
             position_lifecycle=lifecycle,
             **mtf_runner_kwargs(run.config.execution_assumptions),
         )

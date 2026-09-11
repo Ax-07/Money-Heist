@@ -20,6 +20,7 @@ from app.services.decision_context import (
     ContextAvailability,
     OptionalContextSection,
     ProvenanceRecord,
+    RISK_CONTEXT_BINDING_VERSION,
     build_decision_context,
 )
 from app.market.multitimeframe import (
@@ -86,6 +87,10 @@ class DynamicPortfolioProviderPort(Protocol):
     ) -> Any: ...
 
 
+class MarketConstraintsProviderPort(Protocol):
+    def get_market_constraints(self, *, symbol: str) -> Any | None: ...
+
+
 class PositionLifecyclePort(Protocol):
     broker: Any
     system_id: str
@@ -129,6 +134,8 @@ class HistoricalReplayPoint:
     mtf_feature_context: Any | None = None
     market_structure_context: Any | None = None
     decision_context: Any | None = None
+    decision_portfolio_state: Any | None = None
+    decision_market_constraints: Any | None = None
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
@@ -182,6 +189,7 @@ class HistoricalReplayRunner:
         clock: ReplayClock | None = None,
         min_history: int | None = None,
         portfolio_provider: DynamicPortfolioProviderPort | None = None,
+        market_constraints_provider: MarketConstraintsProviderPort | None = None,
         position_lifecycle: PositionLifecyclePort | None = None,
         decision_timeframe: str | None = None,
         mtf_timeframes: Sequence[str] = (
@@ -192,6 +200,7 @@ class HistoricalReplayRunner:
         decision_context_version: str = "decision-context-v1",
         agent_context_binding_version: str = AGENT_CONTEXT_BINDING_VERSION,
         market_structure_version: str = MARKET_STRUCTURE_VERSION,
+        risk_context_binding_version: str = RISK_CONTEXT_BINDING_VERSION,
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -222,6 +231,7 @@ class HistoricalReplayRunner:
         self.clock = clock
         self.min_history = min_history
         self.portfolio_provider = portfolio_provider
+        self.market_constraints_provider = market_constraints_provider
         self.position_lifecycle = position_lifecycle
         self.decision_timeframe = (
             decision_timeframe.strip().lower()
@@ -238,6 +248,7 @@ class HistoricalReplayRunner:
         self.decision_context_version = decision_context_version.strip()
         self.agent_context_binding_version = agent_context_binding_version.strip()
         self.market_structure_version = market_structure_version.strip()
+        self.risk_context_binding_version = risk_context_binding_version.strip()
 
     async def run(
         self,
@@ -369,6 +380,8 @@ class HistoricalReplayRunner:
             mtf_feature_context = None
             market_structure_context = None
             decision_context = None
+            decision_portfolio_state = None
+            decision_market_constraints = None
             opportunity = getattr(scan_result, "opportunity", None)
             pipeline_result = None
             if opportunity is not None:
@@ -420,12 +433,20 @@ class HistoricalReplayRunner:
                             market_structure_context.context_fingerprint
                         ),
                     )
+                    decision_portfolio_state = self._current_portfolio_state(
+                        run.config.system_id
+                    )
+                    decision_market_constraints = self._current_market_constraints(
+                        run.dataset.symbol
+                    )
                     decision_context = build_decision_context(
                         system_id=run.config.system_id,
                         as_of=clock.now(),
                         primary_timeframe=self.decision_timeframe,
                         timeframe_policy_version=self.mtf_policy_version,
                         market=mtf_feature_context,
+                        portfolio_state=decision_portfolio_state,
+                        market_constraints=decision_market_constraints,
                         structure=structure_section,
                         provenance={"structure": structure_provenance},
                         context_version=self.decision_context_version,
@@ -468,6 +489,8 @@ class HistoricalReplayRunner:
                 mtf_feature_context=mtf_feature_context,
                 market_structure_context=market_structure_context,
                 decision_context=decision_context,
+                decision_portfolio_state=decision_portfolio_state,
+                decision_market_constraints=decision_market_constraints,
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
                 portfolio_state=self._current_portfolio_state(run.config.system_id),
@@ -506,6 +529,18 @@ class HistoricalReplayRunner:
         if self.portfolio_provider is None:
             return None
         return self.portfolio_provider.get_portfolio_state(system_id=system_id)
+
+    def _current_market_constraints(self, symbol: str) -> Any | None:
+        if self.market_constraints_provider is None:
+            return None
+        try:
+            return self.market_constraints_provider.get_market_constraints(
+                symbol=symbol
+            )
+        except Exception:
+            # Informational agent context stays missing on a transient read
+            # failure. PAPER/Risk performs its own authoritative read later.
+            return None
 
     def _current_account_state(self) -> Any | None:
         if self.portfolio_provider is None:
@@ -570,6 +605,8 @@ class HistoricalReplayRunner:
             raise ValueError("agent_context_binding_version must not be empty")
         if not self.market_structure_version:
             raise ValueError("market_structure_version must not be empty")
+        if not self.risk_context_binding_version:
+            raise ValueError("risk_context_binding_version must not be empty")
         if not self.mtf_timeframes:
             raise ValueError("mtf_timeframes must not be empty")
         if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
@@ -601,6 +638,7 @@ class HistoricalReplayRunner:
             "decision_context_version": self.decision_context_version,
             "agent_context_binding_version": self.agent_context_binding_version,
             "market_structure_version": self.market_structure_version,
+            "risk_context_binding_version": self.risk_context_binding_version,
             "lifecycle_timeframe": run.dataset.timeframe,
         }
         assumptions = run.config.execution_assumptions
@@ -642,6 +680,30 @@ class HistoricalReplayRunner:
         )
 
     def _validate_dynamic_stack(self, run: BacktestRun) -> None:
+        pipeline_constraints_provider = getattr(
+            self.paper_pipeline,
+            "market_constraints_provider",
+            None,
+        )
+        if (
+            self.market_constraints_provider is not None
+            and pipeline_constraints_provider is not None
+            and pipeline_constraints_provider is not self.market_constraints_provider
+        ):
+            raise ValueError(
+                "PaperTradingPipeline and HistoricalReplayRunner must share "
+                "one market constraints provider"
+            )
+        if (
+            self.decision_timeframe is not None
+            and pipeline_constraints_provider is not None
+            and self.market_constraints_provider is None
+        ):
+            raise ValueError(
+                "MTF replay with PaperTradingPipeline requires the shared "
+                "market constraints provider"
+            )
+
         if self.portfolio_provider is None or self.position_lifecycle is None:
             return
         if self.portfolio_provider.system_id != run.config.system_id:

@@ -2,6 +2,7 @@
 
 from .models import (
     AGENT_CONTEXT_BINDING_VERSION,
+    RISK_CONTEXT_BINDING_VERSION,
     ContextAvailability,
     DecisionContextV1,
     MarketConstraintsSummary,
@@ -14,6 +15,7 @@ from .models import (
 
 __all__ = [
     "AGENT_CONTEXT_BINDING_VERSION",
+    "RISK_CONTEXT_BINDING_VERSION",
     "ContextAvailability",
     "DecisionContextV1",
     "MarketConstraintsSummary",
