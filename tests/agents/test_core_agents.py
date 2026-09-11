@@ -64,6 +64,12 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
             market_context={"regime": "range"},
             available_agents=["berlin"],
             remaining_budget_eur=1.2,
+            planning_constraints={
+                "compute_gate_level": "LEVEL_2_MINI_CREW",
+                "allowed_decisions": ["NO_ANALYSIS", "MINI_CREW"],
+                "max_specialists": 1,
+                "full_crew_allowed": False,
+            },
             opportunity_id=opportunity_id,
         )
         final = await professor.finalize(
@@ -77,9 +83,17 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
 
         assert plan.output.decision == "MINI_CREW"
         assert final.output.direction == "NO_TRADE"
-        assert [request.prompt_version for request in gateway.requests] == ["v2", "v2"]
+        assert [request.prompt_version for request in gateway.requests] == ["v3", "v3"]
         assert all(request.agent_id == "professor" for request in gateway.requests)
         assert gateway.requests[0].opportunity_id == opportunity_id
+        plan_payload = json.loads(gateway.requests[0].input_text)
+        assert plan_payload["planning_constraints"]["compute_gate_level"] == "LEVEL_2_MINI_CREW"
+        assert plan_payload["planning_constraints"]["allowed_decisions"] == [
+            "NO_ANALYSIS",
+            "MINI_CREW",
+        ]
+        assert plan_payload["planning_constraints"]["max_specialists"] == 1
+        assert plan_payload["planning_constraints"]["full_crew_allowed"] is False
 
     asyncio.run(scenario())
 
@@ -130,7 +144,7 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
     assert CORE_AGENT_REGISTRY.get("professor").state.value == "ACTIVE"
     assert CORE_AGENT_REGISTRY.get("palermo").state.value == "ACTIVE"
 
-    expected_versions = {"professor": "v2", "palermo": "v2", "lisbon": "v1"}
+    expected_versions = {"professor": "v3", "palermo": "v2", "lisbon": "v1"}
     for entry in CORE_AGENT_REGISTRY.list():
         assert entry.core is True
         assert entry.allowed_tools == ()
@@ -144,12 +158,16 @@ def test_prompt_registry_rejects_unknown_version():
 
 
 def test_decision_contract_v2_is_versioned_and_preserves_v1():
-    assert CORE_PROMPTS.versions("professor") == ("v1", "v2")
+    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3")
     assert CORE_PROMPTS.versions("palermo") == ("v1", "v2")
 
-    professor = CORE_PROMPTS.get("professor", "v2").instructions
+    professor = CORE_PROMPTS.get("professor", "v3").instructions
     palermo = CORE_PROMPTS.get("palermo", "v2").instructions
 
+    assert "planning_constraints" in professor
+    assert "allowed_decisions" in professor
+    assert "max_specialists" in professor
+    assert "full_crew_allowed" in professor
     assert "future candles" in professor
     assert "entry_price" in professor
     assert "deterministic Risk Engine" in professor
@@ -209,7 +227,7 @@ def test_palermo_has_targeted_output_headroom_without_changing_lisbon() -> None:
         )
 
         assert gateway.requests[0].agent_id == "palermo"
-        assert gateway.requests[0].max_output_tokens == 8192
+        assert gateway.requests[0].max_output_tokens == 16384
         assert gateway.requests[0].timeout_seconds == 90.0
         assert gateway.requests[1].agent_id == "lisbon"
         assert gateway.requests[1].max_output_tokens is None

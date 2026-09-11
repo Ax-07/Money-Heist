@@ -531,13 +531,29 @@ async def test_professor_cannot_select_unknown_specialist_or_exceed_compute_gate
             "request_more_analysis": False,
         }
     )
-    pipeline2, _, _ = make_pipeline(
+    pipeline2, client2, _ = make_pipeline(
         {("professor", "plan"): [full_plan]},
         budget="0.10",
         gate_policy=policy,
     )
     result2 = await pipeline2.run(opportunity=make_opportunity(), market_context=make_context())
     assert result2.compute_gate.level.value == "LEVEL_2_MINI_CREW"
+
+    plan_request = next(
+        request
+        for request in client2.requests
+        if request.agent_id == "professor" and request.metadata["phase"] == "plan"
+    )
+    planning_constraints = json.loads(plan_request.input_text)["planning_constraints"]
+    assert planning_constraints == {
+        "allowed_decisions": ["NO_ANALYSIS", "MINI_CREW"],
+        "compute_gate_level": "LEVEL_2_MINI_CREW",
+        "full_crew_allowed": False,
+        "max_specialists": 2,
+    }
+
+    # The deterministic fail-closed validator remains authoritative even if a provider ignores
+    # the explicit gate constraints and still returns FULL_CREW.
     assert result2.status is PipelineStatus.FAILED
     assert result2.failure.code is PipelineFailureCode.INVALID_PROFESSOR_PLAN
 

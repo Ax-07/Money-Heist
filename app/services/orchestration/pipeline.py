@@ -324,6 +324,22 @@ class OrchestrationPipeline:
             )
 
         available_agents = self._available_specialists(prepared_contexts)
+        if gate_decision.level is ComputeLevel.LEVEL_3_FULL_CREW:
+            planning_constraints = {
+                "compute_gate_level": gate_decision.level.value,
+                "allowed_decisions": ["NO_ANALYSIS", "MINI_CREW", "FULL_CREW"],
+                "max_specialists": len(available_agents),
+                "full_crew_allowed": True,
+            }
+        else:
+            # SKIP_AI already returned above, so the only remaining lower level is MINI_CREW.
+            planning_constraints = {
+                "compute_gate_level": gate_decision.level.value,
+                "allowed_decisions": ["NO_ANALYSIS", "MINI_CREW"],
+                "max_specialists": min(2, len(available_agents)),
+                "full_crew_allowed": False,
+            }
+
         try:
             plan_result = await self.professor.plan(
                 system_id=opportunity.system_id,
@@ -331,6 +347,7 @@ class OrchestrationPipeline:
                 market_context=market_payload,
                 available_agents=available_agents,
                 remaining_budget_eur=float(self._budget.snapshot().remaining_eur),
+                planning_constraints=planning_constraints,
                 opportunity_id=opportunity_uuid,
             )
             professor_plan = plan_result.output

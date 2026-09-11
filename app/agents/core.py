@@ -14,7 +14,7 @@ from .registry import CORE_AGENT_REGISTRY, AgentRegistry
 
 T = TypeVar("T", bound=BaseModel)
 
-PALERMO_MAX_OUTPUT_TOKENS = 8192
+PALERMO_MAX_OUTPUT_TOKENS = 16384
 PALERMO_TIMEOUT_SECONDS = 90.0
 
 
@@ -82,16 +82,21 @@ class TheProfessor(CoreAgent):
         market_context: dict[str, Any],
         available_agents: list[str],
         remaining_budget_eur: float,
+        planning_constraints: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[ProfessorPlan]:
+        payload = {
+            "opportunity": opportunity,
+            "market_context": market_context,
+            "available_agents": available_agents,
+            "remaining_budget_eur": remaining_budget_eur,
+        }
+        if planning_constraints is not None:
+            payload["planning_constraints"] = planning_constraints
+
         return await self._run(
             system_id=system_id,
-            payload={
-                "opportunity": opportunity,
-                "market_context": market_context,
-                "available_agents": available_agents,
-                "remaining_budget_eur": remaining_budget_eur,
-            },
+            payload=payload,
             output_model=ProfessorPlan,
             opportunity_id=opportunity_id,
             phase="plan",
