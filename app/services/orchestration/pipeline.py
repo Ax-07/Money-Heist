@@ -55,19 +55,49 @@ class InvalidPipelineContextError(ValueError):
     pass
 
 
-def _leaf_paths(value: Any, prefix: str = "") -> set[str]:
+def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
+    # Return every real JSON path, including containers.
     paths: set[str] = set()
+    if prefix:
+        paths.add(prefix)
+
     if isinstance(value, dict):
         for key, nested in value.items():
             child = f"{prefix}.{key}" if prefix else str(key)
-            paths.update(_leaf_paths(nested, child))
+            paths.update(_grounded_json_paths(nested, child))
     elif isinstance(value, (list, tuple)):
         for index, nested in enumerate(value):
             child = f"{prefix}.{index}" if prefix else str(index)
-            paths.update(_leaf_paths(nested, child))
-    elif prefix:
-        paths.add(prefix)
+            paths.update(_grounded_json_paths(nested, child))
+
     return paths
+
+
+def _specialist_alias_paths(
+    specialist_analyses: list[dict[str, Any]],
+) -> set[str]:
+    # Expose deterministic <agent>.<field> aliases for final grounding.
+    aliases: set[str] = set()
+    seen_agents: set[str] = set()
+
+    for analysis in specialist_analyses:
+        if not isinstance(analysis, dict):
+            continue
+        agent = analysis.get("agent")
+        if not isinstance(agent, str) or not agent:
+            continue
+        if agent in seen_agents:
+            # Ambiguous aliases fail closed.
+            aliases = {
+                path
+                for path in aliases
+                if path != agent and not path.startswith(f"{agent}.")
+            }
+            continue
+        seen_agents.add(agent)
+        aliases.update(_grounded_json_paths(analysis, agent))
+
+    return aliases
 
 
 def _assert_grounded_final_evidence(
@@ -87,7 +117,8 @@ def _assert_grounded_final_evidence(
     }
     if task_force_report is not None:
         grounded_inputs["task_force_report"] = task_force_report
-    available = _leaf_paths(grounded_inputs)
+    available = _grounded_json_paths(grounded_inputs)
+    available.update(_specialist_alias_paths(specialist_analyses))
     missing = sorted(item.source_key for item in evidence if item.source_key not in available)
     if missing:
         raise UngroundedEvidenceError(
