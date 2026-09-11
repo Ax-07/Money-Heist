@@ -303,3 +303,25 @@ def test_provider_rejects_market_time_before_prior_cutoff() -> None:
             opportunity=opportunity,
             market_context=early_market,
         )
+
+
+def test_frozen_provider_context_is_anchored_to_prior_cutoff() -> None:
+    opportunity, setup_market, source = _source_catalog()
+    cutoff = BASE + timedelta(days=10)
+    prior = freeze_denver_prior(source, cutoff=cutoff)
+    provider = FrozenDenverPriorContextProvider(prior)
+
+    market = setup_market.model_copy(
+        update={"observed_at": BASE + timedelta(days=15)}
+    )
+    denver = provider.contexts_for(
+        opportunity=opportunity,
+        market_context=market,
+    )["denver"]
+
+    assert denver["as_of"] == cutoff
+    assert prior.prior_fingerprint == prior.prior_id.split(":", 1)[1]
+    assert len(prior.prior_fingerprint) == 64
+    assert prior.reproducibility_assumptions[
+        "denver_context_binding_version"
+    ] == "frozen-denver-decision-context-v1"

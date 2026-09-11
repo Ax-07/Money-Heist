@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol
 
+from app.agents.models import DenverContext
 from app.market.features.multitimeframe import (
     build_multi_timeframe_feature_context,
 )
@@ -31,6 +32,10 @@ from app.market.multitimeframe import (
 from .historical_derivatives_analytics import (
     HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION,
     HistoricalDerivativesAnalyticsArchive,
+)
+from .denver_prior import (
+    FrozenDenverPriorCatalog,
+    FrozenDenverPriorContextProvider,
 )
 from .clock import ReplayClock, as_utc
 from .dataset import DatasetRef, canonical_candle_rows
@@ -143,6 +148,7 @@ class HistoricalReplayPoint:
     decision_market_constraints: Any | None = None
     derivatives_snapshot: Any | None = None
     rio_context: Any | None = None
+    denver_context: Any | None = None
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
@@ -215,6 +221,8 @@ class HistoricalReplayRunner:
         derivatives_context_binding_version: str = (
             HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION
         ),
+        historical_denver_prior: FrozenDenverPriorCatalog | None = None,
+        denver_formal_oos: bool = False,
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -274,6 +282,12 @@ class HistoricalReplayRunner:
         self.derivatives_context_binding_version = (
             derivatives_context_binding_version.strip()
         )
+        if historical_denver_prior is None and denver_formal_oos:
+            raise ValueError(
+                "denver_formal_oos requires historical_denver_prior"
+            )
+        self.historical_denver_prior = historical_denver_prior
+        self.denver_formal_oos = bool(denver_formal_oos)
 
     async def run(
         self,
@@ -288,6 +302,7 @@ class HistoricalReplayRunner:
         self._validate_component_versions(run)
         self._validate_dynamic_stack(run)
         self._validate_mtf_mode(run)
+        denver_provider = self._denver_provider_for_run(run)
 
         min_history = (
             self.min_history if self.min_history is not None else self._default_min_history()
@@ -409,6 +424,7 @@ class HistoricalReplayRunner:
             decision_market_constraints = None
             derivatives_snapshot = None
             rio_context = None
+            denver_context = None
             opportunity = getattr(scan_result, "opportunity", None)
             pipeline_result = None
             if opportunity is not None:
@@ -467,6 +483,47 @@ class HistoricalReplayRunner:
                         run.dataset.symbol
                     )
                     decision_provenance = {"structure": structure_provenance}
+                    statistics_section = None
+                    if denver_provider is not None:
+                        denver_payload = denver_provider.contexts_for(
+                            opportunity=opportunity,
+                            market_context=feature,
+                        ).get("denver")
+                        if denver_payload is not None:
+                            denver_context = DenverContext.model_validate(
+                                denver_payload
+                            )
+                            prior = self.historical_denver_prior
+                            assert prior is not None
+                            statistics_section = OptionalContextSection(
+                                status=ContextAvailability.AVAILABLE,
+                                payload={
+                                    "prior_version": prior.version,
+                                    "prior_id": prior.prior_id,
+                                    "prior_policy": prior.policy.value,
+                                    "prior_cutoff": prior.cutoff,
+                                    "denver_context": denver_context,
+                                },
+                            )
+                            missing_stats = tuple(
+                                name
+                                for name in (
+                                    "win_rate",
+                                    "expectancy",
+                                    "profit_factor",
+                                    "max_drawdown_pct",
+                                )
+                                if getattr(denver_context, name) is None
+                            )
+                            decision_provenance["statistics"] = ProvenanceRecord(
+                                component="statistics",
+                                source="frozen_denver_prior",
+                                observed_at=prior.cutoff,
+                                available_at=prior.cutoff,
+                                quality=denver_context.sample_size_band,
+                                missing_fields=missing_stats,
+                                source_fingerprint=prior.prior_fingerprint,
+                            )
                     derivatives_section = None
                     if self.historical_derivatives_archive is not None:
                         derivatives_snapshot = (
@@ -514,6 +571,7 @@ class HistoricalReplayRunner:
                         market_constraints=decision_market_constraints,
                         structure=structure_section,
                         derivatives=derivatives_section,
+                        statistics=statistics_section,
                         provenance=decision_provenance,
                         context_version=self.decision_context_version,
                     )
@@ -524,8 +582,13 @@ class HistoricalReplayRunner:
                 }
                 if decision_context is not None:
                     pipeline_kwargs["decision_context"] = decision_context
+                specialist_contexts = {}
                 if rio_context is not None and rio_context.usable:
-                    pipeline_kwargs["specialist_contexts"] = {"rio": rio_context}
+                    specialist_contexts["rio"] = rio_context
+                if denver_context is not None and denver_context.usable:
+                    specialist_contexts["denver"] = denver_context
+                if specialist_contexts:
+                    pipeline_kwargs["specialist_contexts"] = specialist_contexts
                 pipeline_result = await self.paper_pipeline.run(
                     **pipeline_kwargs
                 )
@@ -561,6 +624,7 @@ class HistoricalReplayRunner:
                 decision_market_constraints=decision_market_constraints,
                 derivatives_snapshot=derivatives_snapshot,
                 rio_context=rio_context,
+                denver_context=denver_context,
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
                 portfolio_state=self._current_portfolio_state(run.config.system_id),
@@ -666,6 +730,8 @@ class HistoricalReplayRunner:
         if self.decision_timeframe is None:
             if self.historical_derivatives_archive is not None:
                 raise ValueError("historical derivatives archive requires MTF replay")
+            if self.historical_denver_prior is not None:
+                raise ValueError("historical Denver prior requires MTF replay")
             return
         if not self.mtf_policy_version:
             raise ValueError("mtf_policy_version must not be empty")
@@ -732,6 +798,17 @@ class HistoricalReplayRunner:
                     "derivatives_max_age_seconds": str(self.derivatives_max_age_seconds),
                 }
             )
+        if self.historical_denver_prior is not None:
+            self.historical_denver_prior.validate_for_target(
+                period_start=run.period_start,
+                formal_oos=self.denver_formal_oos,
+            )
+            expected.update(
+                self.historical_denver_prior.reproducibility_assumptions
+            )
+            expected["denver_formal_oos"] = (
+                "true" if self.denver_formal_oos else "false"
+            )
 
         assumptions = run.config.execution_assumptions
         for key, value in expected.items():
@@ -740,6 +817,20 @@ class HistoricalReplayRunner:
                     "MTF replay requires execution_assumptions "
                     f"{key}={value!r}"
                 )
+
+    def _denver_provider_for_run(
+        self,
+        run: BacktestRun,
+    ) -> FrozenDenverPriorContextProvider | None:
+        prior = self.historical_denver_prior
+        if prior is None:
+            return None
+        return FrozenDenverPriorContextProvider.for_backtest(
+            prior,
+            config=run.config,
+            period_start=run.period_start,
+            formal_oos=self.denver_formal_oos,
+        )
 
     def _mtf_cursor_for_run(
         self,

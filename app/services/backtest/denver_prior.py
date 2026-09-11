@@ -19,6 +19,7 @@ from .splits import BacktestPeriodRole
 
 FROZEN_DENVER_PRIOR_VERSION = "frozen-denver-prior-v1"
 FROZEN_DENVER_PRIOR_SCHEMA = "money-heist.denver-prior.v1"
+FROZEN_DENVER_CONTEXT_BINDING_VERSION = "frozen-denver-decision-context-v1"
 
 
 class DenverPriorPolicy(StrEnum):
@@ -82,6 +83,19 @@ class FrozenDenverPriorCatalog:
         return "denver-prior:" + stable_digest(self.canonical_payload())
 
     @property
+    def prior_fingerprint(self) -> str:
+        prefix = "denver-prior:"
+        if not self.prior_id.startswith(prefix):
+            raise ValueError("invalid Denver prior_id prefix")
+        fingerprint = self.prior_id[len(prefix):]
+        if len(fingerprint) != 64 or any(
+            char not in "0123456789abcdef"
+            for char in fingerprint
+        ):
+            raise ValueError("invalid Denver prior fingerprint")
+        return fingerprint
+
+    @property
     def observation_count(self) -> int:
         return len(self.catalog.observations)
 
@@ -106,6 +120,7 @@ class FrozenDenverPriorCatalog:
     @property
     def reproducibility_assumptions(self) -> dict[str, str]:
         assumptions = {
+            "denver_context_binding_version": FROZEN_DENVER_CONTEXT_BINDING_VERSION,
             "denver_prior_version": self.version,
             "denver_prior_id": self.prior_id,
             "denver_prior_policy": self.policy.value,
@@ -271,7 +286,7 @@ class FrozenDenverPriorContextProvider:
         stats = self.prior.catalog.query(
             opportunity=opportunity,
             market_context=market_context,
-            as_of=observed_at,
+            as_of=self.prior.cutoff,
         )
         if stats is None:
             return {}
@@ -286,6 +301,7 @@ class FrozenDenverPriorContextProvider:
 
 
 __all__ = [
+    "FROZEN_DENVER_CONTEXT_BINDING_VERSION",
     "DenverPriorPolicy",
     "FROZEN_DENVER_PRIOR_SCHEMA",
     "FROZEN_DENVER_PRIOR_VERSION",

@@ -700,3 +700,298 @@ async def test_historical_derivatives_archive_fingerprint_is_bound_fail_closed()
             raise AssertionError("tampered derivatives fingerprint must fail closed")
     finally:
         tempdir.cleanup()
+
+
+class _DenverFeatureEngine:
+    def __init__(self):
+        from app.market.features.models import FeatureQuality, FeatureSnapshot, MarketRegime
+        self._FeatureQuality = FeatureQuality
+        self._FeatureSnapshot = FeatureSnapshot
+        self._MarketRegime = MarketRegime
+        self.config = _FeatureConfig(warmup_bars=1)
+
+    def compute(
+        self,
+        candles,
+        *,
+        symbol,
+        timeframe,
+        source_snapshot_id=None,
+        observed_at=None,
+    ):
+        del source_snapshot_id
+        frozen = tuple(candles)
+        last = frozen[-1]
+        close = last["close"] if isinstance(last, dict) else last.close
+        return self._FeatureSnapshot(
+            feature_version=self.config.feature_version,
+            snapshot_id=stable_uuid(
+                "denver-wiring-feature",
+                {
+                    "timeframe": timeframe,
+                    "observed_at": observed_at,
+                    "close": close,
+                    "count": len(frozen),
+                },
+            ),
+            symbol=symbol,
+            timeframe=timeframe,
+            observed_at=observed_at,
+            candle_count=len(frozen),
+            close=float(close),
+            regime=self._MarketRegime.BULLISH_TREND,
+            quality=self._FeatureQuality(
+                warmup_complete=True,
+                closed_candle_count=len(frozen),
+            ),
+        )
+
+
+class _FixedDenverOpportunityScanner:
+    def __init__(self, opportunity):
+        self.config = _ScannerConfig()
+        self.opportunity = opportunity
+        self.emitted = False
+
+    def scan(self, current, *, system_id, previous=None):
+        del previous
+        opportunity = None
+        if not self.emitted:
+            assert current.snapshot_id == self.opportunity.snapshot_id
+            assert current.symbol == self.opportunity.symbol
+            assert current.timeframe == self.opportunity.timeframe
+            assert system_id == self.opportunity.system_id
+            opportunity = self.opportunity
+            self.emitted = True
+        return SimpleNamespace(opportunity=opportunity)
+
+
+def _frozen_denver_prior_for_first_decision(candles):
+    from uuid import uuid4
+
+    from app.market.scanner.models import CandidateOpportunity, ScannerTrigger
+    from app.services.backtest.denver_prior import freeze_denver_prior
+    from app.services.backtest.setup_stats import (
+        HistoricalSetupKey,
+        HistoricalSetupObservation,
+        HistoricalSetupStatsCatalog,
+    )
+    from app.services.backtest.splits import BacktestPeriodRole
+
+    hourly = resample_closed_candles(
+        tuple(_as_candle(item) for item in candles),
+        target_timeframe="1h",
+    )
+    engine = _DenverFeatureEngine()
+    observed_at = START + timedelta(hours=1)
+    feature = engine.compute(
+        hourly[:1],
+        symbol=SYMBOL,
+        timeframe="1h",
+        observed_at=observed_at,
+    )
+    opportunity = CandidateOpportunity(
+        scanner_version="scanner-v1",
+        opportunity_id=str(uuid4()),
+        snapshot_id=feature.snapshot_id,
+        system_id=SYSTEM_ID,
+        symbol=SYMBOL,
+        timeframe="1h",
+        priority_score=80,
+        triggers=(
+            ScannerTrigger.RANGE_BREAK,
+            ScannerTrigger.VOLUME_EXPANSION,
+        ),
+        created_at=observed_at,
+        expires_at=observed_at + timedelta(hours=1),
+    )
+    observation = HistoricalSetupObservation(
+        run_id="denver-source-run",
+        dataset_id="denver-source-dataset",
+        strategy_fingerprint="strategy-denver-prior-v1",
+        period_role=BacktestPeriodRole.DESIGN,
+        opportunity_id="historical-opportunity",
+        trade_id="historical-trade",
+        setup=HistoricalSetupKey.from_market(opportunity, feature),
+        side="LONG",
+        opened_at=START - timedelta(hours=4),
+        closed_at=START - timedelta(hours=3),
+        net_pnl=Decimal("2.5"),
+    )
+    source = HistoricalSetupStatsCatalog((observation,))
+    prior = freeze_denver_prior(
+        source,
+        cutoff=START - timedelta(hours=1),
+    )
+    return prior, opportunity
+
+
+def _mtf_assumptions_with_denver(prior, *, formal_oos=True):
+    assumptions = dict(_mtf_assumptions())
+    assumptions.update(prior.reproducibility_assumptions)
+    assumptions["denver_formal_oos"] = (
+        "true" if formal_oos else "false"
+    )
+    return assumptions
+
+
+@_sync_test
+async def test_frozen_denver_prior_feeds_decision_statistics_and_denver_identically():
+    from app.agents.models import DenverContext
+    from app.services.decision_context import ContextAvailability
+
+    candles = _minute_candles(120)
+    prior, opportunity = _frozen_denver_prior_for_first_decision(candles)
+    pipeline = _RecordingPipeline()
+    runner = HistoricalReplayRunner(
+        paper_pipeline=pipeline,
+        feature_engine=_DenverFeatureEngine(),
+        scanner=_FixedDenverOpportunityScanner(opportunity),
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+        min_history=1,
+        historical_denver_prior=prior,
+        denver_formal_oos=True,
+    )
+
+    result = await runner.run(
+        candles=candles,
+        run=_run(
+            candles,
+            timeframe="1m",
+            assumptions=_mtf_assumptions_with_denver(prior),
+        ),
+    )
+
+    point = next(
+        item for item in result.points if item.opportunity is not None
+    )
+    context = point.decision_context
+    denver = point.denver_context
+
+    assert context is not None
+    assert isinstance(denver, DenverContext)
+    assert denver.usable is True
+    assert denver.as_of == prior.cutoff
+    assert context.statistics.status is ContextAvailability.AVAILABLE
+    assert "statistics" not in context.missing_components
+    assert context.statistics.payload["prior_id"] == prior.prior_id
+    assert context.statistics.payload["denver_context"] is denver
+    assert context.provenance["statistics"].source == "frozen_denver_prior"
+    assert context.provenance["statistics"].source_fingerprint == (
+        prior.prior_fingerprint
+    )
+    assert context.provenance["statistics"].available_at == prior.cutoff
+
+    specialist_contexts = pipeline.calls[0][4]
+    assert specialist_contexts is not None
+    assert specialist_contexts["denver"] is denver
+
+
+@_sync_test
+async def test_frozen_denver_and_rio_contexts_coexist_on_same_decision():
+    from app.services.decision_context import ContextAvailability
+
+    candles = _minute_candles(120)
+    prior, opportunity = _frozen_denver_prior_for_first_decision(candles)
+    tempdir, archive = _historical_derivatives_archive()
+    try:
+        assumptions = _mtf_assumptions_with_derivatives(archive)
+        assumptions.update(prior.reproducibility_assumptions)
+        assumptions["denver_formal_oos"] = "true"
+
+        pipeline = _RecordingPipeline()
+        runner = HistoricalReplayRunner(
+            paper_pipeline=pipeline,
+            feature_engine=_DenverFeatureEngine(),
+            scanner=_FixedDenverOpportunityScanner(opportunity),
+            decision_timeframe="1h",
+            mtf_timeframes=("15m", "1h", "4h", "1d"),
+            min_history=1,
+            historical_derivatives_archive=archive,
+            historical_denver_prior=prior,
+            denver_formal_oos=True,
+        )
+
+        result = await runner.run(
+            candles=candles,
+            run=_run(
+                candles,
+                timeframe="1m",
+                assumptions=assumptions,
+            ),
+        )
+
+        point = next(
+            item for item in result.points if item.opportunity is not None
+        )
+        context = point.decision_context
+        assert context is not None
+        assert context.derivatives.status is ContextAvailability.AVAILABLE
+        assert context.statistics.status is ContextAvailability.AVAILABLE
+
+        specialist_contexts = pipeline.calls[0][4]
+        assert specialist_contexts is not None
+        assert set(specialist_contexts) == {"rio", "denver"}
+        assert specialist_contexts["rio"] is point.rio_context
+        assert specialist_contexts["denver"] is point.denver_context
+    finally:
+        tempdir.cleanup()
+
+
+@_sync_test
+async def test_frozen_denver_prior_identity_is_bound_fail_closed():
+    candles = _minute_candles(120)
+    prior, opportunity = _frozen_denver_prior_for_first_decision(candles)
+    assumptions = _mtf_assumptions_with_denver(prior)
+    assumptions["denver_prior_id"] = "denver-prior:" + ("0" * 64)
+
+    runner = HistoricalReplayRunner(
+        paper_pipeline=_RecordingPipeline(),
+        feature_engine=_DenverFeatureEngine(),
+        scanner=_FixedDenverOpportunityScanner(opportunity),
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+        min_history=1,
+        historical_denver_prior=prior,
+        denver_formal_oos=True,
+    )
+
+    try:
+        await runner.run(
+            candles=candles,
+            run=_run(
+                candles,
+                timeframe="1m",
+                assumptions=assumptions,
+            ),
+        )
+    except ValueError as exc:
+        assert "denver_prior_id" in str(exc)
+    else:
+        raise AssertionError("tampered Denver prior identity must fail closed")
+
+
+@_sync_test
+async def test_frozen_denver_prior_requires_mtf_replay():
+    candles = _minute_candles(120)
+    prior, opportunity = _frozen_denver_prior_for_first_decision(candles)
+
+    runner = HistoricalReplayRunner(
+        paper_pipeline=_RecordingPipeline(),
+        feature_engine=_DenverFeatureEngine(),
+        scanner=_FixedDenverOpportunityScanner(opportunity),
+        min_history=1,
+        historical_denver_prior=prior,
+        denver_formal_oos=True,
+    )
+
+    try:
+        await runner.run(
+            candles=candles,
+            run=_run(candles, timeframe="1m"),
+        )
+    except ValueError as exc:
+        assert "Denver prior requires MTF replay" in str(exc)
+    else:
+        raise AssertionError("Denver prior without MTF must fail closed")
