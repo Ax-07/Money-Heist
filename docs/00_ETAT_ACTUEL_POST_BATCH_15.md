@@ -1,7 +1,7 @@
 # Money Heist — État actuel post-Batch 20
 
 **Statut :** référence d’alignement active  
-**Date :** 2026-09-09  
+**Date :** 2026-09-11
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références  
 existantes  
 **Baseline d’entrée Batch 20 :** `572cd07` —  
@@ -146,6 +146,45 @@ Batch 20e fournit :
 - seal de reproductibilité et audit `FRESH / STALE`.
 
 Sans baseline comparable, les métriques économiques marginales restent `UNAVAILABLE`.
+
+---
+
+## 7.1. Validation technique LIVE_EVAL Batch 16 — référence 2026-09-11
+
+Le chemin Historical Replay a été validé avec un fournisseur IA réel tout en conservant
+l’exécution trading strictement PAPER.
+
+Référence :
+- commit : `294cfa2547f94c9694fdc65758c3f9435ff55dd2` ;
+- campagne : `177add07-b684-440c-b8ca-a37313a6eac5` ;
+- dataset : `BTC/USDC:1h:4f5515aef296533f` ;
+- progression : `345/345` ;
+- opportunités : `15` ;
+- décisions Professor finales : `14 NO_TRADE`, `1 SHORT` ;
+- Risk Engine : la proposition SHORT a été `RESIZED` ;
+- quantité approuvée : `0.00156 BTC` ;
+- notionnel approuvé : `99.4993740` ;
+- risque approuvé : `0.7306260` ;
+- ordres PAPER exécutés : `1` ;
+- échecs techniques observés sur ce smoke : `0`.
+
+Ce smoke valide le chemin technique :
+
+```text
+Historical OHLCV
+→ Feature Engine
+→ Scanner
+→ orchestration IA réelle
+→ Palermo
+→ Professor final
+→ TradeProposal
+→ Risk Engine déterministe
+→ PaperBroker
+```
+
+Il ne constitue ni une preuve de rentabilité, ni une validation statistique suffisante, ni une
+autorisation LIVE. Les campagnes multi-régimes, DESIGN/VALIDATION/OOS, walk-forward et PAPER/SHADOW
+restent nécessaires avant toute décision de capital réel.
 
 ---
 

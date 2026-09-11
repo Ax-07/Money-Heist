@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation  
-**Version :** 0.6  
+**Version :** 0.9
 **Statut :** Actif
 
 ---
@@ -505,6 +505,36 @@ scelle les résultats par fingerprints/audit `FRESH / STALE`.
 - aucune autorité LIVE n’est dérivée d’une autorisation Task Force ;
 - les preuves économiques marginales nécessitent des twins replay comparables.
 
+### ADR-028 — Validation technique LIVE_EVAL séparée de la preuve statistique
+
+**Date :** 2026-09-11
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Batch 16 possède désormais un smoke LIVE_EVAL end-to-end de référence sur le commit
+`294cfa2547f94c9694fdc65758c3f9435ff55dd2`, campagne `177add07-b684-440c-b8ca-a37313a6eac5`,
+dataset `BTC/USDC:1h:4f5515aef296533f`.
+
+Le smoke a traité `345/345` unités de travail et 15 opportunités sans échec technique. Le Professor
+a produit 14 `NO_TRADE` et 1 `SHORT`. La proposition SHORT a atteint le Risk Engine déterministe,
+qui l’a `RESIZED` à `0.00156 BTC`, notionnel `99.4993740`, risque approuvé `0.7306260`, avant un
+ordre PAPER.
+
+**Décision de gouvernance :**
+Cette preuve ferme la validation **technique** du chemin LIVE_EVAL historique, mais ne constitue pas
+une preuve de performance ou une autorisation LIVE. Les critères DESIGN/VALIDATION/OOS,
+walk-forward, multi-régimes, PAPER/SHADOW et les bloqueurs LIVE explicites restent applicables.
+
+**Conséquences :**
+- le fournisseur IA réel peut être évalué dans Historical Replay sans ordre LIVE ;
+- le Risk Engine reste l’autorité déterministe et peut redimensionner/rejeter une proposition IA ;
+- aucun trade n’est forcé pour satisfaire un test ;
+- `OPEN-006` et `OPEN-007` restent ouverts ;
+- la prochaine phase Batch 16 est une évaluation statistique plus large, pas un nouveau débogage du
+  chemin technique.
+
+---
+
 ## 4. Décisions ouvertes
 
 ### OPEN-001 — Version Python
@@ -540,6 +570,17 @@ Le Dashboard V1 a été livré au Batch 12. Le choix technique effectif est dés
 ---
 
 ## 5. Changelog documentation
+
+
+### v0.9 — 2026-09-11 — Validation technique LIVE_EVAL Batch 16
+- smoke de référence : `177add07-b684-440c-b8ca-a37313a6eac5` ;
+- code version : `294cfa2547f94c9694fdc65758c3f9435ff55dd2` ;
+- dataset : `BTC/USDC:1h:4f5515aef296533f` ;
+- `345/345`, 15 opportunités, 14 `NO_TRADE`, 1 `SHORT` ;
+- Risk Engine `RESIZED` puis 1 ordre PAPER ;
+- 0 échec technique ;
+- séparation explicite entre validation technique du pipeline et validation statistique/LIVE ;
+- ADR-028 ajouté.
 
 
 ### v0.8 — 2026-09-09 — Batch 20 Task Force dynamique

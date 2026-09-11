@@ -1,7 +1,7 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots  
-**Version :** 0.3  
+**Version :** 0.4
 **Statut :** Roadmap active — réalignée post-Batch 20
 
 ---
@@ -286,7 +286,7 @@ Avant activation :
 
 ## 19. Batch 16 — Backtesting & Historical Replay
 
-**État : livré après validation du lot final.**
+**État : livré ; smoke LIVE_EVAL end-to-end validé le 2026-09-11. Validation statistique étendue encore requise avant LIVE.**
 
 ### Objectif atteint
 Fournir le banc d’essai historique end-to-end exigé avant tout premier ordre LIVE réel.
@@ -313,7 +313,16 @@ Fournir le banc d’essai historique end-to-end exigé avant tout premier ordre 
 Une période historique peut être rejouée de bout en bout de manière reproductible sans donnée future, en conservant les décisions Risk, positions, coûts, equity et métriques.
 
 ### Gate opérationnelle
-Le batch livré permet d’exécuter la gate mais **ne la déclare pas automatiquement réussie**. Les datasets réels, critères d’acceptation OOS/walk-forward et campagnes PAPER/SHADOW doivent encore être exécutés/validés avant un premier ordre réel.
+Le smoke technique LIVE_EVAL est validé sur le commit
+`294cfa2547f94c9694fdc65758c3f9435ff55dd2`, campagne
+`177add07-b684-440c-b8ca-a37313a6eac5`, dataset
+`BTC/USDC:1h:4f5515aef296533f` : `345/345`, 15 opportunités,
+14 `NO_TRADE`, 1 `SHORT`, 1 décision Risk `RESIZED`, 1 ordre PAPER et 0 échec technique.
+
+Cette validation prouve que le pipeline réel IA → proposition → Risk déterministe → PAPER peut
+fonctionner de bout en bout. Elle **ne valide pas encore la gate statistique ou la promotion LIVE**.
+Les datasets multi-régimes, critères d’acceptation DESIGN/VALIDATION/OOS, walk-forward et campagnes
+PAPER/SHADOW doivent encore être exécutés et évalués avant un premier ordre réel.
 
 ---
 

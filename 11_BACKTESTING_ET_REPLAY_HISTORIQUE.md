@@ -1,8 +1,8 @@
 # Money Heist — Backtesting & Historical Replay
 
 **Document :** Contrat détaillé Batch 16  
-**Version :** 1.1  
-**Date :** 2026-09-08  
+**Version :** 1.2
+**Date :** 2026-09-11
 **Statut :** Référence technique active
 
 ---
@@ -349,6 +349,45 @@ Le cache `money-heist.backtest-ai-cache.v2` exclut le `request_id` fournisseur d
 
 Les versions prompts/modèles et le contenu de requête restent dans la clé. Un cache miss en mode `CACHED` reste fail-closed.
 
+---
+
+## 18.1. Smoke LIVE_EVAL de référence — validation technique
+
+Référence validée le 2026-09-11 :
+- code version : `294cfa2547f94c9694fdc65758c3f9435ff55dd2` ;
+- campagne : `177add07-b684-440c-b8ca-a37313a6eac5` ;
+- dataset : `BTC/USDC:1h:4f5515aef296533f` ;
+- progression : `345/345` ;
+- opportunités : `15` ;
+- Professor FINAL : `14 NO_TRADE`, `1 SHORT` ;
+- Risk Engine : `RESIZED` ;
+- quantité approuvée : `0.00156 BTC` ;
+- risque approuvé : `0.7306260` ;
+- notionnel approuvé : `99.4993740` ;
+- ordres PAPER exécutés : `1` ;
+- échecs techniques : `0`.
+
+Ce smoke démontre que le chemin suivant est opérationnel avec un fournisseur IA réel :
+
+```text
+OHLCV historique
+→ Feature Engine
+→ Scanner
+→ CandidateOpportunity
+→ AI Gateway / Professor / spécialistes / Palermo
+→ Professor FINAL
+→ TradeProposal
+→ Risk Engine déterministe
+→ PaperBroker
+```
+
+Les sous-lots de robustesse 16.12 à 16.20 ont notamment fermé les défauts observés sur schémas
+structured output, grounding, accounting des réponses incomplètes, timeout/headroom Palermo et
+alignement Professor/Compute Gate.
+
+La validation reste **technique**. Elle ne signifie pas que la stratégie est rentable ou robuste.
+Une campagne longue doit encore couvrir plusieurs régimes et produire des preuves séparées
+DESIGN/VALIDATION/OOS, walk-forward, coûts IA et comportement PAPER/SHADOW.
 
 ---
 
