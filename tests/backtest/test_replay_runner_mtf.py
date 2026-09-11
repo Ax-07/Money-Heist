@@ -159,6 +159,7 @@ def _mtf_assumptions():
         "mtf_timeframes": "15m,1h,4h,1d",
         "mtf_policy_version": "mtf-utc-closed-v1",
         "mtf_feature_context_version": "mtf-feature-context-v1",
+        "decision_context_version": "decision-context-v1",
         "lifecycle_timeframe": "1m",
     }
 
@@ -315,6 +316,47 @@ async def test_mtf_feature_context_is_built_only_for_opportunity_and_pipeline_st
     assert context.decision_snapshot is point.feature_snapshot
     assert set(context.snapshots) == {"15m", "1h", "4h", "1d"}
     assert "1d" in context.warmup_incomplete_timeframes
+    assert len(pipeline.calls) == 1
+    assert pipeline.calls[0][1] is point.feature_snapshot
+    assert pipeline.calls[0][1].timeframe == "1h"
+
+
+@_sync_test
+async def test_decision_context_is_frozen_on_opportunity_without_changing_pipeline_input():
+    from app.market.features import FeatureEngine
+    from app.services.decision_context import ContextAvailability
+
+    candles = _minute_candles(36 * 60)
+    pipeline = _RecordingPipeline()
+    scanner = _OneOpportunityScanner()
+    runner = HistoricalReplayRunner(
+        paper_pipeline=pipeline,
+        feature_engine=FeatureEngine(),
+        scanner=scanner,
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+    )
+
+    result = await runner.run(
+        candles=candles,
+        run=_run(
+            candles,
+            timeframe="1m",
+            assumptions=_mtf_assumptions(),
+        ),
+    )
+
+    point = next(point for point in result.points if point.opportunity is not None)
+    context = point.decision_context
+    assert context is not None
+    assert context.market is point.mtf_feature_context
+    assert context.as_of == point.observed_at
+    assert context.primary_timeframe == "1h"
+    assert context.derivatives.status is ContextAvailability.UNAVAILABLE
+    assert context.statistics.status is ContextAvailability.UNAVAILABLE
+    assert context.portfolio_summary is None
+    assert context.market_constraints is None
+    assert context.context_fingerprint
     assert len(pipeline.calls) == 1
     assert pipeline.calls[0][1] is point.feature_snapshot
     assert pipeline.calls[0][1].timeframe == "1h"
