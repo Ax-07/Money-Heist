@@ -50,6 +50,7 @@ from app.services.backtest import (
     split_report_to_json,
     walk_forward_report_to_json,
 )
+from app.services.backtest.advanced_mock import DeterministicAdvancedSpecialistMockProvider
 from app.services.backtest.runner import HistoricalReplayCancelledError
 from app.services.orchestration import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
@@ -148,6 +149,7 @@ class AIInput(FrozenModel):
     input_per_million_eur: Decimal = Decimal("0")
     output_per_million_eur: Decimal = Decimal("0")
     cached_input_per_million_eur: Decimal | None = None
+    mock_agent_coverage: bool = False
 
     @model_validator(mode="after")
     def validate_ai(self) -> AIInput:
@@ -167,6 +169,8 @@ class AIInput(FrozenModel):
                 raise ValueError("LIVE_EVAL requires explicit non-zero model pricing")
             if self.model_id.startswith("mock-"):
                 raise ValueError("LIVE_EVAL requires an explicit real model_id")
+        if self.mock_agent_coverage and self.mode is not BacktestAIMode.MOCK:
+            raise ValueError("mock_agent_coverage is available only in MOCK mode")
         return self
 
 
@@ -640,6 +644,77 @@ class DeterministicBacktestMockProvider:
                 "expected_rr": "2",
             },
         }
+
+
+class DeterministicAgentCoverageMockProvider:
+    # Dashboard-only deterministic MOCK coverage wrapper.
+
+    provider_name = "mock"
+
+    def __init__(self, fallback: Any) -> None:
+        self._fallback = fallback
+        self._plan_index = 0
+
+    async def complete(self, request: ProviderRequest) -> ProviderResponse:
+        response = await self._fallback.complete(request)
+        if request.schema_name != "ProfessorPlan":
+            return response
+
+        try:
+            context = json.loads(request.input_text)
+        except json.JSONDecodeError:
+            return response
+        if not isinstance(context, dict):
+            return response
+
+        raw_available = context.get("available_agents")
+        if not isinstance(raw_available, list):
+            return response
+
+        available = sorted(
+            {
+                str(agent_id)
+                for agent_id in raw_available
+                if isinstance(agent_id, str) and agent_id.strip()
+            }
+        )
+        if not available:
+            return response
+
+        crews = [[agent_id] for agent_id in available]
+        crews.extend(
+            [available[left], available[right]]
+            for left in range(len(available))
+            for right in range(left + 1, len(available))
+        )
+        selected = crews[self._plan_index % len(crews)]
+        self._plan_index += 1
+
+        try:
+            payload = json.loads(response.output_text)
+        except json.JSONDecodeError:
+            return response
+        if not isinstance(payload, dict):
+            return response
+
+        payload.update(
+            {
+                "decision": "MINI_CREW",
+                "selected_agents": selected,
+                "rationale": [
+                    "dashboard deterministic MOCK agent coverage smoke test",
+                    "selection restricted to orchestration available_agents",
+                ],
+                "request_more_analysis": False,
+            }
+        )
+        return ProviderResponse(
+            provider_request_id=response.provider_request_id,
+            model_id=response.model_id,
+            output_text=json.dumps(payload, separators=(",", ":"), sort_keys=True),
+            usage=response.usage,
+            latency_ms=response.latency_ms,
+        )
 
 
 class BacktestDashboardService:
@@ -1253,7 +1328,11 @@ class BacktestDashboardService:
                 ),
             ]
         )
-        mock_client = DeterministicBacktestMockProvider()
+        mock_client: Any = DeterministicBacktestMockProvider()
+        if run.config.ai_mode is BacktestAIMode.MOCK and ai.mock_agent_coverage:
+            mock_client = DeterministicAgentCoverageMockProvider(
+                DeterministicAdvancedSpecialistMockProvider(mock_client)
+            )
         live_client = None
         if run.config.ai_mode is BacktestAIMode.LIVE_EVAL:
             live_client = OpenAIResponsesClient(
@@ -1519,6 +1598,7 @@ __all__ = [
     "DatasetInput",
     "DatasetPreview",
     "DeterministicBacktestMockProvider",
+    "DeterministicAgentCoverageMockProvider",
     "ObservableBacktestAIClient",
     "ExecutionInput",
     "MarketConstraintsInput",

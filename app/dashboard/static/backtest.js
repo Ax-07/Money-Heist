@@ -9,6 +9,7 @@ let suggestedSplitSelection = null;
 let agentDescriptors = [];
 let lastTraceSequence = 0;
 let traceAnimationChain = Promise.resolve();
+let mockAgentCoverage = false;
 
 const esc = (value) => String(value ?? "")
   .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
@@ -251,6 +252,7 @@ function campaignPayload() {
       input_per_million_eur: $("input-price").value,
       output_per_million_eur: $("output-price").value,
       cached_input_per_million_eur: numberOrNull("cached-price"),
+      mock_agent_coverage: mockAgentCoverage && $("ai-mode").value === "MOCK",
     },
     execution: {
       initial_balance: $("initial-balance").value,
@@ -658,6 +660,7 @@ async function importCache(file) {
 function onSplitInput(id, key) {
   $(id).addEventListener("input", () => {
     if (!splitSelection) return;
+    mockAgentCoverage = false;
     splitSelection[key] = Number($(id).value);
     renderSplitSelection();
   });
@@ -670,6 +673,7 @@ onSplitInput("split-end", "end");
 
 $("split-full").addEventListener("click", () => {
   if (!datasetPreview || !splitSelection) return;
+  mockAgentCoverage = false;
   splitSelection.start = 0;
   splitSelection.end = datasetPreview.candle_count - 1;
   renderSplitSelection();
@@ -677,6 +681,7 @@ $("split-full").addEventListener("click", () => {
 
 $("split-reset").addEventListener("click", () => {
   if (!suggestedSplitSelection) return;
+  mockAgentCoverage = false;
   splitSelection = { ...suggestedSplitSelection };
   renderSplitSelection();
 });
@@ -827,6 +832,7 @@ function applyQuickTestSplit() {
     validationEnd: start + validationBoundaryBars - 1,
     end: start + testBars - 1,
   };
+  mockAgentCoverage = true;
   renderSplitSelection();
 }
 
@@ -847,6 +853,7 @@ $("csv-file").addEventListener("change", () => {
   datasetPreview = null;
   splitSelection = null;
   suggestedSplitSelection = null;
+  mockAgentCoverage = false;
   $("split-editor").classList.add("is-disabled");
   for (const id of ["split-start", "split-design-end", "split-validation-end", "split-end"]) {
     $(id).disabled = true;
@@ -854,6 +861,7 @@ $("csv-file").addEventListener("change", () => {
   applyDatasetDefaultsFromFile($("csv-file").files?.[0]);
 });
 $("ai-mode").addEventListener("change", () => {
+  if ($("ai-mode").value !== "MOCK") mockAgentCoverage = false;
   if ($("ai-mode").value === "MOCK" && !$("model-id").value.trim()) {
     $("model-id").value = "mock-backtest-v1";
   }

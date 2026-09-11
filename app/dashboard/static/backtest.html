@@ -35,6 +35,7 @@
     </section>
 
     <section class="layout">
+      <!-- Batch 16.10 — Dataset-aware defaults -->
       <form id="campaign-form" class="panel form-panel">
         <div class="section-title">
           <div><p class="label">1 · Dataset</p><h2>OHLCV historique</h2></div>
@@ -45,16 +46,16 @@
             <input id="csv-file" type="file" accept=".csv,text/csv" required>
           </label>
           <label>Symbole
-            <input id="symbol" value="BTC/EUR" required>
+            <input id="symbol" value="BTC/USDC" required>
           </label>
           <label>Timeframe
             <select id="timeframe">
-              <option>1m</option><option selected>5m</option><option>15m</option>
-              <option>30m</option><option>1h</option><option>4h</option><option>1d</option>
+              <option>1m</option><option>5m</option><option>15m</option>
+              <option>30m</option><option selected>1h</option><option>4h</option><option>1d</option>
             </select>
           </label>
           <label>Source
-            <input id="source" value="dashboard_csv" required>
+            <input id="source" value="binance_spot_csv" required>
           </label>
           <label>Intervalle secondes (optionnel)
             <input id="interval-seconds" type="number" min="1" placeholder="inféré du timeframe">
@@ -72,6 +73,7 @@
               <strong id="dataset-range-label">Prévisualise un dataset pour activer la timeline.</strong>
             </div>
             <div class="split-actions">
+              <button type="button" id="split-quick-test" class="secondary">Test rapide</button>
               <button type="button" id="split-full" class="secondary">Tout le dataset</button>
               <button type="button" id="split-reset" class="secondary">Réinitialiser 60 / 20 / 20</button>
             </div>
@@ -149,14 +151,15 @@
           <div><p class="label">5 · Marché</p><h2>Contraintes d'ordre</h2></div>
         </div>
         <p class="notice">
-          Ces valeurs doivent venir de la configuration ou des métadonnées exchange.
-          Elles ne sont volontairement pas inventées par le Dashboard.
+          <strong id="market-preset-state">Preset Binance Spot BTC/USDC · 2026-09-11</strong><br>
+          Les contraintes sont préremplies pour faciliter le backtest. Elles restent éditables
+          et doivent être revérifiées contre les métadonnées exchange avant tout usage officiel.
         </p>
         <div class="grid four">
-          <label>qty_step<input id="qty-step" type="number" step="any" placeholder="ex. 0.00000001" required></label>
-          <label>min_qty<input id="min-qty" type="number" step="any" required></label>
-          <label>min_notional €<input id="min-notional" type="number" step="any" required></label>
-          <label>max_qty (optionnel)<input id="max-qty" type="number" step="any"></label>
+          <label>qty_step BTC<input id="qty-step" type="number" step="any" value="0.00001" required></label>
+          <label>min_qty BTC<input id="min-qty" type="number" step="any" value="0.00001" required></label>
+          <label>min_notional <span id="min-notional-unit">USDC</span><input id="min-notional" type="number" step="any" value="5" required></label>
+          <label>max_qty BTC<input id="max-qty" type="number" step="any" value="9000"></label>
           <label>max_leverage<input id="market-leverage" type="number" step="0.1" value="1"></label>
         </div>
 
