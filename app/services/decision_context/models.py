@@ -307,6 +307,14 @@ class DecisionContextV1:
                 "market_constraints requires provenance"
             )
 
+        for name in ("structure", "derivatives", "statistics", "microstructure"):
+            section = getattr(self, name)
+            if (
+                section.status is ContextAvailability.AVAILABLE
+                and name not in frozen_provenance
+            ):
+                raise ValueError(f"{name} requires provenance")
+
         expected_missing = set()
         for name in ("structure", "derivatives", "statistics", "microstructure"):
             if getattr(self, name).status is ContextAvailability.UNAVAILABLE:

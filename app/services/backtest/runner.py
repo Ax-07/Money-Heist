@@ -11,8 +11,15 @@ from app.market.features.multitimeframe import (
     build_multi_timeframe_feature_context,
 )
 from app.market.models import Candle
+from app.market.structure import (
+    MARKET_STRUCTURE_VERSION,
+    build_market_structure_context,
+)
 from app.services.decision_context import (
     AGENT_CONTEXT_BINDING_VERSION,
+    ContextAvailability,
+    OptionalContextSection,
+    ProvenanceRecord,
     build_decision_context,
 )
 from app.market.multitimeframe import (
@@ -120,6 +127,7 @@ class HistoricalReplayPoint:
     mtf_cursor_fingerprint: str | None = None
     mtf_candle_counts: tuple[tuple[str, int], ...] = ()
     mtf_feature_context: Any | None = None
+    market_structure_context: Any | None = None
     decision_context: Any | None = None
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
@@ -183,6 +191,7 @@ class HistoricalReplayRunner:
         mtf_feature_context_version: str = "mtf-feature-context-v1",
         decision_context_version: str = "decision-context-v1",
         agent_context_binding_version: str = AGENT_CONTEXT_BINDING_VERSION,
+        market_structure_version: str = MARKET_STRUCTURE_VERSION,
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -228,6 +237,7 @@ class HistoricalReplayRunner:
         )
         self.decision_context_version = decision_context_version.strip()
         self.agent_context_binding_version = agent_context_binding_version.strip()
+        self.market_structure_version = market_structure_version.strip()
 
     async def run(
         self,
@@ -357,6 +367,7 @@ class HistoricalReplayRunner:
                 continue
 
             mtf_feature_context = None
+            market_structure_context = None
             decision_context = None
             opportunity = getattr(scan_result, "opportunity", None)
             pipeline_result = None
@@ -373,12 +384,50 @@ class HistoricalReplayRunner:
                             context_version=self.mtf_feature_context_version,
                         )
                     )
+                    market_structure_context = (
+                        build_market_structure_context(
+                            mtf_cursor=mtf_cursor,
+                            observed_at=clock.now(),
+                            version=self.market_structure_version,
+                        )
+                    )
+                    structure_missing = tuple(
+                        [
+                            f"missing:{item}"
+                            for item in market_structure_context.missing_timeframes
+                        ]
+                        + [
+                            f"incomplete:{item}"
+                            for item in market_structure_context.incomplete_timeframes
+                        ]
+                    )
+                    structure_section = OptionalContextSection(
+                        status=ContextAvailability.AVAILABLE,
+                        payload=market_structure_context.to_payload(),
+                    )
+                    structure_provenance = ProvenanceRecord(
+                        component="structure",
+                        source="closed_ohlcv_market_structure",
+                        observed_at=clock.now(),
+                        available_at=clock.now(),
+                        quality=(
+                            "COMPLETE"
+                            if market_structure_context.all_structures_ready
+                            else "PARTIAL"
+                        ),
+                        missing_fields=structure_missing,
+                        source_fingerprint=(
+                            market_structure_context.context_fingerprint
+                        ),
+                    )
                     decision_context = build_decision_context(
                         system_id=run.config.system_id,
                         as_of=clock.now(),
                         primary_timeframe=self.decision_timeframe,
                         timeframe_policy_version=self.mtf_policy_version,
                         market=mtf_feature_context,
+                        structure=structure_section,
+                        provenance={"structure": structure_provenance},
                         context_version=self.decision_context_version,
                     )
                 pipeline_kwargs = {
@@ -417,6 +466,7 @@ class HistoricalReplayRunner:
                     else ()
                 ),
                 mtf_feature_context=mtf_feature_context,
+                market_structure_context=market_structure_context,
                 decision_context=decision_context,
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
@@ -518,6 +568,8 @@ class HistoricalReplayRunner:
             raise ValueError("decision_context_version must not be empty")
         if not self.agent_context_binding_version:
             raise ValueError("agent_context_binding_version must not be empty")
+        if not self.market_structure_version:
+            raise ValueError("market_structure_version must not be empty")
         if not self.mtf_timeframes:
             raise ValueError("mtf_timeframes must not be empty")
         if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
@@ -548,6 +600,7 @@ class HistoricalReplayRunner:
             "mtf_feature_context_version": self.mtf_feature_context_version,
             "decision_context_version": self.decision_context_version,
             "agent_context_binding_version": self.agent_context_binding_version,
+            "market_structure_version": self.market_structure_version,
             "lifecycle_timeframe": run.dataset.timeframe,
         }
         assumptions = run.config.execution_assumptions

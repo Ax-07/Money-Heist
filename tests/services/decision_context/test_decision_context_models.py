@@ -170,3 +170,26 @@ def test_agent_payload_is_json_safe_and_preserves_feature_numbers():
     assert payload["market"]["snapshots"]["1h"]["timeframe"] == "1h"
     assert isinstance(payload["market"]["snapshots"]["1h"]["close"], float)
     json.dumps(payload, sort_keys=True)
+
+
+def test_available_optional_section_requires_provenance():
+    from app.services.decision_context import (
+        ContextAvailability,
+        OptionalContextSection,
+    )
+
+    market = _market_context()
+    structure = OptionalContextSection(
+        status=ContextAvailability.AVAILABLE,
+        payload={"version": "fixture"},
+    )
+
+    with pytest.raises(ValueError, match="structure requires provenance"):
+        build_decision_context(
+            system_id="balanced_v1",
+            as_of=market.observed_at,
+            primary_timeframe="1h",
+            timeframe_policy_version="mtf-utc-closed-v1",
+            market=market,
+            structure=structure,
+        )

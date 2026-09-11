@@ -161,6 +161,7 @@ def _mtf_assumptions():
         "mtf_feature_context_version": "mtf-feature-context-v1",
         "decision_context_version": "decision-context-v1",
         "agent_context_binding_version": "decision-context-agent-binding-v1",
+        "market_structure_version": "market-structure-v1",
         "lifecycle_timeframe": "1m",
     }
 
@@ -369,3 +370,48 @@ async def test_decision_context_is_frozen_on_opportunity_without_changing_pipeli
     assert pipeline.calls[0][1] is point.feature_snapshot
     assert pipeline.calls[0][1].timeframe == "1h"
     assert pipeline.calls[0][3] is context
+
+
+@_sync_test
+async def test_market_structure_is_available_in_frozen_decision_context():
+    from app.market.features import FeatureEngine
+    from app.services.decision_context import ContextAvailability
+
+    candles = _minute_candles(36 * 60)
+    pipeline = _RecordingPipeline()
+    scanner = _OneOpportunityScanner()
+    runner = HistoricalReplayRunner(
+        paper_pipeline=pipeline,
+        feature_engine=FeatureEngine(),
+        scanner=scanner,
+        decision_timeframe="1h",
+        mtf_timeframes=("15m", "1h", "4h", "1d"),
+    )
+
+    result = await runner.run(
+        candles=candles,
+        run=_run(
+            candles,
+            timeframe="1m",
+            assumptions=_mtf_assumptions(),
+        ),
+    )
+
+    point = next(point for point in result.points if point.opportunity is not None)
+    structure = point.market_structure_context
+    context = point.decision_context
+    assert structure is not None
+    assert context is not None
+    assert context.structure.status is ContextAvailability.AVAILABLE
+    assert "structure" not in context.missing_components
+    assert context.provenance["structure"].source_fingerprint == (
+        structure.context_fingerprint
+    )
+    assert (
+        context.structure.payload["context_fingerprint"]
+        == structure.context_fingerprint
+    )
+    assert context.microstructure.status is ContextAvailability.UNAVAILABLE
+    for summary in structure.timeframes.values():
+        assert summary.orderbook_available is False
+        assert summary.liquidation_data_available is False
