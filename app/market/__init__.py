@@ -2,6 +2,13 @@
 
 from .historical import HistoricalImportError, import_candles_csv
 from .models import Candle, HistoricalImportResult, MarketSnapshot, SnapshotQuality
+from .multitimeframe import (
+    HistoricalMultiTimeframeSlice,
+    MultiTimeframeError,
+    build_historical_mtf_slice,
+    resample_closed_candles,
+    timeframe_interval,
+)
 from .provider import InMemoryMarketDataProvider, MarketDataProvider
 from .quality import FreshnessPolicy, MarketDataValidationError
 from .snapshot import create_market_snapshot
@@ -17,5 +24,10 @@ __all__ = [
     "MarketSnapshot",
     "SnapshotQuality",
     "create_market_snapshot",
+    "HistoricalMultiTimeframeSlice",
+    "MultiTimeframeError",
+    "build_historical_mtf_slice",
+    "resample_closed_candles",
+    "timeframe_interval",
     "import_candles_csv",
 ]
