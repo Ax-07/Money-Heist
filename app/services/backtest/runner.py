@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol
 
@@ -28,6 +28,10 @@ from app.market.multitimeframe import (
     timeframe_interval,
 )
 
+from .historical_derivatives_analytics import (
+    HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION,
+    HistoricalDerivativesAnalyticsArchive,
+)
 from .clock import ReplayClock, as_utc
 from .dataset import DatasetRef, canonical_candle_rows
 from .models import BacktestResult, BacktestRun, BacktestRunStatus
@@ -67,6 +71,7 @@ class PaperPipelinePort(Protocol):
         market_context: Any,
         now: datetime | None = None,
         decision_context: Any | None = None,
+        specialist_contexts: Mapping[str, Any] | None = None,
     ) -> Any: ...
 
 
@@ -136,6 +141,8 @@ class HistoricalReplayPoint:
     decision_context: Any | None = None
     decision_portfolio_state: Any | None = None
     decision_market_constraints: Any | None = None
+    derivatives_snapshot: Any | None = None
+    rio_context: Any | None = None
     pipeline_result: Any | None = None
     portfolio_state: Any | None = None
     account_state: Any | None = None
@@ -201,6 +208,13 @@ class HistoricalReplayRunner:
         agent_context_binding_version: str = AGENT_CONTEXT_BINDING_VERSION,
         market_structure_version: str = MARKET_STRUCTURE_VERSION,
         risk_context_binding_version: str = RISK_CONTEXT_BINDING_VERSION,
+        historical_derivatives_archive: (
+            HistoricalDerivativesAnalyticsArchive | None
+        ) = None,
+        derivatives_max_age: timedelta = timedelta(hours=2),
+        derivatives_context_binding_version: str = (
+            HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION
+        ),
     ) -> None:
         if feature_engine is None:
             from app.market.features import FeatureEngine
@@ -249,6 +263,17 @@ class HistoricalReplayRunner:
         self.agent_context_binding_version = agent_context_binding_version.strip()
         self.market_structure_version = market_structure_version.strip()
         self.risk_context_binding_version = risk_context_binding_version.strip()
+        if derivatives_max_age <= timedelta(0):
+            raise ValueError("derivatives_max_age must be > 0")
+        derivatives_seconds = derivatives_max_age.total_seconds()
+        if not float(derivatives_seconds).is_integer():
+            raise ValueError("derivatives_max_age must use whole seconds")
+        self.historical_derivatives_archive = historical_derivatives_archive
+        self.derivatives_max_age = derivatives_max_age
+        self.derivatives_max_age_seconds = int(derivatives_seconds)
+        self.derivatives_context_binding_version = (
+            derivatives_context_binding_version.strip()
+        )
 
     async def run(
         self,
@@ -382,6 +407,8 @@ class HistoricalReplayRunner:
             decision_context = None
             decision_portfolio_state = None
             decision_market_constraints = None
+            derivatives_snapshot = None
+            rio_context = None
             opportunity = getattr(scan_result, "opportunity", None)
             pipeline_result = None
             if opportunity is not None:
@@ -439,6 +466,44 @@ class HistoricalReplayRunner:
                     decision_market_constraints = self._current_market_constraints(
                         run.dataset.symbol
                     )
+                    decision_provenance = {"structure": structure_provenance}
+                    derivatives_section = None
+                    if self.historical_derivatives_archive is not None:
+                        derivatives_snapshot = (
+                            self.historical_derivatives_archive.positioning_snapshot_at(
+                                as_of=clock.now(),
+                                max_age=self.derivatives_max_age,
+                            )
+                        )
+                        if derivatives_snapshot is not None:
+                            rio_context = (
+                                self.historical_derivatives_archive
+                                .rio_context_from_snapshot(derivatives_snapshot)
+                            )
+                            derivatives_section = OptionalContextSection(
+                                status=ContextAvailability.AVAILABLE,
+                                payload={
+                                    "archive_version": self.historical_derivatives_archive.version,
+                                    "archive_fingerprint": (
+                                        self.historical_derivatives_archive.dataset_fingerprint
+                                    ),
+                                    "max_age_seconds": self.derivatives_max_age_seconds,
+                                    "rio_data_quality": rio_context.data_quality,
+                                    "snapshot": derivatives_snapshot.model_dump(mode="python"),
+                                },
+                            )
+                            decision_provenance["derivatives"] = ProvenanceRecord(
+                                component="derivatives",
+                                source=derivatives_snapshot.source,
+                                observed_at=derivatives_snapshot.observed_at,
+                                available_at=derivatives_snapshot.received_at,
+                                quality=rio_context.data_quality,
+                                missing_fields=derivatives_snapshot.missing_fields,
+                                source_fingerprint=(
+                                    self.historical_derivatives_archive.dataset_fingerprint
+                                ),
+                            )
+
                     decision_context = build_decision_context(
                         system_id=run.config.system_id,
                         as_of=clock.now(),
@@ -448,7 +513,8 @@ class HistoricalReplayRunner:
                         portfolio_state=decision_portfolio_state,
                         market_constraints=decision_market_constraints,
                         structure=structure_section,
-                        provenance={"structure": structure_provenance},
+                        derivatives=derivatives_section,
+                        provenance=decision_provenance,
                         context_version=self.decision_context_version,
                     )
                 pipeline_kwargs = {
@@ -458,6 +524,8 @@ class HistoricalReplayRunner:
                 }
                 if decision_context is not None:
                     pipeline_kwargs["decision_context"] = decision_context
+                if rio_context is not None and rio_context.usable:
+                    pipeline_kwargs["specialist_contexts"] = {"rio": rio_context}
                 pipeline_result = await self.paper_pipeline.run(
                     **pipeline_kwargs
                 )
@@ -491,6 +559,8 @@ class HistoricalReplayRunner:
                 decision_context=decision_context,
                 decision_portfolio_state=decision_portfolio_state,
                 decision_market_constraints=decision_market_constraints,
+                derivatives_snapshot=derivatives_snapshot,
+                rio_context=rio_context,
                 scan_result=scan_result,
                 pipeline_result=pipeline_result,
                 portfolio_state=self._current_portfolio_state(run.config.system_id),
@@ -594,6 +664,8 @@ class HistoricalReplayRunner:
 
     def _validate_mtf_mode(self, run: BacktestRun) -> None:
         if self.decision_timeframe is None:
+            if self.historical_derivatives_archive is not None:
+                raise ValueError("historical derivatives archive requires MTF replay")
             return
         if not self.mtf_policy_version:
             raise ValueError("mtf_policy_version must not be empty")
@@ -607,6 +679,11 @@ class HistoricalReplayRunner:
             raise ValueError("market_structure_version must not be empty")
         if not self.risk_context_binding_version:
             raise ValueError("risk_context_binding_version must not be empty")
+        if (
+            self.historical_derivatives_archive is not None
+            and not self.derivatives_context_binding_version
+        ):
+            raise ValueError("derivatives_context_binding_version must not be empty")
         if not self.mtf_timeframes:
             raise ValueError("mtf_timeframes must not be empty")
         if len(set(self.mtf_timeframes)) != len(self.mtf_timeframes):
@@ -641,6 +718,21 @@ class HistoricalReplayRunner:
             "risk_context_binding_version": self.risk_context_binding_version,
             "lifecycle_timeframe": run.dataset.timeframe,
         }
+        if self.historical_derivatives_archive is not None:
+            archive = self.historical_derivatives_archive
+            if archive.symbol != run.dataset.symbol:
+                raise ValueError("historical derivatives archive symbol does not match dataset")
+            expected.update(
+                {
+                    "derivatives_context_binding_version": self.derivatives_context_binding_version,
+                    "derivatives_archive_version": archive.version,
+                    "derivatives_archive_fingerprint": archive.dataset_fingerprint,
+                    "derivatives_source": archive.source,
+                    "derivatives_instrument": archive.instrument,
+                    "derivatives_max_age_seconds": str(self.derivatives_max_age_seconds),
+                }
+            )
+
         assumptions = run.config.execution_assumptions
         for key, value in expected.items():
             if assumptions.get(key) != value:

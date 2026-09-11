@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Callable
+from typing import Any, Callable, Mapping
 
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
@@ -73,6 +73,7 @@ class PaperTradingPipeline:
         market_context: FeatureSnapshot,
         now: datetime | None = None,
         decision_context: DecisionContextV1 | None = None,
+        specialist_contexts: Mapping[str, Any] | None = None,
     ) -> PaperPipelineResult:
         events: list[PaperPipelineEvent] = []
         orchestration_result = None
@@ -158,6 +159,8 @@ class PaperTradingPipeline:
             }
             if decision_context is not None:
                 orchestration_kwargs["decision_context"] = decision_context
+            if specialist_contexts is not None:
+                orchestration_kwargs["specialist_contexts"] = specialist_contexts
             orchestration_result = await self.orchestration.run(
                 **orchestration_kwargs
             )

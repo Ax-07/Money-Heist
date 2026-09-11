@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Any, Mapping, Protocol
 
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
@@ -24,6 +24,7 @@ class OrchestrationPort(Protocol):
         market_context: FeatureSnapshot,
         now=None,
         decision_context: DecisionContextV1 | None = None,
+        specialist_contexts: Mapping[str, Any] | None = None,
     ) -> OrchestrationResult: ...
 
 

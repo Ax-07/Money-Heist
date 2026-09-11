@@ -16,6 +16,7 @@ from app.market.exchange.kraken_futures import DerivativesPositioningSnapshot
 
 HISTORICAL_DERIVATIVES_ANALYTICS_VERSION = "historical-derivatives-analytics-v1"
 HISTORICAL_DERIVATIVES_ANALYTICS_SOURCE = "kraken_futures_historical_analytics"
+HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION = "historical-derivatives-rio-v1"
 
 CANONICAL_DERIVATIVES_FIELDS = (
     "symbol",
@@ -372,18 +373,16 @@ class HistoricalDerivativesAnalyticsArchive:
             missing_fields=tuple(sorted(missing)),
         )
 
-    def rio_context_at(
+    def rio_context_from_snapshot(
         self,
-        *,
-        as_of: datetime,
-        max_age: timedelta = timedelta(hours=2),
-    ) -> RioContext | None:
-        snapshot = self.positioning_snapshot_at(
-            as_of=as_of,
-            max_age=max_age,
-        )
-        if snapshot is None:
-            return None
+        snapshot: DerivativesPositioningSnapshot,
+    ) -> RioContext:
+        if snapshot.source != self.source:
+            raise ValueError("snapshot source does not match historical archive")
+        if snapshot.symbol != self.symbol:
+            raise ValueError("snapshot symbol does not match historical archive")
+        if snapshot.instrument != self.instrument:
+            raise ValueError("snapshot instrument does not match historical archive")
 
         core = (
             snapshot.funding_rate,
@@ -424,6 +423,20 @@ class HistoricalDerivativesAnalyticsArchive:
             ),
             missing_fields=snapshot.missing_fields,
         )
+
+    def rio_context_at(
+        self,
+        *,
+        as_of: datetime,
+        max_age: timedelta = timedelta(hours=2),
+    ) -> RioContext | None:
+        snapshot = self.positioning_snapshot_at(
+            as_of=as_of,
+            max_age=max_age,
+        )
+        if snapshot is None:
+            return None
+        return self.rio_context_from_snapshot(snapshot)
 
     @staticmethod
     def _metric_getter(

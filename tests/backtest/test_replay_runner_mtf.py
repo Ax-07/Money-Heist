@@ -286,8 +286,9 @@ class _RecordingPipeline:
         market_context,
         now=None,
         decision_context=None,
+        specialist_contexts=None,
     ):
-        self.calls.append((opportunity, market_context, now, decision_context))
+        self.calls.append((opportunity, market_context, now, decision_context, specialist_contexts))
         return SimpleNamespace(status=SimpleNamespace(value="NO_TRADE"))
 
 
@@ -547,3 +548,155 @@ async def test_decision_context_freezes_portfolio_and_market_constraints_pre_ai(
     assert context.provenance["market_constraints"].source == "market_constraints_provider"
     assert pipeline.calls[0][3] is context
     assert market_constraints.calls == 1
+
+
+def _historical_derivatives_archive():
+    from tempfile import TemporaryDirectory
+    from pathlib import Path
+
+    from app.services.backtest.historical_derivatives_analytics import (
+        HistoricalDerivativesPoint,
+        write_canonical_derivatives_csv,
+    )
+
+    tempdir = TemporaryDirectory()
+    path = Path(tempdir.name) / "derivatives.csv"
+    points = []
+    for index in range(38):
+        observed = START + timedelta(hours=index)
+        points.append(
+            HistoricalDerivativesPoint(
+                observed_at=observed,
+                available_at=observed + timedelta(hours=1),
+                funding_rate=Decimal("0.0001"),
+                open_interest=Decimal("1000") + index,
+                open_interest_change_pct=Decimal("0.1"),
+                long_short_ratio=Decimal("1.2"),
+            )
+        )
+    archive = write_canonical_derivatives_csv(
+        path=path,
+        symbol=SYMBOL,
+        instrument="PF_XBTUSD",
+        rows=points,
+    )
+    return tempdir, archive
+
+
+def _mtf_assumptions_with_derivatives(archive):
+    assumptions = dict(_mtf_assumptions())
+    assumptions.update(
+        {
+            "derivatives_context_binding_version": "historical-derivatives-rio-v1",
+            "derivatives_archive_version": archive.version,
+            "derivatives_archive_fingerprint": archive.dataset_fingerprint,
+            "derivatives_source": archive.source,
+            "derivatives_instrument": archive.instrument,
+            "derivatives_max_age_seconds": "7200",
+        }
+    )
+    return assumptions
+
+
+@_sync_test
+async def test_historical_derivatives_snapshot_feeds_decision_context_and_rio_identically():
+    from app.market.features import FeatureEngine
+    from app.services.decision_context import ContextAvailability
+
+    tempdir, archive = _historical_derivatives_archive()
+    try:
+        candles = _minute_candles(36 * 60)
+        pipeline = _RecordingPipeline()
+        scanner = _OneOpportunityScanner()
+        runner = HistoricalReplayRunner(
+            paper_pipeline=pipeline,
+            feature_engine=FeatureEngine(),
+            scanner=scanner,
+            decision_timeframe="1h",
+            mtf_timeframes=("15m", "1h", "4h", "1d"),
+            historical_derivatives_archive=archive,
+            derivatives_max_age=timedelta(hours=2),
+        )
+
+        result = await runner.run(
+            candles=candles,
+            run=_run(
+                candles,
+                timeframe="1m",
+                assumptions=_mtf_assumptions_with_derivatives(archive),
+            ),
+        )
+
+        point = next(
+            item for item in result.points if item.opportunity is not None
+        )
+        context = point.decision_context
+        snapshot = point.derivatives_snapshot
+        rio = point.rio_context
+
+        assert context is not None
+        assert snapshot is not None
+        assert rio is not None
+        assert rio.usable is True
+        assert rio.data_quality == "RELIABLE"
+        assert context.derivatives.status is ContextAvailability.AVAILABLE
+        assert "derivatives" not in context.missing_components
+        assert context.provenance["derivatives"].source_fingerprint == (
+            archive.dataset_fingerprint
+        )
+        assert context.provenance["derivatives"].available_at <= context.as_of
+
+        payload = context.derivatives.payload
+        frozen = payload["snapshot"]
+        assert frozen["open_interest"] == snapshot.open_interest
+        assert frozen["open_interest_change_pct"] == snapshot.open_interest_change_pct
+        assert frozen["long_short_ratio"] == snapshot.long_short_ratio
+        assert frozen["funding_rate"] == snapshot.funding_rate
+
+        assert rio.open_interest == float(snapshot.open_interest)
+        assert rio.open_interest_change_pct == float(snapshot.open_interest_change_pct)
+        assert rio.long_short_ratio == float(snapshot.long_short_ratio)
+        assert rio.funding_rate == float(snapshot.funding_rate)
+
+        assert len(pipeline.calls) == 1
+        specialist_contexts = pipeline.calls[0][4]
+        assert specialist_contexts is not None
+        assert specialist_contexts["rio"] is rio
+    finally:
+        tempdir.cleanup()
+
+
+@_sync_test
+async def test_historical_derivatives_archive_fingerprint_is_bound_fail_closed():
+    from app.market.features import FeatureEngine
+
+    tempdir, archive = _historical_derivatives_archive()
+    try:
+        candles = _minute_candles(36 * 60)
+        assumptions = _mtf_assumptions_with_derivatives(archive)
+        assumptions["derivatives_archive_fingerprint"] = "0" * 64
+
+        runner = HistoricalReplayRunner(
+            paper_pipeline=_RecordingPipeline(),
+            feature_engine=FeatureEngine(),
+            scanner=_OneOpportunityScanner(),
+            decision_timeframe="1h",
+            mtf_timeframes=("15m", "1h", "4h", "1d"),
+            historical_derivatives_archive=archive,
+        )
+
+        try:
+            await runner.run(
+                candles=candles,
+                run=_run(
+                    candles,
+                    timeframe="1m",
+                    assumptions=assumptions,
+                ),
+            )
+        except ValueError as exc:
+            assert "derivatives_archive_fingerprint" in str(exc)
+        else:
+            raise AssertionError("tampered derivatives fingerprint must fail closed")
+    finally:
+        tempdir.cleanup()

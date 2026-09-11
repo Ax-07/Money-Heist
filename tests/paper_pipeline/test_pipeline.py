@@ -67,6 +67,7 @@ class StubOrchestration:
         self.result = result
         self.calls = 0
         self.last_decision_context = None
+        self.last_specialist_contexts = None
 
     async def run(
         self,
@@ -75,10 +76,12 @@ class StubOrchestration:
         market_context,
         now=None,
         decision_context=None,
+        specialist_contexts=None,
     ):
         del opportunity, market_context, now
         self.calls += 1
         self.last_decision_context = decision_context
+        self.last_specialist_contexts = specialist_contexts
         return self.result
 
 
@@ -775,3 +778,25 @@ async def test_decision_context_is_forwarded_to_orchestration_without_rebuild():
 
     assert result.status is PaperPipelineStatus.NO_ANALYSIS
     assert orchestration.last_decision_context is sentinel
+
+
+@sync_test
+async def test_explicit_specialist_contexts_are_relayed_unchanged_to_orchestration():
+    service, orchestration, risk, broker = make_service(
+        orchestration_no_analysis()
+    )
+    rio_context = object()
+    specialist_contexts = {"rio": rio_context}
+
+    result = await service.run(
+        opportunity=make_opportunity(),
+        market_context=make_context(),
+        now=NOW,
+        specialist_contexts=specialist_contexts,
+    )
+
+    assert result.status is PaperPipelineStatus.NO_ANALYSIS
+    assert orchestration.last_specialist_contexts is specialist_contexts
+    assert orchestration.last_specialist_contexts["rio"] is rio_context
+    assert risk.calls == 0
+    assert broker.submit_calls == 0
