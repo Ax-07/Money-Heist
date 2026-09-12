@@ -206,6 +206,17 @@ class SpecialistAgent(CoreAgent):
                 context_payload["sample_size_band"] = prepared_context.sample_size_band
             payload["specialist_context"] = context_payload
 
+        if self.prompt.version == "v2":
+            grounding_payload: dict[str, Any] = {
+                "opportunity": opportunity,
+                "market_context": market_context,
+            }
+            if context_payload is not None:
+                grounding_payload["specialist_context"] = context_payload
+            payload["allowed_evidence_source_keys"] = sorted(
+                _grounded_json_paths(grounding_payload)
+            )
+
         result = await self._run(
             system_id=system_id,
             payload=payload,

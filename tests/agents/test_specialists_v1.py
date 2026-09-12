@@ -145,7 +145,7 @@ def test_specialists_use_versioned_gateway_contract(
         request = gateway.requests[0]
         assert result.output == output
         assert request.agent_id == output.agent
-        assert request.prompt_version == "v1"
+        assert request.prompt_version == "v2"
         assert request.opportunity_id == opportunity_id
         assert request.metadata["phase"] == "specialist_independent_round_1"
         assert gateway.output_models == [expected_model]
@@ -164,7 +164,16 @@ def test_first_round_payload_contains_no_other_agent_conclusions():
 
         payload = json.loads(gateway.requests[0].input_text)
         assert payload["analysis_round"] == "INDEPENDENT_1"
-        assert set(payload) == {"opportunity", "market_context", "analysis_round"}
+        assert set(payload) == {
+            "opportunity",
+            "market_context",
+            "analysis_round",
+            "allowed_evidence_source_keys",
+        }
+        assert payload["allowed_evidence_source_keys"] == sorted(
+            payload["allowed_evidence_source_keys"]
+        )
+        assert "market_context.features.adx" in payload["allowed_evidence_source_keys"]
         assert "specialist_analyses" not in gateway.requests[0].input_text
         assert "palermo_review" not in gateway.requests[0].input_text
 
@@ -195,6 +204,88 @@ def test_evidence_must_reference_an_existing_input_field():
                 market_context={"features": {"adx": 28.0}},
             )
         assert len(gateway.requests) == 1
+
+    asyncio.run(scenario())
+
+
+def test_v2_evidence_contract_exposes_exact_mtf_paths_and_accepts_them():
+    async def scenario():
+        exact_key = "market_context.decision_context.market.snapshots.1h.rsi_14"
+        gateway = FakeGateway([_berlin_output(exact_key)])
+        result = await Berlin(gateway).analyze(
+            system_id="balanced_v1",
+            opportunity={
+                "symbol": "BTCUSDT",
+                "triggers": ["BREAKOUT"],
+            },
+            market_context={
+                "rsi_14": 48.0,
+                "decision_context": {
+                    "market": {
+                        "snapshots": {
+                            "1h": {
+                                "rsi_14": 44.0,
+                            }
+                        }
+                    },
+                    "structure": {
+                        "payload": {
+                            "timeframes": {
+                                "1h": {
+                                    "breakout_state": "BREAKOUT_UP",
+                                }
+                            }
+                        }
+                    },
+                },
+            },
+        )
+
+        payload = json.loads(gateway.requests[0].input_text)
+        allowed = payload["allowed_evidence_source_keys"]
+        assert exact_key in allowed
+        assert (
+            "market_context.decision_context.structure.payload."
+            "timeframes.1h.breakout_state"
+        ) in allowed
+        assert "market_context.market.snapshots.1h.rsi_14" not in allowed
+        assert "$.market_context.decision_context.market.snapshots.1h.rsi_14" not in allowed
+        assert result.output.evidence[0].source_key == exact_key
+
+    asyncio.run(scenario())
+
+
+def test_v2_grounding_still_fails_closed_on_semantic_path_alias():
+    async def scenario():
+        gateway = FakeGateway(
+            [_berlin_output("market_context.market.snapshots.1h.rsi_14")]
+        )
+        with pytest.raises(UngroundedEvidenceError):
+            await Berlin(gateway).analyze(
+                system_id="balanced_v1",
+                opportunity={"symbol": "BTCUSDT"},
+                market_context={
+                    "decision_context": {
+                        "market": {
+                            "snapshots": {
+                                "1h": {
+                                    "rsi_14": 44.0,
+                                }
+                            }
+                        }
+                    }
+                },
+            )
+
+        payload = json.loads(gateway.requests[0].input_text)
+        assert (
+            "market_context.decision_context.market.snapshots.1h.rsi_14"
+            in payload["allowed_evidence_source_keys"]
+        )
+        assert (
+            "market_context.market.snapshots.1h.rsi_14"
+            not in payload["allowed_evidence_source_keys"]
+        )
 
     asyncio.run(scenario())
 
@@ -299,4 +390,13 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
         assert entry.core is False
         assert entry.allowed_tools == ()
         assert entry.model_route == "core_reasoning"
-        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v1"
+        assert entry.prompt_version == "v2"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v2"
+        # Historical prompt versions remain immutable and addressable.
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, "v1").version == "v1"
+        instructions = SPECIALIST_PROMPTS.get(
+            entry.agent_id,
+            entry.prompt_version,
+        ).instructions
+        assert "allowed_evidence_source_keys" in instructions
+        assert "copied verbatim" in instructions
