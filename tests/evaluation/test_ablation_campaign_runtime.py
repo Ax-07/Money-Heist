@@ -372,3 +372,10 @@ def test_ablation_runtime_reuses_exact_bound_derivatives_archive(tmp_path) -> No
 
     assert runtime.runner.historical_derivatives_archive is archive
     assert runtime.runner.derivatives_max_age_seconds == 7200
+
+
+def test_denver_ablation_role_requires_explicit_prior() -> None:
+    with pytest.raises(ValueError, match="historical_denver_role"):
+        _settings(
+            historical_denver_role=BacktestPeriodRole.OOS,
+        )

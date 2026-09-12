@@ -87,6 +87,32 @@
         </div>
 
         <div class="section-title spaced">
+          <div><p class="label">1c · Denver historique</p><h2>Prior statistique figé</h2></div>
+          <label class="toggle">
+            <input id="denver-prior-enabled" type="checkbox"> Activer Denver historique
+          </label>
+        </div>
+        <p class="notice">
+          Activation explicite uniquement. Charge un prior JSON figé par Money Heist.
+          OOS seulement est le mode recommandé pour une évaluation OOS formelle.
+          Aucun catalogue de la campagne courante n'est réinjecté automatiquement.
+        </p>
+        <div class="grid three">
+          <label>Prior Denver JSON
+            <input id="denver-prior-file" type="file" accept=".json,application/json" disabled>
+          </label>
+          <label>Activation
+            <select id="denver-prior-mode" disabled>
+              <option value="OOS_ONLY" selected>OOS seulement</option>
+              <option value="ALL_PERIODS">Toutes les périodes</option>
+            </select>
+          </label>
+          <div id="denver-prior-state" class="preview empty">
+            Denver historique désactivé.
+          </div>
+        </div>
+
+        <div class="section-title spaced">
           <div><p class="label">2 · Périodes</p><h2>DESIGN / VALIDATION / OOS</h2></div>
         </div>
         <div id="split-editor" class="split-editor is-disabled">

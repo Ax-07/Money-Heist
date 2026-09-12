@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 const endpoint = "/api/dashboard/backtest";
 let csvText = "";
 let derivativesCsvText = "";
+let denverPriorJsonText = "";
 let datasetPreview = null;
 let activeCampaignId = null;
 let pollTimer = null;
@@ -130,6 +131,65 @@ function updateDerivativesUi() {
   state.textContent = file
     ? `Archive sélectionnée : ${file.name}`
     : "Activation prête : sélectionne l'archive canonique Kraken.";
+}
+
+async function readDenverPriorJson() {
+  if (!$("denver-prior-enabled").checked) return null;
+  const file = $("denver-prior-file").files[0];
+  if (!file) {
+    throw new Error(
+      "Denver historique est activé : sélectionne le prior JSON figé."
+    );
+  }
+  denverPriorJsonText = await file.text();
+  if (!denverPriorJsonText.trim()) {
+    throw new Error("Le prior Denver JSON est vide.");
+  }
+  return denverPriorJsonText;
+}
+
+function denverPriorPayload() {
+  if (!$("denver-prior-enabled").checked) return null;
+  const supported = ["1m", "5m", "15m"];
+  const timeframe = $("timeframe").value;
+  if (!supported.includes(timeframe)) {
+    throw new Error(
+      "Denver historique nécessite une source OHLCV 1m, 5m ou 15m."
+    );
+  }
+  if (!denverPriorJsonText.trim()) {
+    throw new Error(
+      "Denver historique est activé mais le prior JSON n'a pas été chargé."
+    );
+  }
+  return {
+    json_text: denverPriorJsonText,
+    activation_mode: $("denver-prior-mode").value,
+  };
+}
+
+function updateDenverPriorUi() {
+  const enabled = $("denver-prior-enabled").checked;
+  $("denver-prior-file").disabled = !enabled;
+  $("denver-prior-mode").disabled = !enabled;
+  const state = $("denver-prior-state");
+  if (!enabled) {
+    state.className = "preview empty";
+    state.textContent = "Denver historique désactivé.";
+    return;
+  }
+  const supported = ["1m", "5m", "15m"];
+  if (!supported.includes($("timeframe").value)) {
+    state.className = "preview bad";
+    state.textContent = "Source incompatible : utilise 1m, 5m ou 15m.";
+    return;
+  }
+  const file = $("denver-prior-file").files?.[0];
+  const mode = $("denver-prior-mode").value;
+  state.className = "preview";
+  state.textContent = file
+    ? `Prior sélectionné : ${file.name} · ${mode}`
+    : `Activation prête · ${mode} · sélectionne le prior JSON figé.`;
 }
 
 function datasetPayload() {
@@ -323,6 +383,7 @@ function campaignPayload() {
     dataset: datasetPayload(),
     split: splitPayload(),
     derivatives: derivativesPayload(),
+    denver_prior: denverPriorPayload(),
     risk: {
       risk_profile_id: "dashboard_balanced_dev",
       risk_version: "dashboard-balanced-dev-v1",
@@ -685,6 +746,9 @@ async function runCampaign(event) {
     if ($("derivatives-enabled").checked && !derivativesCsvText) {
       await readDerivativesCsv();
     }
+    if ($("denver-prior-enabled").checked && !denverPriorJsonText) {
+      await readDenverPriorJson();
+    }
     const response = await api(`${endpoint}/runs`, {
       method: "POST",
       body: JSON.stringify(campaignPayload()),
@@ -796,6 +860,18 @@ $("derivatives-file").addEventListener("change", () => {
 });
 $("timeframe").addEventListener("change", updateDerivativesUi);
 updateDerivativesUi();
+
+$("denver-prior-enabled").addEventListener("change", () => {
+  if (!$("denver-prior-enabled").checked) denverPriorJsonText = "";
+  updateDenverPriorUi();
+});
+$("denver-prior-file").addEventListener("change", () => {
+  denverPriorJsonText = "";
+  updateDenverPriorUi();
+});
+$("denver-prior-mode").addEventListener("change", updateDenverPriorUi);
+$("timeframe").addEventListener("change", updateDenverPriorUi);
+updateDenverPriorUi();
 
 $("stop-button").addEventListener("click", () => stopCampaign().catch(showError));
 $("preview-button").addEventListener("click", preview);

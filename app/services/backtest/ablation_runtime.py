@@ -16,6 +16,8 @@ from app.services.backtest.mtf_runtime import mtf_runner_kwargs
 from app.services.backtest.derivatives_runtime import (
     historical_derivatives_runner_kwargs,
 )
+from app.services.backtest.denver_prior import FrozenDenverPriorCatalog
+from app.services.backtest.denver_runtime import denver_runner_kwargs
 from app.services.backtest.historical_derivatives_analytics import (
     HistoricalDerivativesAnalyticsArchive,
 )
@@ -97,6 +99,8 @@ class PaperAblationRuntimeSettings:
     historical_derivatives_archive: (
         HistoricalDerivativesAnalyticsArchive | None
     ) = None
+    historical_denver_prior: FrozenDenverPriorCatalog | None = None
+    historical_denver_role: BacktestPeriodRole | None = None
     core_max_output_tokens: int = 1200
     economy_max_output_tokens: int = 800
 
@@ -117,6 +121,13 @@ class PaperAblationRuntimeSettings:
             raise ValueError("core_max_output_tokens must be > 0")
         if self.economy_max_output_tokens <= 0:
             raise ValueError("economy_max_output_tokens must be > 0")
+        if (
+            self.historical_denver_prior is None
+            and self.historical_denver_role is not None
+        ):
+            raise ValueError(
+                "historical_denver_role requires historical_denver_prior"
+            )
 
 
 class PaperAblationRuntimeFactory:
@@ -200,6 +211,13 @@ class PaperAblationRuntimeFactory:
             historical_derivatives_runner_kwargs(
                 run.config.execution_assumptions,
                 self.settings.historical_derivatives_archive,
+            )
+        )
+        runner_kwargs.update(
+            denver_runner_kwargs(
+                run.config.execution_assumptions,
+                self.settings.historical_denver_prior,
+                role=self.settings.historical_denver_role,
             )
         )
         runner = HistoricalReplayRunner(
