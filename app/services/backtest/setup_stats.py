@@ -708,11 +708,13 @@ def _observations_from_execution_provenance(
     consumed_trade_ids: set[str] = set()
     seen_execution_fill_ids: set[str] = set()
 
+    # Keep the same stable same-timestamp ordering as Batch 10 Evaluation.
+    # The evaluation source already preserves PaperBroker insertion order.
     ordered = sorted(
         executions,
-        key=lambda item: (
-            _as_utc(item.filled_at, field_name="execution.filled_at"),
-            str(item.fill_id),
+        key=lambda item: _as_utc(
+            item.filled_at,
+            field_name="execution.filled_at",
         ),
     )
     for execution in ordered:

@@ -82,7 +82,10 @@ def calculate_trading_metrics(
     equity_points: tuple[EquityPoint, ...] = (),
 ) -> TradingMetrics:
     marks = marks or {}
-    ordered = sorted(executions, key=lambda item: (item.filled_at, item.fill_id))
+    # ExecutionRecord preserves PaperBroker insertion order. Python's sort is stable,
+    # so sorting only by timestamp keeps the real broker sequence for fills sharing
+    # the same timestamp instead of reordering them by opaque fill_id.
+    ordered = sorted(executions, key=lambda item: item.filled_at)
     states: dict[tuple[str, str], _PositionState] = {}
     closed = []
     execution_realized = ZERO

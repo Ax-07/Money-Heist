@@ -344,3 +344,75 @@ def test_partially_realized_but_still_open_setup_is_not_promoted_to_denver() -> 
     )
 
     assert observations == ()
+
+def test_same_timestamp_lifecycle_exit_precedes_new_setup_entry() -> None:
+    # Denver must replay the exact same broker order as Batch 10 Evaluation.
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    t1 = t0 + timedelta(hours=1)
+    t2 = t0 + timedelta(hours=2)
+
+    points = (
+        _point(
+            opportunity_id="opp-long",
+            snapshot_id="snap-long",
+            side="LONG",
+            fill_id="fill-open-long",
+            price="100",
+            quantity="1",
+            filled_at=t0,
+        ),
+        _point(
+            opportunity_id="opp-short",
+            snapshot_id="snap-short",
+            side="SHORT",
+            fill_id="a-new-short",
+            price="105",
+            quantity="1",
+            filled_at=t1,
+        ),
+    )
+
+    # Real broker sequence at t1: lifecycle close first, then new scanner/pipeline entry.
+    # Fill IDs are intentionally reverse-lexical so sorting by fill_id would be wrong.
+    executions = (
+        _execution("fill-open-long", "BUY", "1", "100", t0),
+        _execution("z-lifecycle-close", "SELL", "1", "110", t1),
+        _execution("a-new-short", "SELL", "1", "105", t1),
+        _execution("fill-close-short", "BUY", "1", "101", t2),
+    )
+    trades = (
+        _trade(
+            trade_id="closed:z-lifecycle-close:1",
+            exit_fill_id="z-lifecycle-close",
+            side="LONG",
+            quantity="1",
+            opened_at=t0,
+            closed_at=t1,
+            net_pnl="10",
+        ),
+        _trade(
+            trade_id="closed:fill-close-short:2",
+            exit_fill_id="fill-close-short",
+            side="SHORT",
+            quantity="1",
+            opened_at=t1,
+            closed_at=t2,
+            net_pnl="4",
+        ),
+    )
+    replay, evaluation = _bundle(points, executions, trades)
+
+    observations = observations_from_historical_replay(
+        replay,
+        evaluation,
+        period_role=BacktestPeriodRole.OOS,
+    )
+
+    assert {
+        (item.opportunity_id, item.side, item.net_pnl)
+        for item in observations
+    } == {
+        ("opp-long", "LONG", Decimal("10")),
+        ("opp-short", "SHORT", Decimal("4")),
+    }
+

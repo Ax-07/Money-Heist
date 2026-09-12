@@ -189,3 +189,52 @@ def test_positions_from_distinct_system_ids_never_net_against_each_other() -> No
         "balanced_v1",
         "future_system",
     }
+
+def test_same_timestamp_executions_preserve_broker_source_order() -> None:
+    # A lifecycle exit must remain before a new entry executed at the same timestamp.
+    same_time = NOW + timedelta(minutes=1)
+    open_long = execution(
+        fill_id="fill-open-long",
+        order_id="order-open-long",
+        side="BUY",
+        price="100",
+    )
+    lifecycle_close = ExecutionRecord(
+        fill_id="z-lifecycle-close",
+        broker_order_id="order-lifecycle-close",
+        system_id="balanced_v1",
+        symbol="BTCUSDT",
+        side="SELL",
+        order_type="MARKET",
+        quantity=Decimal("1"),
+        price=Decimal("110"),
+        fee=Decimal("0"),
+        filled_at=same_time,
+        slippage_cost=Decimal("0"),
+    )
+    new_short = ExecutionRecord(
+        fill_id="a-new-short",
+        broker_order_id="order-new-short",
+        system_id="balanced_v1",
+        symbol="BTCUSDT",
+        side="SELL",
+        order_type="MARKET",
+        quantity=Decimal("1"),
+        price=Decimal("105"),
+        fee=Decimal("0"),
+        filled_at=same_time,
+        slippage_cost=Decimal("0"),
+    )
+
+    metrics = calculate_trading_metrics(
+        (open_long, lifecycle_close, new_short),
+        marks={"BTCUSDT": Decimal("105")},
+    )
+
+    assert metrics.closed_trade_count == 1
+    assert metrics.closed_trades[0].exit_fill_id == "z-lifecycle-close"
+    assert metrics.closed_trades[0].net_pnl == Decimal("10")
+    assert metrics.open_position_count == 1
+    assert metrics.positions[0].signed_quantity == Decimal("-1")
+    assert metrics.positions[0].average_entry == Decimal("105")
+
