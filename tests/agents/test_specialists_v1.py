@@ -146,7 +146,7 @@ def test_specialists_use_versioned_gateway_contract(
         request = gateway.requests[0]
         assert result.output == output
         assert request.agent_id == output.agent
-        assert request.prompt_version == "v3"
+        assert request.prompt_version == "v4"
         assert request.opportunity_id == opportunity_id
         assert request.metadata["phase"] == "specialist_independent_round_1"
         assert len(gateway.output_models) == 1
@@ -170,13 +170,20 @@ class IndexedSchemaGateway:
         self.output_models.append(output_model)
 
         request_payload = json.loads(request.input_text)
-        allowed = request_payload["allowed_evidence_source_keys"]
-        self.allowed_source_keys = list(allowed)
+        catalog = request_payload["evidence_source_catalog"]
+        self.allowed_source_keys = [
+            entry["source_key"]
+            for entry in catalog
+        ]
+        index_by_key = {
+            entry["source_key"]: entry["source_index"]
+            for entry in catalog
+        }
 
         provider_payload = self.canonical_output.model_dump(mode="python")
         provider_payload["evidence"] = [
             {
-                "source_index": allowed.index(item.source_key),
+                "source_index": index_by_key[item.source_key],
                 "observation": item.observation,
             }
             for item in self.canonical_output.evidence
@@ -223,7 +230,7 @@ def _find_schema_property(node, property_name):
     return None
 
 
-def test_v3_strict_schema_bounds_source_index_and_canonicalizes():
+def test_v4_strict_schema_bounds_atomic_source_index_and_canonicalizes():
     async def scenario():
         exact_key = "market_context.decision_context.market.snapshots.1h.rsi_14"
         gateway = IndexedSchemaGateway(_berlin_output(exact_key))
@@ -288,12 +295,17 @@ def test_first_round_payload_contains_no_other_agent_conclusions():
             "opportunity",
             "market_context",
             "analysis_round",
-            "allowed_evidence_source_keys",
+            "evidence_source_catalog",
         }
-        assert payload["allowed_evidence_source_keys"] == sorted(
-            payload["allowed_evidence_source_keys"]
+        catalog = payload["evidence_source_catalog"]
+        assert [entry["source_index"] for entry in catalog] == list(range(len(catalog)))
+        assert [entry["source_key"] for entry in catalog] == sorted(
+            entry["source_key"] for entry in catalog
         )
-        assert "market_context.features.adx" in payload["allowed_evidence_source_keys"]
+        keys = {entry["source_key"] for entry in catalog}
+        assert "market_context.features.adx" in keys
+        assert "market_context" not in keys
+        assert "market_context.features" not in keys
         assert "specialist_analyses" not in gateway.requests[0].input_text
         assert "palermo_review" not in gateway.requests[0].input_text
 
@@ -328,7 +340,7 @@ def test_evidence_must_reference_an_existing_input_field():
     asyncio.run(scenario())
 
 
-def test_v3_evidence_contract_exposes_exact_mtf_paths_and_accepts_them():
+def test_v4_atomic_evidence_contract_exposes_exact_mtf_leaf_paths():
     async def scenario():
         exact_key = "market_context.decision_context.market.snapshots.1h.rsi_14"
         gateway = FakeGateway([_berlin_output(exact_key)])
@@ -362,12 +374,16 @@ def test_v3_evidence_contract_exposes_exact_mtf_paths_and_accepts_them():
         )
 
         payload = json.loads(gateway.requests[0].input_text)
-        allowed = payload["allowed_evidence_source_keys"]
+        catalog = payload["evidence_source_catalog"]
+        allowed = {entry["source_key"] for entry in catalog}
         assert exact_key in allowed
         assert (
             "market_context.decision_context.structure.payload."
             "timeframes.1h.breakout_state"
         ) in allowed
+        assert "market_context.decision_context.market.snapshots.1h" not in allowed
+        assert "market_context.decision_context.market.snapshots" not in allowed
+        assert "market_context" not in allowed
         assert "market_context.market.snapshots.1h.rsi_14" not in allowed
         assert "$.market_context.decision_context.market.snapshots.1h.rsi_14" not in allowed
         assert result.output.evidence[0].source_key == exact_key
@@ -375,7 +391,7 @@ def test_v3_evidence_contract_exposes_exact_mtf_paths_and_accepts_them():
     asyncio.run(scenario())
 
 
-def test_v3_grounding_still_fails_closed_on_semantic_path_alias():
+def test_v4_grounding_still_fails_closed_on_semantic_path_alias():
     async def scenario():
         gateway = FakeGateway(
             [_berlin_output("market_context.market.snapshots.1h.rsi_14")]
@@ -398,32 +414,40 @@ def test_v3_grounding_still_fails_closed_on_semantic_path_alias():
             )
 
         payload = json.loads(gateway.requests[0].input_text)
+        allowed = {
+            entry["source_key"]
+            for entry in payload["evidence_source_catalog"]
+        }
         assert (
             "market_context.decision_context.market.snapshots.1h.rsi_14"
-            in payload["allowed_evidence_source_keys"]
+            in allowed
         )
-        assert (
-            "market_context.market.snapshots.1h.rsi_14"
-            not in payload["allowed_evidence_source_keys"]
-        )
+        assert "market_context.market.snapshots.1h.rsi_14" not in allowed
 
     asyncio.run(scenario())
 
 
-def test_evidence_may_reference_existing_container_field():
+def test_v4_evidence_rejects_container_path_even_when_container_exists():
     async def scenario():
         gateway = FakeGateway([_berlin_output("opportunity.triggers")])
-        result = await Berlin(gateway).analyze(
-            system_id="balanced_v1",
-            opportunity={
-                "symbol": "BTCUSDT",
-                "triggers": ["BREAKOUT", "VOLUME_EXPANSION"],
-            },
-            market_context={"features": {"adx": 28.0}},
-        )
+        with pytest.raises(UngroundedEvidenceError):
+            await Berlin(gateway).analyze(
+                system_id="balanced_v1",
+                opportunity={
+                    "symbol": "BTCUSDT",
+                    "triggers": ["BREAKOUT", "VOLUME_EXPANSION"],
+                },
+                market_context={"features": {"adx": 28.0}},
+            )
 
-        assert result.output.evidence[0].source_key == "opportunity.triggers"
-        assert len(gateway.requests) == 1
+        payload = json.loads(gateway.requests[0].input_text)
+        keys = {
+            entry["source_key"]
+            for entry in payload["evidence_source_catalog"]
+        }
+        assert "opportunity.triggers" not in keys
+        assert "opportunity.triggers.0" in keys
+        assert "opportunity.triggers.1" in keys
 
     asyncio.run(scenario())
 
@@ -510,16 +534,17 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
         assert entry.core is False
         assert entry.allowed_tools == ()
         assert entry.model_route == "core_reasoning"
-        assert entry.prompt_version == "v3"
-        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v3"
+        assert entry.prompt_version == "v4"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v4"
         # Historical prompt versions remain immutable and addressable.
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v1").version == "v1"
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v2").version == "v2"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, "v3").version == "v3"
         instructions = SPECIALIST_PROMPTS.get(
             entry.agent_id,
             entry.prompt_version,
         ).instructions
-        assert "allowed_evidence_source_keys" in instructions
+        assert "evidence_source_catalog" in instructions
         assert "source_index" in instructions
-        assert "zero-based" in instructions
-        assert "never emit a source_key field" in instructions
+        assert "atomic leaf" in instructions
+        assert "MUST NOT emit source_key" in instructions

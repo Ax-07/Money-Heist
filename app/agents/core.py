@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from typing import Any, Protocol, TypeVar
+from typing import Annotated, Any, Protocol, TypeVar
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.intelligence.ai_gateway.models import AIGatewayRequest, AIGatewayResult
 
@@ -32,6 +32,90 @@ def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
             paths.update(_grounded_json_paths(nested, child))
 
     return paths
+
+
+def _grounded_json_leaf_paths(value: Any, prefix: str = "") -> set[str]:
+    """Return only concrete scalar/list-item JSON paths; never container paths."""
+
+    if isinstance(value, BaseModel):
+        return _grounded_json_leaf_paths(
+            value.model_dump(mode="json", exclude_none=True),
+            prefix,
+        )
+
+    if isinstance(value, Mapping):
+        paths: set[str] = set()
+        for key, nested in value.items():
+            child = f"{prefix}.{key}" if prefix else str(key)
+            paths.update(_grounded_json_leaf_paths(nested, child))
+        return paths
+
+    if isinstance(value, (list, tuple)):
+        paths: set[str] = set()
+        for index, nested in enumerate(value):
+            child = f"{prefix}.{index}" if prefix else str(index)
+            paths.update(_grounded_json_leaf_paths(nested, child))
+        return paths
+
+    if value is None or not prefix:
+        return set()
+    return {prefix}
+
+
+class _IndexedFinalEvidenceReference(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_index: int = Field(ge=0)
+    observation: str = Field(min_length=1, max_length=1000)
+
+
+def _indexed_final_output_model(
+    output_model: type[T],
+    allowed_source_keys: tuple[str, ...],
+) -> type[T]:
+    if not allowed_source_keys:
+        raise ValueError("FINALIZE atomic evidence catalogue must not be empty")
+
+    bounded_index = Annotated[
+        int,
+        Field(ge=0, le=len(allowed_source_keys) - 1),
+    ]
+    evidence_model = create_model(
+        f"{output_model.__name__}IndexedEvidenceV5",
+        __base__=_IndexedFinalEvidenceReference,
+        source_index=(bounded_index, ...),
+    )
+    return create_model(
+        output_model.__name__,
+        __base__=output_model,
+        evidence=(list[evidence_model], ...),
+    )
+
+
+def _canonicalize_indexed_final_result(
+    result: AIGatewayResult[T],
+    *,
+    output_model: type[T],
+    allowed_source_keys: tuple[str, ...],
+) -> AIGatewayResult[T]:
+    payload = result.output.model_dump(mode="python")
+    canonical_evidence: list[dict[str, Any]] = []
+    for item in payload.get("evidence", []):
+        source_index = item.get("source_index")
+        if not isinstance(source_index, int):
+            raise ValueError("FINALIZE evidence item has no integer source_index")
+        if source_index < 0 or source_index >= len(allowed_source_keys):
+            raise ValueError("FINALIZE evidence source_index is outside the allowed range")
+        canonical_evidence.append(
+            {
+                "source_key": allowed_source_keys[source_index],
+                "observation": item["observation"],
+            }
+        )
+
+    payload["evidence"] = canonical_evidence
+    canonical_output = output_model.model_validate(payload)
+    return result.model_copy(update={"output": canonical_output})
 
 
 PALERMO_MAX_OUTPUT_TOKENS = 16384
@@ -167,20 +251,55 @@ class TheProfessor(CoreAgent):
         if task_force_report is not None:
             payload["task_force_report"] = task_force_report
 
-        # FINALIZE grounding contract: expose only exact paths present in the
-        # immutable inputs. Compute the catalog before adding it to the payload
-        # so the catalog cannot cite itself.
-        payload["allowed_evidence_source_keys"] = sorted(
-            _grounded_json_paths(payload)
-        )
+        provider_output_model = output_model
+        allowed_source_keys: tuple[str, ...] | None = None
 
-        return await self._run(
+        # Keep historical Professor v4 behavior addressable, while production
+        # v5 exposes only atomic leaf paths with explicit index->path mapping.
+        if self.prompt.version == "v5":
+            allowed_source_keys = tuple(
+                sorted(_grounded_json_leaf_paths(payload))
+            )
+            payload["evidence_source_catalog"] = [
+                {
+                    "source_index": index,
+                    "source_key": source_key,
+                }
+                for index, source_key in enumerate(allowed_source_keys)
+            ]
+            if "evidence" in output_model.model_fields:
+                provider_output_model = _indexed_final_output_model(
+                    output_model,
+                    allowed_source_keys,
+                )
+        else:
+            payload["allowed_evidence_source_keys"] = sorted(
+                _grounded_json_paths(payload)
+            )
+
+        result = await self._run(
             system_id=system_id,
             payload=payload,
-            output_model=output_model,
+            output_model=provider_output_model,
             opportunity_id=opportunity_id,
             phase="finalize",
         )
+
+        # Real v5 Gateway results use the request-specific indexed schema.
+        # Lightweight custom gateways used by older tests may return the
+        # canonical model directly; the downstream grounding validator remains.
+        if (
+            self.prompt.version == "v5"
+            and allowed_source_keys is not None
+            and result is not None
+            and result.output.__class__ is provider_output_model
+        ):
+            result = _canonicalize_indexed_final_result(
+                result,
+                output_model=output_model,
+                allowed_source_keys=allowed_source_keys,
+            )
+        return result
 
     async def finalize(
         self,

@@ -81,6 +81,10 @@ def test_professor_finalize_includes_task_force_report_only_when_supplied():
     )
     payload = json.loads(gateway.requests[-1][0].input_text)
     assert payload["task_force_report"]["report_fingerprint_sha256"] == "a" * 64
+    catalog = payload["evidence_source_catalog"]
+    keys = {entry["source_key"] for entry in catalog}
+    assert "task_force_report.report_fingerprint_sha256" in keys
+    assert "task_force_report" not in keys
 
     asyncio.run(
         professor.finalize_with_schema(

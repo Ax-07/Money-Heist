@@ -100,7 +100,7 @@ def test_quick_test_frontend_enables_coverage_only_for_mock() -> None:
     assert 'mockAgentCoverage && $("ai-mode").value === "MOCK"' in js
     assert 'if ($("ai-mode").value !== "MOCK") mockAgentCoverage = false;' in js
 
-def test_deterministic_mock_v3_uses_indexed_specialist_evidence() -> None:
+def test_deterministic_mock_v4_uses_atomic_indexed_specialist_evidence() -> None:
     async def scenario() -> None:
         provider = DeterministicBacktestMockProvider()
         request = ProviderRequest(
@@ -110,9 +110,15 @@ def test_deterministic_mock_v3_uses_indexed_specialist_evidence() -> None:
             model_id="mock-backtest-v1",
             input_text=json.dumps(
                 {
-                    "allowed_evidence_source_keys": [
-                        "market_context",
-                        "market_context.close",
+                    "evidence_source_catalog": [
+                        {
+                            "source_index": 0,
+                            "source_key": "market_context.close",
+                        },
+                        {
+                            "source_index": 1,
+                            "source_key": "market_context.regime",
+                        },
                     ],
                     "market_context": {
                         "close": 100.0,
@@ -127,7 +133,7 @@ def test_deterministic_mock_v3_uses_indexed_specialist_evidence() -> None:
             timeout_seconds=5,
             metadata={
                 "phase": "specialist_independent_round_1",
-                "prompt_version": "v3",
+                "prompt_version": "v4",
             },
         )
 
@@ -136,7 +142,57 @@ def test_deterministic_mock_v3_uses_indexed_specialist_evidence() -> None:
         assert payload["evidence"] == [
             {
                 "observation": "deterministic MOCK close reference",
-                "source_index": 1,
+                "source_index": 0,
+            }
+        ]
+        assert "source_key" not in response.output_text
+
+    asyncio.run(scenario())
+
+
+def test_deterministic_mock_v5_uses_indexed_professor_final_evidence() -> None:
+    async def scenario() -> None:
+        provider = DeterministicBacktestMockProvider()
+        request = ProviderRequest(
+            request_id=uuid4(),
+            system_id="balanced_v1",
+            agent_id="professor",
+            model_id="mock-backtest-v1",
+            input_text=json.dumps(
+                {
+                    "evidence_source_catalog": [
+                        {
+                            "source_index": 0,
+                            "source_key": "market_context.close",
+                        }
+                    ],
+                    "market_context": {
+                        "close": 100.0,
+                        "regime": "BULLISH_TREND",
+                    },
+                    "specialist_analyses": [
+                        {"stance": "LONG"},
+                    ],
+                },
+                sort_keys=True,
+            ),
+            schema_name="ProfessorFinalDecision",
+            json_schema={},
+            max_output_tokens=1200,
+            timeout_seconds=5,
+            metadata={
+                "phase": "finalize",
+                "prompt_version": "v5",
+            },
+        )
+
+        response = await provider.complete(request)
+        payload = json.loads(response.output_text)
+        assert payload["direction"] == "LONG"
+        assert payload["evidence"] == [
+            {
+                "observation": "entry anchored to visible candle close",
+                "source_index": 0,
             }
         ]
         assert "source_key" not in response.output_text

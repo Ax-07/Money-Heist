@@ -166,24 +166,30 @@ def test_rio_mock_support_is_grounded_but_non_directional() -> None:
 
     asyncio.run(scenario())
 
-def test_denver_mock_v3_uses_source_indexes_from_allowed_catalogue() -> None:
+def test_denver_mock_v4_uses_source_indexes_from_atomic_catalogue() -> None:
     async def scenario() -> None:
         advanced = DeterministicAdvancedSpecialistMockProvider(LegacyMock())
         request = provider_request(
             "DenverAnalysis",
             {
-                "allowed_evidence_source_keys": [
-                    "specialist_context.expectancy",
-                    "specialist_context.sample_count",
+                "evidence_source_catalog": [
+                    {
+                        "source_index": 0,
+                        "source_key": "specialist_context.expectancy",
+                    },
+                    {
+                        "source_index": 1,
+                        "source_key": "specialist_context.sample_count",
+                    },
                 ],
                 "specialist_context": {
-                    "stats_id": "stats-v3",
+                    "stats_id": "stats-v4",
                     "sample_count": 42,
                     "sample_size_band": "MEDIUM",
                     "expectancy": 1.25,
                 },
             },
-        ).model_copy(update={"metadata": {"prompt_version": "v3"}})
+        ).model_copy(update={"metadata": {"prompt_version": "v4"}})
 
         response = await advanced.complete(request)
         payload = json.loads(response.output_text)

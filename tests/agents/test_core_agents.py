@@ -4,10 +4,13 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from app.agents import CORE_AGENT_REGISTRY, CORE_PROMPTS, Lisbon, Palermo, TheProfessor
 from app.agents.models import LisbonReport, PalermoReview, ProfessorDecision, ProfessorPlan
+from app.services.orchestration.models import ProfessorFinalDecision
 from app.intelligence.ai_gateway.models import AIGatewayResult, AIUsageRecord
+from app.intelligence.ai_gateway.strict_schema import build_strict_json_schema
 
 
 class FakeGateway:
@@ -83,7 +86,7 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
 
         assert plan.output.decision == "MINI_CREW"
         assert final.output.direction == "NO_TRADE"
-        assert [request.prompt_version for request in gateway.requests] == ["v4", "v4"]
+        assert [request.prompt_version for request in gateway.requests] == ["v5", "v5"]
         assert all(request.agent_id == "professor" for request in gateway.requests)
         assert gateway.requests[0].opportunity_id == opportunity_id
         plan_payload = json.loads(gateway.requests[0].input_text)
@@ -96,11 +99,15 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
         assert plan_payload["planning_constraints"]["full_crew_allowed"] is False
 
         final_payload = json.loads(gateway.requests[1].input_text)
-        allowed = final_payload["allowed_evidence_source_keys"]
-        assert allowed == sorted(allowed)
-        assert "opportunity.symbol" in allowed
-        assert "palermo_review.verdict" in allowed
-        assert "allowed_evidence_source_keys" not in allowed
+        catalog = final_payload["evidence_source_catalog"]
+        assert [entry["source_index"] for entry in catalog] == list(range(len(catalog)))
+        keys = [entry["source_key"] for entry in catalog]
+        assert keys == sorted(keys)
+        assert "opportunity.symbol" in keys
+        assert "palermo_review.verdict" in keys
+        assert "opportunity" not in keys
+        assert "palermo_review" not in keys
+        assert "evidence_source_catalog" not in keys
 
     asyncio.run(scenario())
 
@@ -150,7 +157,8 @@ def test_professor_finalize_allowed_paths_use_real_top_level_namespaces():
         )
 
         payload = json.loads(gateway.requests[0].input_text)
-        allowed = payload["allowed_evidence_source_keys"]
+        catalog = payload["evidence_source_catalog"]
+        allowed = {entry["source_key"] for entry in catalog}
 
         assert "market_context.decision_context.market.snapshots.1h.rsi_14" in allowed
         assert "specialist_analyses.0.stance" in allowed
@@ -158,12 +166,169 @@ def test_professor_finalize_allowed_paths_use_real_top_level_namespaces():
         assert "palermo_review.verdict" in allowed
         assert "palermo_review.critical_objections.0" in allowed
 
+        # Atomic-only catalogue: parent containers are never addressable.
+        assert "market_context" not in allowed
+        assert "market_context.decision_context.market.snapshots.1h" not in allowed
+        assert "specialist_analyses.0.evidence" not in allowed
+        assert "palermo_review.critical_objections" not in allowed
+
         # Regress the LIVE_EVAL failure mode observed before Batch 16.21u.
         assert "market_context.specialist_analyses.0.stance" not in allowed
         assert "market_context.palermo_review.verdict" not in allowed
         assert "specialist_analyses[0].stance" not in allowed
         assert "$.palermo_review.verdict" not in allowed
-        assert "allowed_evidence_source_keys" not in allowed
+        assert "evidence_source_catalog" not in allowed
+
+    asyncio.run(scenario())
+
+
+class IndexedFinalGateway:
+    def __init__(self, canonical_output):
+        self.canonical_output = canonical_output
+        self.requests = []
+        self.output_models = []
+        self.allowed_source_keys = []
+
+    async def generate_structured(self, request, output_model):
+        self.requests.append(request)
+        self.output_models.append(output_model)
+
+        request_payload = json.loads(request.input_text)
+        catalog = request_payload["evidence_source_catalog"]
+        self.allowed_source_keys = [entry["source_key"] for entry in catalog]
+        index_by_key = {
+            entry["source_key"]: entry["source_index"]
+            for entry in catalog
+        }
+
+        provider_payload = self.canonical_output.model_dump(mode="python")
+        provider_payload["evidence"] = [
+            {
+                "source_index": index_by_key[item.source_key],
+                "observation": item.observation,
+            }
+            for item in self.canonical_output.evidence
+        ]
+        output = output_model.model_validate(provider_payload)
+
+        usage = AIUsageRecord(
+            request_id=request.request_id,
+            system_id=request.system_id,
+            agent_id=request.agent_id,
+            route_id=request.model_route,
+            model_id="mock",
+            input_tokens=0,
+            cached_input_tokens=0,
+            output_tokens=0,
+            estimated_cost=Decimal("0"),
+            latency_ms=0,
+            attempt=1,
+        )
+        return AIGatewayResult(
+            request_id=request.request_id,
+            route_id=request.model_route,
+            model_id="mock",
+            output=output,
+            usage=usage,
+            attempts=1,
+        )
+
+
+def _find_schema_property(node, property_name):
+    if isinstance(node, dict):
+        properties = node.get("properties")
+        if isinstance(properties, dict) and property_name in properties:
+            return properties[property_name]
+        for value in node.values():
+            found = _find_schema_property(value, property_name)
+            if found is not None:
+                return found
+    elif isinstance(node, list):
+        for value in node:
+            found = _find_schema_property(value, property_name)
+            if found is not None:
+                return found
+    return None
+
+
+def test_professor_v5_strict_schema_bounds_atomic_source_index_and_canonicalizes():
+    async def scenario():
+        exact_key = "market_context.close"
+        canonical = ProfessorFinalDecision(
+            direction="NO_TRADE",
+            confidence=0.8,
+            thesis=["grounded"],
+            evidence=[
+                {
+                    "source_key": exact_key,
+                    "observation": "decision close is supplied",
+                }
+            ],
+        )
+        gateway = IndexedFinalGateway(canonical)
+        result = await TheProfessor(gateway).finalize_with_schema(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT"},
+            market_context={
+                "close": 100.0,
+                "nested": {"rsi_14": 51.0},
+            },
+            specialist_analyses=[],
+            palermo_review={"verdict": "CAUTION"},
+            output_model=ProfessorFinalDecision,
+        )
+
+        assert result.output.__class__ is ProfessorFinalDecision
+        assert result.output.evidence[0].source_key == exact_key
+
+        payload = json.loads(gateway.requests[0].input_text)
+        keys = [entry["source_key"] for entry in payload["evidence_source_catalog"]]
+        assert "market_context.close" in keys
+        assert "market_context.nested.rsi_14" in keys
+        assert "market_context" not in keys
+        assert "market_context.nested" not in keys
+
+        provider_model = gateway.output_models[0]
+        schema = build_strict_json_schema(provider_model)
+        source_index_schema = _find_schema_property(schema, "source_index")
+        assert source_index_schema is not None
+        assert source_index_schema["minimum"] == 0
+        assert source_index_schema["maximum"] == len(gateway.allowed_source_keys) - 1
+        assert '"source_key"' not in json.dumps(schema, sort_keys=True)
+
+        provider_payload = canonical.model_dump(mode="python")
+        provider_payload["evidence"] = [
+            {
+                "source_index": len(gateway.allowed_source_keys),
+                "observation": "out of range must fail",
+            }
+        ]
+        with pytest.raises(ValidationError):
+            provider_model.model_validate(provider_payload)
+
+    asyncio.run(scenario())
+
+
+def test_professor_v5_legacy_finalize_does_not_require_evidence_field():
+    async def scenario():
+        canonical = ProfessorDecision(
+            direction="NO_TRADE",
+            confidence=0.7,
+            thesis=["legacy core contract remains valid"],
+        )
+        gateway = FakeGateway([canonical])
+        result = await TheProfessor(gateway).finalize(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT"},
+            market_context={"close": 100.0},
+            specialist_analyses=[],
+            palermo_review={"verdict": "CAUTION"},
+        )
+
+        assert result.output == canonical
+        assert gateway.output_models[0] is ProfessorDecision
+        payload = json.loads(gateway.requests[0].input_text)
+        assert "evidence_source_catalog" in payload
 
     asyncio.run(scenario())
 
@@ -214,7 +379,7 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
     assert CORE_AGENT_REGISTRY.get("professor").state.value == "ACTIVE"
     assert CORE_AGENT_REGISTRY.get("palermo").state.value == "ACTIVE"
 
-    expected_versions = {"professor": "v4", "palermo": "v3", "lisbon": "v1"}
+    expected_versions = {"professor": "v5", "palermo": "v3", "lisbon": "v1"}
     for entry in CORE_AGENT_REGISTRY.list():
         assert entry.core is True
         assert entry.allowed_tools == ()
@@ -228,14 +393,14 @@ def test_prompt_registry_rejects_unknown_version():
 
 
 def test_decision_contract_v2_is_versioned_and_preserves_v1():
-    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4")
+    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4", "v5")
     assert CORE_PROMPTS.versions("palermo") == ("v1", "v2", "v3")
 
     # Historical prompt versions remain immutable and addressable.
-    assert CORE_PROMPTS.get("professor", "v3").version == "v3"
+    assert CORE_PROMPTS.get("professor", "v4").version == "v4"
     assert CORE_PROMPTS.get("palermo", "v2").version == "v2"
 
-    professor = CORE_PROMPTS.get("professor", "v4").instructions
+    professor = CORE_PROMPTS.get("professor", "v5").instructions
     palermo = CORE_PROMPTS.get("palermo", "v3").instructions
 
     assert "planning_constraints" in professor
@@ -245,7 +410,10 @@ def test_decision_contract_v2_is_versioned_and_preserves_v1():
     assert "future candles" in professor
     assert "entry_price" in professor
     assert "deterministic Risk Engine" in professor
-    assert "allowed_evidence_source_keys" in professor
+    assert "evidence_source_catalog" in professor
+    assert "source_index" in professor
+    assert "atomic leaf" in professor
+    assert "MUST NOT emit source_key" in professor
     assert "specialist_analyses and palermo_review are top-level" in professor
     assert "common decision as-of time" in professor
     assert "may legitimately differ" in professor

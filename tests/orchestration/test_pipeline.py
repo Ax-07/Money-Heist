@@ -33,16 +33,10 @@ def sync_test(func):
     return wrapper
 
 
-def _adapt_scripted_specialist_v3(
+def _adapt_scripted_indexed_evidence(
     request: ProviderRequest,
     output: str,
 ) -> str:
-    if (
-        request.metadata.get("phase") != "specialist_independent_round_1"
-        or request.metadata.get("prompt_version") != "v3"
-    ):
-        return output
-
     try:
         payload = json.loads(output)
         request_payload = json.loads(request.input_text)
@@ -52,14 +46,16 @@ def _adapt_scripted_specialist_v3(
         return output
 
     evidence = payload.get("evidence")
-    allowed = request_payload.get("allowed_evidence_source_keys")
-    if not isinstance(evidence, list) or not isinstance(allowed, list):
+    catalog = request_payload.get("evidence_source_catalog")
+    if not isinstance(evidence, list) or not isinstance(catalog, list):
         return output
 
     index_by_key = {
-        key: index
-        for index, key in enumerate(allowed)
-        if isinstance(key, str)
+        entry["source_key"]: entry["source_index"]
+        for entry in catalog
+        if isinstance(entry, dict)
+        and isinstance(entry.get("source_key"), str)
+        and isinstance(entry.get("source_index"), int)
     }
     converted = []
     for item in evidence:
@@ -70,7 +66,7 @@ def _adapt_scripted_specialist_v3(
             continue
         source_key = item.get("source_key")
         # Invalid scripted paths intentionally remain unadapted so the strict
-        # provider schema rejects them as INVALID_SPECIALIST_OUTPUT.
+        # provider schema rejects them before downstream grounding.
         if not isinstance(source_key, str) or source_key not in index_by_key:
             return output
         converted_item = {
@@ -97,7 +93,7 @@ class ScriptedClient:
         key = (request.agent_id, request.metadata["phase"])
         if not self.scripted[key]:
             raise AssertionError(f"No scripted response for {key}")
-        output = _adapt_scripted_specialist_v3(
+        output = _adapt_scripted_indexed_evidence(
             request,
             self.scripted[key].popleft(),
         )
@@ -717,7 +713,7 @@ async def test_professor_final_evidence_must_reference_supplied_context():
     pipeline, _, _ = make_pipeline(nominal_script(final=invalid_final))
     result = await pipeline.run(opportunity=make_opportunity(), market_context=make_context())
     assert result.status is PipelineStatus.FAILED
-    assert result.failure.code is PipelineFailureCode.UNGROUNDED_EVIDENCE
+    assert result.failure.code is PipelineFailureCode.INVALID_PROFESSOR_OUTPUT
     assert result.trade_proposal is None
 
 

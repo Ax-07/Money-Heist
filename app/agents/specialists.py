@@ -172,12 +172,41 @@ def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
     return paths
 
 
+def _grounded_json_leaf_paths(value: Any, prefix: str = "") -> set[str]:
+    """Return only concrete scalar/list-item JSON paths; never container paths."""
+
+    if isinstance(value, BaseModel):
+        return _grounded_json_leaf_paths(
+            value.model_dump(mode="json", exclude_none=True),
+            prefix,
+        )
+
+    if isinstance(value, dict):
+        paths: set[str] = set()
+        for key, nested in value.items():
+            child = f"{prefix}.{key}" if prefix else str(key)
+            paths.update(_grounded_json_leaf_paths(nested, child))
+        return paths
+
+    if isinstance(value, (list, tuple)):
+        paths: set[str] = set()
+        for index, nested in enumerate(value):
+            child = f"{prefix}.{index}" if prefix else str(index)
+            paths.update(_grounded_json_leaf_paths(nested, child))
+        return paths
+
+    if value is None or not prefix:
+        return set()
+    return {prefix}
+
+
 def _assert_grounded_evidence(
     analysis: SpecialistAnalysis,
     *,
     opportunity: dict[str, Any],
     market_context: dict[str, Any],
     specialist_context: dict[str, Any] | None = None,
+    leaf_only: bool = False,
 ) -> None:
     payload: dict[str, Any] = {
         "opportunity": opportunity,
@@ -185,7 +214,11 @@ def _assert_grounded_evidence(
     }
     if specialist_context is not None:
         payload["specialist_context"] = specialist_context
-    available_paths = _grounded_json_paths(payload)
+    available_paths = (
+        _grounded_json_leaf_paths(payload)
+        if leaf_only
+        else _grounded_json_paths(payload)
+    )
     missing = sorted(
         evidence.source_key
         for evidence in analysis.evidence
@@ -278,7 +311,7 @@ class SpecialistAgent(CoreAgent):
         provider_output_model: type[SpecialistAnalysis] = self.output_model
         allowed_source_keys: tuple[str, ...] | None = None
 
-        if self.prompt.version in {"v2", "v3"}:
+        if self.prompt.version in {"v2", "v3", "v4"}:
             grounding_payload: dict[str, Any] = {
                 "opportunity": opportunity,
                 "market_context": market_context,
@@ -286,12 +319,24 @@ class SpecialistAgent(CoreAgent):
             if context_payload is not None:
                 grounding_payload["specialist_context"] = context_payload
 
-            allowed_source_keys = tuple(
-                sorted(_grounded_json_paths(grounding_payload))
-            )
-            payload["allowed_evidence_source_keys"] = list(allowed_source_keys)
+            if self.prompt.version == "v4":
+                allowed_source_keys = tuple(
+                    sorted(_grounded_json_leaf_paths(grounding_payload))
+                )
+                payload["evidence_source_catalog"] = [
+                    {
+                        "source_index": index,
+                        "source_key": source_key,
+                    }
+                    for index, source_key in enumerate(allowed_source_keys)
+                ]
+            else:
+                allowed_source_keys = tuple(
+                    sorted(_grounded_json_paths(grounding_payload))
+                )
+                payload["allowed_evidence_source_keys"] = list(allowed_source_keys)
 
-            if self.prompt.version == "v3":
+            if self.prompt.version in {"v3", "v4"}:
                 provider_output_model = _indexed_evidence_output_model(
                     self.output_model,
                     allowed_source_keys,
@@ -305,11 +350,11 @@ class SpecialistAgent(CoreAgent):
             phase="specialist_independent_round_1",
         )
 
-        # Real v3 Gateway results use the request-specific indexed schema.
+        # Real v3/v4 Gateway results use the request-specific indexed schema.
         # Tests/custom gateways may still return the canonical historical model;
-        # in that case the unchanged fail-closed post-validator remains active.
+        # in that case the fail-closed post-validator remains active.
         if (
-            self.prompt.version == "v3"
+            self.prompt.version in {"v3", "v4"}
             and allowed_source_keys is not None
             and result.output.__class__ is provider_output_model
         ):
@@ -324,6 +369,7 @@ class SpecialistAgent(CoreAgent):
             opportunity=opportunity,
             market_context=market_context,
             specialist_context=context_payload,
+            leaf_only=self.prompt.version == "v4",
         )
         self._validate_analysis_against_context(result.output, prepared_context)
         return result
