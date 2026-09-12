@@ -220,6 +220,16 @@ class _ExecutedEntry:
     price: Decimal
     quantity: Decimal
     filled_at: datetime
+    fill_id: str | None = None
+
+
+@dataclass(slots=True)
+class _AttributionLot:
+    entry: _ExecutedEntry
+    remaining_quantity: Decimal
+    realized_pnl: Decimal = ZERO
+    trade_ids: tuple[str, ...] = ()
+    closed_at: datetime | None = None
 
 
 class HistoricalSetupStatsCatalog:
@@ -439,22 +449,7 @@ class DenverSetupStatsContextProvider:
             return {}
         return {"denver": stats.to_denver_context_payload()}
 
-def observations_from_historical_replay(
-    replay_result: Any,
-    evaluation_bundle: Any,
-    *,
-    period_role: BacktestPeriodRole,
-) -> tuple[HistoricalSetupObservation, ...]:
-    """Join real Batch 16 executed opportunities to Batch 10 closed-trade outcomes.
-
-    Attribution is intentionally strict. A closed trade must map to exactly one entry fill with
-    the same system, symbol, side, open timestamp, entry price and quantity. Ambiguous scaled or
-    reversal positions fail closed instead of being silently assigned to a setup.
-    """
-
-    run = replay_result.backtest_result.run
-    config_payload = run.config.canonical_payload()
-    strategy_fingerprint = "strategy:" + stable_digest(config_payload)
+def _executed_setup_entries(replay_result: Any) -> tuple[_ExecutedEntry, ...]:
     entries: list[_ExecutedEntry] = []
     for point in replay_result.points:
         result = getattr(point, "pipeline_result", None)
@@ -473,11 +468,14 @@ def observations_from_historical_replay(
         required = (opportunity, feature, fill, order, proposal)
         if any(item is None for item in required):
             continue
+
         proposal_side = str(_value(proposal.side))
         expected_order_side = "BUY" if proposal_side == "LONG" else "SELL"
         actual_order_side = str(_value(order.side))
         if actual_order_side != expected_order_side:
             raise ValueError("executed order side does not match trade proposal side")
+
+        fill_id = str(getattr(fill, "fill_id", "")).strip() or None
         entries.append(
             _ExecutedEntry(
                 system_id=opportunity.system_id,
@@ -488,11 +486,24 @@ def observations_from_historical_replay(
                 price=Decimal(str(fill.price)),
                 quantity=Decimal(str(fill.quantity)),
                 filled_at=_as_utc(fill.filled_at, field_name="fill.filled_at"),
+                fill_id=fill_id,
             )
         )
+    return tuple(entries)
+
+
+def _legacy_observations_from_exact_entry_match(
+    entries: tuple[_ExecutedEntry, ...],
+    closed_trades: tuple[Any, ...],
+    *,
+    run: Any,
+    strategy_fingerprint: str,
+    period_role: BacktestPeriodRole,
+) -> tuple[HistoricalSetupObservation, ...]:
+    """Strict compatibility path for synthetic/legacy evaluation bundles without executions."""
 
     observations = []
-    for trade in evaluation_bundle.report.trading.closed_trades:
+    for trade in closed_trades:
         opened_at = _as_utc(trade.opened_at, field_name="trade.opened_at")
         candidates = [
             entry
@@ -525,6 +536,364 @@ def observations_from_historical_replay(
             )
         )
     return tuple(observations)
+
+
+def _validate_entry_execution_binding(entry: _ExecutedEntry, execution: Any) -> None:
+    side = str(_value(execution.side))
+    expected_side = "BUY" if entry.side == "LONG" else "SELL"
+    checks = (
+        (entry.system_id == str(execution.system_id), "system_id"),
+        (entry.symbol == str(execution.symbol), "symbol"),
+        (side == expected_side, "side"),
+        (entry.quantity == Decimal(str(execution.quantity)), "quantity"),
+        (entry.price == Decimal(str(execution.price)), "price"),
+        (
+            entry.filled_at
+            == _as_utc(execution.filled_at, field_name="execution.filled_at"),
+            "filled_at",
+        ),
+    )
+    failed = [name for ok, name in checks if not ok]
+    if failed:
+        raise HistoricalSetupAttributionError(
+            "executed setup provenance does not match evaluation execution: "
+            + ",".join(failed)
+        )
+
+
+def _allocate_closed_trade_to_lots(
+    lots: list[_AttributionLot],
+    trade: Any,
+    *,
+    closing_quantity: Decimal,
+) -> None:
+    open_quantity = sum((lot.remaining_quantity for lot in lots), ZERO)
+    if open_quantity <= ZERO:
+        raise HistoricalSetupAttributionError(
+            "cannot attribute a closed trade without open setup lots"
+        )
+    if closing_quantity <= ZERO or closing_quantity > open_quantity:
+        raise HistoricalSetupAttributionError(
+            "closed trade quantity is incompatible with open setup lots"
+        )
+
+    trade_pnl = Decimal(str(trade.net_pnl))
+    if not trade_pnl.is_finite():
+        raise HistoricalSetupAttributionError("closed trade net_pnl must be finite")
+
+    remaining_quantity = closing_quantity
+    remaining_pnl = trade_pnl
+    full_close = closing_quantity == open_quantity
+
+    for index, lot in enumerate(lots):
+        is_last = index == len(lots) - 1
+        if is_last:
+            lot_close_quantity = remaining_quantity
+            pnl_share = remaining_pnl
+        else:
+            lot_close_quantity = (
+                lot.remaining_quantity
+                if full_close
+                else closing_quantity * lot.remaining_quantity / open_quantity
+            )
+            pnl_share = trade_pnl * lot_close_quantity / closing_quantity
+
+        if lot_close_quantity < ZERO or lot_close_quantity > lot.remaining_quantity:
+            raise HistoricalSetupAttributionError(
+                "pro-rata Denver attribution exceeded an entry lot quantity"
+            )
+
+        lot.remaining_quantity -= lot_close_quantity
+        lot.realized_pnl += pnl_share
+        lot.trade_ids += (str(trade.trade_id),)
+        lot.closed_at = _as_utc(trade.closed_at, field_name="trade.closed_at")
+        remaining_quantity -= lot_close_quantity
+        remaining_pnl -= pnl_share
+
+    if remaining_quantity != ZERO or remaining_pnl != ZERO:
+        raise HistoricalSetupAttributionError(
+            "pro-rata Denver attribution did not conserve trade quantity/PnL"
+        )
+
+
+def _finalize_closed_lots(
+    lots: list[_AttributionLot],
+    *,
+    run: Any,
+    strategy_fingerprint: str,
+    period_role: BacktestPeriodRole,
+) -> tuple[HistoricalSetupObservation, ...]:
+    observations = []
+    for lot in lots:
+        if lot.remaining_quantity != ZERO:
+            raise HistoricalSetupAttributionError(
+                "cannot finalize Denver attribution while an entry lot remains open"
+            )
+        if lot.closed_at is None or not lot.trade_ids:
+            raise HistoricalSetupAttributionError(
+                "closed Denver attribution lot is missing close provenance"
+            )
+        if len(lot.trade_ids) == 1:
+            trade_id = lot.trade_ids[0]
+        else:
+            trade_id = "closed-group:" + stable_digest(
+                {
+                    "opportunity_id": lot.entry.opportunity_id,
+                    "trade_ids": lot.trade_ids,
+                }
+            )
+        observations.append(
+            HistoricalSetupObservation(
+                run_id=run.run_id,
+                dataset_id=run.dataset.dataset_id,
+                strategy_fingerprint=strategy_fingerprint,
+                period_role=period_role,
+                opportunity_id=lot.entry.opportunity_id,
+                trade_id=trade_id,
+                setup=lot.entry.setup,
+                side=lot.entry.side,
+                opened_at=lot.entry.filled_at,
+                closed_at=lot.closed_at,
+                net_pnl=lot.realized_pnl,
+            )
+        )
+    return tuple(observations)
+
+
+def _observations_from_execution_provenance(
+    entries: tuple[_ExecutedEntry, ...],
+    executions: tuple[Any, ...],
+    closed_trades: tuple[Any, ...],
+    *,
+    run: Any,
+    strategy_fingerprint: str,
+    period_role: BacktestPeriodRole,
+) -> tuple[HistoricalSetupObservation, ...]:
+    """Attribute average-cost realized PnL to the exact opportunities that built exposure.
+
+    Entry fills are bound to replay opportunities by fill_id. When several entries build one
+    average-cost position, each realized close is allocated pro-rata to the quantities still
+    owned by those entry opportunities. A setup observation is emitted only when that position
+    cycle fully closes, so one opportunity remains one statistical sample and partial open
+    outcomes are never promoted into Denver history.
+    """
+
+    entry_by_fill_id: dict[str, _ExecutedEntry] = {}
+    for entry in entries:
+        if not entry.fill_id:
+            raise HistoricalSetupAttributionError(
+                "evaluation executions are available but an executed setup entry has no fill_id"
+            )
+        if entry.fill_id in entry_by_fill_id:
+            raise HistoricalSetupAttributionError(
+                f"duplicate setup provenance for fill {entry.fill_id}"
+            )
+        entry_by_fill_id[entry.fill_id] = entry
+
+    trade_by_exit_fill: dict[str, Any] = {}
+    for trade in closed_trades:
+        exit_fill_id = str(getattr(trade, "exit_fill_id", "")).strip()
+        if not exit_fill_id:
+            raise HistoricalSetupAttributionError(
+                f"closed trade {trade.trade_id} has no exit_fill_id provenance"
+            )
+        if exit_fill_id in trade_by_exit_fill:
+            raise HistoricalSetupAttributionError(
+                f"multiple closed trades reference exit fill {exit_fill_id}"
+            )
+        trade_by_exit_fill[exit_fill_id] = trade
+
+    states: dict[tuple[str, str], list[_AttributionLot]] = {}
+    observations: list[HistoricalSetupObservation] = []
+    consumed_trade_ids: set[str] = set()
+    seen_execution_fill_ids: set[str] = set()
+
+    ordered = sorted(
+        executions,
+        key=lambda item: (
+            _as_utc(item.filled_at, field_name="execution.filled_at"),
+            str(item.fill_id),
+        ),
+    )
+    for execution in ordered:
+        fill_id = str(execution.fill_id)
+        if fill_id in seen_execution_fill_ids:
+            raise HistoricalSetupAttributionError(
+                f"duplicate evaluation execution fill_id: {fill_id}"
+            )
+        seen_execution_fill_ids.add(fill_id)
+        system_id = str(execution.system_id)
+        symbol = str(execution.symbol)
+        side = str(_value(execution.side))
+        if side not in {"BUY", "SELL"}:
+            raise HistoricalSetupAttributionError(
+                f"unsupported evaluation execution side: {side}"
+            )
+        quantity = Decimal(str(execution.quantity))
+        if quantity <= ZERO:
+            raise HistoricalSetupAttributionError(
+                "evaluation execution quantity must be positive"
+            )
+
+        entry = entry_by_fill_id.get(fill_id)
+        if entry is not None:
+            _validate_entry_execution_binding(entry, execution)
+
+        key = (system_id, symbol)
+        lots = states.setdefault(key, [])
+        if not lots:
+            if entry is None:
+                raise HistoricalSetupAttributionError(
+                    f"execution {fill_id} opens exposure without setup provenance"
+                )
+            lots.append(_AttributionLot(entry=entry, remaining_quantity=quantity))
+            continue
+
+        position_side = lots[0].entry.side
+        if any(lot.entry.side != position_side for lot in lots):
+            raise HistoricalSetupAttributionError(
+                "one average-cost position contains mixed Denver setup sides"
+            )
+        opening_execution_side = "BUY" if position_side == "LONG" else "SELL"
+        open_quantity = sum((lot.remaining_quantity for lot in lots), ZERO)
+
+        if side == opening_execution_side:
+            if entry is None:
+                raise HistoricalSetupAttributionError(
+                    f"execution {fill_id} increases exposure without setup provenance"
+                )
+            if entry.side != position_side:
+                raise HistoricalSetupAttributionError(
+                    "same-direction execution has inconsistent setup side"
+                )
+            if any(
+                lot.entry.opportunity_id == entry.opportunity_id
+                for lot in lots
+            ):
+                raise HistoricalSetupAttributionError(
+                    "one opportunity produced multiple active Denver entry lots"
+                )
+            lots.append(_AttributionLot(entry=entry, remaining_quantity=quantity))
+            continue
+
+        closing_quantity = min(open_quantity, quantity)
+        trade = trade_by_exit_fill.get(fill_id)
+        if trade is None:
+            raise HistoricalSetupAttributionError(
+                f"closing execution {fill_id} has no matching evaluated closed trade"
+            )
+        expected_trade_side = position_side
+        if (
+            str(trade.system_id) != system_id
+            or str(trade.symbol) != symbol
+            or str(_value(trade.side)) != expected_trade_side
+            or Decimal(str(trade.quantity)) != closing_quantity
+        ):
+            raise HistoricalSetupAttributionError(
+                f"closed trade {trade.trade_id} does not match closing execution {fill_id}"
+            )
+
+        _allocate_closed_trade_to_lots(
+            lots,
+            trade,
+            closing_quantity=closing_quantity,
+        )
+        consumed_trade_ids.add(str(trade.trade_id))
+
+        if closing_quantity == open_quantity:
+            observations.extend(
+                _finalize_closed_lots(
+                    lots,
+                    run=run,
+                    strategy_fingerprint=strategy_fingerprint,
+                    period_role=period_role,
+                )
+            )
+            states[key] = []
+        else:
+            states[key] = [
+                lot for lot in lots if lot.remaining_quantity > ZERO
+            ]
+
+        if quantity > open_quantity:
+            if entry is None:
+                raise HistoricalSetupAttributionError(
+                    f"reversal execution {fill_id} has no setup provenance for residual exposure"
+                )
+            residual = quantity - open_quantity
+            new_side = "LONG" if side == "BUY" else "SHORT"
+            if entry.side != new_side:
+                raise HistoricalSetupAttributionError(
+                    "reversal residual side does not match setup provenance"
+                )
+            states[key] = [
+                _AttributionLot(entry=entry, remaining_quantity=residual)
+            ]
+
+    missing_entry_fills = sorted(set(entry_by_fill_id) - seen_execution_fill_ids)
+    if missing_entry_fills:
+        raise HistoricalSetupAttributionError(
+            "executed setup provenance is missing from evaluation executions: "
+            + ",".join(missing_entry_fills)
+        )
+
+    expected_trade_ids = {str(trade.trade_id) for trade in closed_trades}
+    if consumed_trade_ids != expected_trade_ids:
+        missing = sorted(expected_trade_ids - consumed_trade_ids)
+        extra = sorted(consumed_trade_ids - expected_trade_ids)
+        details = []
+        if missing:
+            details.append("missing=" + ",".join(missing))
+        if extra:
+            details.append("extra=" + ",".join(extra))
+        raise HistoricalSetupAttributionError(
+            "Denver execution provenance did not consume exactly the evaluated closed trades: "
+            + "; ".join(details)
+        )
+
+    return tuple(observations)
+
+
+def observations_from_historical_replay(
+    replay_result: Any,
+    evaluation_bundle: Any,
+    *,
+    period_role: BacktestPeriodRole,
+) -> tuple[HistoricalSetupObservation, ...]:
+    """Build cutoff-safe Denver samples from real historical PAPER execution provenance.
+
+    Real evaluation bundles expose their complete execution stream. That path uses exact fill_id
+    provenance plus deterministic average-cost pro-rata allocation and supports scaled, partially
+    reduced, and reversed positions. Synthetic legacy bundles without executions retain the old
+    strict one-entry matcher and still fail closed on ambiguity.
+    """
+
+    run = replay_result.backtest_result.run
+    config_payload = run.config.canonical_payload()
+    strategy_fingerprint = "strategy:" + stable_digest(config_payload)
+    entries = _executed_setup_entries(replay_result)
+    closed_trades = tuple(evaluation_bundle.report.trading.closed_trades)
+    executions = tuple(
+        getattr(getattr(evaluation_bundle, "source", None), "executions", ()) or ()
+    )
+
+    if executions:
+        return _observations_from_execution_provenance(
+            entries,
+            executions,
+            closed_trades,
+            run=run,
+            strategy_fingerprint=strategy_fingerprint,
+            period_role=period_role,
+        )
+
+    return _legacy_observations_from_exact_entry_match(
+        entries,
+        closed_trades,
+        run=run,
+        strategy_fingerprint=strategy_fingerprint,
+        period_role=period_role,
+    )
 
 
 def catalog_from_historical_runs(
