@@ -11,6 +11,62 @@ class MockProviderPort(Protocol):
     async def complete(self, request: ProviderRequest) -> ProviderResponse: ...
 
 
+def adapt_mock_specialist_evidence_v3(
+    request: ProviderRequest,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Adapt deterministic MOCK specialist evidence to the strict v3 provider schema.
+
+    LIVE_EVAL is unaffected: this helper is used only by deterministic MOCK
+    providers. Canonical source_key strings are accepted only when they are
+    exact members of the request's deterministic allowed path catalogue.
+    """
+
+    if request.metadata.get("prompt_version") != "v3":
+        return payload
+
+    evidence = payload.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        return payload
+
+    try:
+        request_payload = json.loads(request.input_text)
+    except json.JSONDecodeError as exc:
+        raise ValueError("v3 MOCK specialist request input must be valid JSON") from exc
+    if not isinstance(request_payload, dict):
+        raise ValueError("v3 MOCK specialist request input must be a JSON object")
+
+    raw_allowed = request_payload.get("allowed_evidence_source_keys")
+    if not isinstance(raw_allowed, list) or not all(
+        isinstance(item, str) for item in raw_allowed
+    ):
+        raise ValueError("v3 MOCK specialist request has no valid allowed path catalogue")
+
+    index_by_key = {key: index for index, key in enumerate(raw_allowed)}
+    converted: list[dict[str, Any]] = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            raise ValueError("v3 MOCK specialist evidence item must be an object")
+        if "source_index" in item:
+            converted.append(dict(item))
+            continue
+
+        source_key = item.get("source_key")
+        if not isinstance(source_key, str) or source_key not in index_by_key:
+            raise ValueError(
+                "v3 MOCK specialist evidence references a non-allowed source_key"
+            )
+        converted_item = {
+            key: value for key, value in item.items() if key != "source_key"
+        }
+        converted_item["source_index"] = index_by_key[source_key]
+        converted.append(converted_item)
+
+    adapted = dict(payload)
+    adapted["evidence"] = converted
+    return adapted
+
+
 class DeterministicAdvancedSpecialistMockProvider:
     """Add Rio/Denver MOCK support without changing legacy deterministic responses.
 
@@ -219,6 +275,7 @@ class DeterministicAdvancedSpecialistMockProvider:
     ) -> ProviderResponse:
         from app.intelligence.ai_gateway.models import TokenUsage
 
+        payload = adapt_mock_specialist_evidence_v3(request, payload)
         return ProviderResponse(
             provider_request_id=f"mock-advanced-{request.request_id}",
             model_id=request.model_id,
@@ -241,4 +298,8 @@ class DeterministicAdvancedSpecialistMockProvider:
         )
 
 
-__all__ = ["DeterministicAdvancedSpecialistMockProvider", "MockProviderPort"]
+__all__ = [
+    "DeterministicAdvancedSpecialistMockProvider",
+    "MockProviderPort",
+    "adapt_mock_specialist_evidence_v3",
+]

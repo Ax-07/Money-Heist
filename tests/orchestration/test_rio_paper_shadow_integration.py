@@ -45,7 +45,12 @@ class ScriptedGateway:
         if not self.scripted[key]:
             raise AssertionError(f"no scripted response for {key}")
         output = self.scripted[key].popleft()
-        assert isinstance(output, output_model)
+        # Specialist v3 uses a request-specific provider subclass while
+        # this integration fixture scripts the canonical RioAnalysis model.
+        assert isinstance(output, output_model) or issubclass(
+            output_model,
+            type(output),
+        )
         usage = AIUsageRecord(
             request_id=request.request_id,
             system_id=request.system_id,

@@ -33,6 +33,56 @@ def sync_test(func):
     return wrapper
 
 
+def _adapt_scripted_specialist_v3(
+    request: ProviderRequest,
+    output: str,
+) -> str:
+    if (
+        request.metadata.get("phase") != "specialist_independent_round_1"
+        or request.metadata.get("prompt_version") != "v3"
+    ):
+        return output
+
+    try:
+        payload = json.loads(output)
+        request_payload = json.loads(request.input_text)
+    except json.JSONDecodeError:
+        return output
+    if not isinstance(payload, dict) or not isinstance(request_payload, dict):
+        return output
+
+    evidence = payload.get("evidence")
+    allowed = request_payload.get("allowed_evidence_source_keys")
+    if not isinstance(evidence, list) or not isinstance(allowed, list):
+        return output
+
+    index_by_key = {
+        key: index
+        for index, key in enumerate(allowed)
+        if isinstance(key, str)
+    }
+    converted = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            return output
+        if "source_index" in item:
+            converted.append(dict(item))
+            continue
+        source_key = item.get("source_key")
+        # Invalid scripted paths intentionally remain unadapted so the strict
+        # provider schema rejects them as INVALID_SPECIALIST_OUTPUT.
+        if not isinstance(source_key, str) or source_key not in index_by_key:
+            return output
+        converted_item = {
+            key: value for key, value in item.items() if key != "source_key"
+        }
+        converted_item["source_index"] = index_by_key[source_key]
+        converted.append(converted_item)
+
+    payload["evidence"] = converted
+    return json.dumps(payload, separators=(",", ":"))
+
+
 class ScriptedClient:
     provider_name = "mock"
 
@@ -47,7 +97,10 @@ class ScriptedClient:
         key = (request.agent_id, request.metadata["phase"])
         if not self.scripted[key]:
             raise AssertionError(f"No scripted response for {key}")
-        output = self.scripted[key].popleft()
+        output = _adapt_scripted_specialist_v3(
+            request,
+            self.scripted[key].popleft(),
+        )
         return ProviderResponse(
             provider_request_id=f"mock-{len(self.requests)}",
             model_id=request.model_id,
@@ -312,6 +365,16 @@ async def test_nominal_pipeline_produces_strict_trade_proposal_and_audit():
         range(1, len(result.audit_events) + 1)
     )
     assert len(client.requests) == 6
+    specialist_schema_names = {
+        request.schema_name
+        for request in client.requests
+        if request.metadata["phase"] == "specialist_independent_round_1"
+    }
+    assert specialist_schema_names == {
+        "BerlinAnalysis",
+        "TokyoAnalysis",
+        "NairobiAnalysis",
+    }
 
 
 @sync_test
@@ -472,7 +535,9 @@ async def test_missing_or_unavailable_evidence_cannot_be_invented():
     )
     result = await pipeline.run(opportunity=make_opportunity(), market_context=make_context())
     assert result.status is PipelineStatus.FAILED
-    assert result.failure.code is PipelineFailureCode.UNGROUNDED_EVIDENCE
+    # v3 rejects a non-allowed specialist path at provider schema validation,
+    # before the legacy post-provider grounding validator can run.
+    assert result.failure.code is PipelineFailureCode.INVALID_SPECIALIST_OUTPUT
     assert result.trade_proposal is None
 
 
@@ -499,7 +564,7 @@ async def test_none_market_field_is_omitted_and_cannot_be_cited_as_evidence():
     specialist_request = next(request for request in client.requests if request.agent_id == "tokyo")
     assert "rsi_14" not in json.loads(specialist_request.input_text)["market_context"]
     assert result.status is PipelineStatus.FAILED
-    assert result.failure.code is PipelineFailureCode.UNGROUNDED_EVIDENCE
+    assert result.failure.code is PipelineFailureCode.INVALID_SPECIALIST_OUTPUT
 
 
 @sync_test

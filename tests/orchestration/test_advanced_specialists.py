@@ -51,7 +51,12 @@ class ScriptedGateway:
         item = self.scripted[key].popleft()
         if isinstance(item, BaseException):
             raise item
-        assert isinstance(item, output_model)
+        # Specialist v3 uses a request-specific provider subclass while
+        # integration fixtures intentionally script the canonical model.
+        assert isinstance(item, output_model) or issubclass(
+            output_model,
+            type(item),
+        )
         usage = AIUsageRecord(
             request_id=request.request_id,
             system_id=request.system_id,

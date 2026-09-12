@@ -99,3 +99,47 @@ def test_quick_test_frontend_enables_coverage_only_for_mock() -> None:
     assert "mock_agent_coverage:" in js
     assert 'mockAgentCoverage && $("ai-mode").value === "MOCK"' in js
     assert 'if ($("ai-mode").value !== "MOCK") mockAgentCoverage = false;' in js
+
+def test_deterministic_mock_v3_uses_indexed_specialist_evidence() -> None:
+    async def scenario() -> None:
+        provider = DeterministicBacktestMockProvider()
+        request = ProviderRequest(
+            request_id=uuid4(),
+            system_id="balanced_v1",
+            agent_id="berlin",
+            model_id="mock-backtest-v1",
+            input_text=json.dumps(
+                {
+                    "allowed_evidence_source_keys": [
+                        "market_context",
+                        "market_context.close",
+                    ],
+                    "market_context": {
+                        "close": 100.0,
+                        "regime": "BULLISH_TREND",
+                    },
+                },
+                sort_keys=True,
+            ),
+            schema_name="BerlinAnalysis",
+            json_schema={},
+            max_output_tokens=1200,
+            timeout_seconds=5,
+            metadata={
+                "phase": "specialist_independent_round_1",
+                "prompt_version": "v3",
+            },
+        )
+
+        response = await provider.complete(request)
+        payload = json.loads(response.output_text)
+        assert payload["evidence"] == [
+            {
+                "observation": "deterministic MOCK close reference",
+                "source_index": 1,
+            }
+        ]
+        assert "source_key" not in response.output_text
+
+    asyncio.run(scenario())
+

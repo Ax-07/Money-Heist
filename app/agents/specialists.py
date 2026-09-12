@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from app.intelligence.ai_gateway.models import AIGatewayResult
 
@@ -51,6 +51,75 @@ class SpecialistContextMismatchError(ValueError):
 
 class UngroundedEvidenceError(ValueError):
     """Raised when a specialist cites a field that was not present in its input."""
+
+
+class _IndexedEvidenceReference(BaseModel):
+    """Provider-facing evidence item with a request-bounded source index."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    source_index: int = Field(ge=0)
+    observation: str = Field(min_length=1, max_length=1000)
+
+
+def _indexed_evidence_output_model(
+    output_model: type[SpecialistAnalysis],
+    allowed_source_keys: tuple[str, ...],
+) -> type[SpecialistAnalysis]:
+    """Build a strict provider schema that cannot emit an arbitrary JSON path."""
+
+    if not allowed_source_keys:
+        raise ValueError("allowed evidence source keys must not be empty")
+
+    bounded_index = Annotated[
+        int,
+        Field(ge=0, le=len(allowed_source_keys) - 1),
+    ]
+    evidence_model = create_model(
+        f"{output_model.__name__}IndexedEvidenceV3",
+        __base__=_IndexedEvidenceReference,
+        source_index=(bounded_index, ...),
+    )
+    # Preserve the canonical schema name for provider routing, telemetry,
+    # deterministic MOCK providers and cache/audit surfaces. The class object is
+    # still request-specific; only its public schema name remains canonical.
+    return create_model(
+        output_model.__name__,
+        __base__=output_model,
+        evidence=(list[evidence_model], ...),
+    )
+
+
+def _canonicalize_indexed_evidence_result(
+    result: AIGatewayResult,
+    *,
+    output_model: type[SpecialistAnalysis],
+    allowed_source_keys: tuple[str, ...],
+) -> AIGatewayResult:
+    """Map validated source indexes back to canonical exact source_key strings."""
+
+    payload = result.output.model_dump(mode="python")
+    canonical_evidence: list[dict[str, Any]] = []
+    for item in payload.get("evidence", []):
+        source_index = item.get("source_index")
+        if not isinstance(source_index, int):
+            raise UngroundedEvidenceError(
+                "strict specialist evidence item has no integer source_index"
+            )
+        if source_index < 0 or source_index >= len(allowed_source_keys):
+            raise UngroundedEvidenceError(
+                "strict specialist evidence source_index is outside the allowed range"
+            )
+        canonical_evidence.append(
+            {
+                "source_key": allowed_source_keys[source_index],
+                "observation": item["observation"],
+            }
+        )
+
+    payload["evidence"] = canonical_evidence
+    canonical_output = output_model.model_validate(payload)
+    return result.model_copy(update={"output": canonical_output})
 
 
 def _iter_mapping_keys(value: Any):
@@ -206,24 +275,50 @@ class SpecialistAgent(CoreAgent):
                 context_payload["sample_size_band"] = prepared_context.sample_size_band
             payload["specialist_context"] = context_payload
 
-        if self.prompt.version == "v2":
+        provider_output_model: type[SpecialistAnalysis] = self.output_model
+        allowed_source_keys: tuple[str, ...] | None = None
+
+        if self.prompt.version in {"v2", "v3"}:
             grounding_payload: dict[str, Any] = {
                 "opportunity": opportunity,
                 "market_context": market_context,
             }
             if context_payload is not None:
                 grounding_payload["specialist_context"] = context_payload
-            payload["allowed_evidence_source_keys"] = sorted(
-                _grounded_json_paths(grounding_payload)
+
+            allowed_source_keys = tuple(
+                sorted(_grounded_json_paths(grounding_payload))
             )
+            payload["allowed_evidence_source_keys"] = list(allowed_source_keys)
+
+            if self.prompt.version == "v3":
+                provider_output_model = _indexed_evidence_output_model(
+                    self.output_model,
+                    allowed_source_keys,
+                )
 
         result = await self._run(
             system_id=system_id,
             payload=payload,
-            output_model=self.output_model,
+            output_model=provider_output_model,
             opportunity_id=opportunity_id,
             phase="specialist_independent_round_1",
         )
+
+        # Real v3 Gateway results use the request-specific indexed schema.
+        # Tests/custom gateways may still return the canonical historical model;
+        # in that case the unchanged fail-closed post-validator remains active.
+        if (
+            self.prompt.version == "v3"
+            and allowed_source_keys is not None
+            and result.output.__class__ is provider_output_model
+        ):
+            result = _canonicalize_indexed_evidence_result(
+                result,
+                output_model=self.output_model,
+                allowed_source_keys=allowed_source_keys,
+            )
+
         _assert_grounded_evidence(
             result.output,
             opportunity=opportunity,

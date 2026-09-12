@@ -52,7 +52,10 @@ from app.services.backtest import (
     split_report_to_json,
     walk_forward_report_to_json,
 )
-from app.services.backtest.advanced_mock import DeterministicAdvancedSpecialistMockProvider
+from app.services.backtest.advanced_mock import (
+    DeterministicAdvancedSpecialistMockProvider,
+    adapt_mock_specialist_evidence_v3,
+)
 from app.services.backtest.runner import HistoricalReplayCancelledError
 from app.services.backtest.historical_derivatives_analytics import (
     HistoricalDerivativesAnalyticsArchive,
@@ -547,7 +550,10 @@ class DeterministicBacktestMockProvider:
     provider_name = "mock"
 
     async def complete(self, request: ProviderRequest) -> ProviderResponse:
-        payload = self._payload_for(request)
+        payload = adapt_mock_specialist_evidence_v3(
+            request,
+            self._payload_for(request),
+        )
         return ProviderResponse(
             provider_request_id=f"mock-{request.request_id}",
             model_id=request.model_id,

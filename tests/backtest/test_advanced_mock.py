@@ -165,3 +165,39 @@ def test_rio_mock_support_is_grounded_but_non_directional() -> None:
         assert analysis.evidence[0].source_key == "specialist_context.funding_rate"
 
     asyncio.run(scenario())
+
+def test_denver_mock_v3_uses_source_indexes_from_allowed_catalogue() -> None:
+    async def scenario() -> None:
+        advanced = DeterministicAdvancedSpecialistMockProvider(LegacyMock())
+        request = provider_request(
+            "DenverAnalysis",
+            {
+                "allowed_evidence_source_keys": [
+                    "specialist_context.expectancy",
+                    "specialist_context.sample_count",
+                ],
+                "specialist_context": {
+                    "stats_id": "stats-v3",
+                    "sample_count": 42,
+                    "sample_size_band": "MEDIUM",
+                    "expectancy": 1.25,
+                },
+            },
+        ).model_copy(update={"metadata": {"prompt_version": "v3"}})
+
+        response = await advanced.complete(request)
+        payload = json.loads(response.output_text)
+        assert payload["evidence"] == [
+            {
+                "observation": "deterministic historical expectancy supplied by Batch 16 stats",
+                "source_index": 0,
+            },
+            {
+                "observation": "deterministic historical sample count supplied by Batch 16 stats",
+                "source_index": 1,
+            },
+        ]
+        assert "source_key" not in response.output_text
+
+    asyncio.run(scenario())
+

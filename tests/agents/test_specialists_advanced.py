@@ -29,7 +29,10 @@ class FakeGateway:
     async def generate_structured(self, request, output_model):
         self.requests.append(request)
         output = self.outputs.pop(0)
-        assert isinstance(output, output_model)
+        assert isinstance(output, output_model) or issubclass(
+            output_model,
+            type(output),
+        )
         usage = AIUsageRecord(
             request_id=request.request_id,
             system_id=request.system_id,

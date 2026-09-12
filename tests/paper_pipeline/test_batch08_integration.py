@@ -40,6 +40,51 @@ def sync_test(func):
     return wrapper
 
 
+def _adapt_scripted_specialist_v3(
+    request: ProviderRequest,
+    output: str,
+) -> str:
+    if (
+        request.metadata.get("phase") != "specialist_independent_round_1"
+        or request.metadata.get("prompt_version") != "v3"
+    ):
+        return output
+
+    try:
+        payload = json.loads(output)
+        request_payload = json.loads(request.input_text)
+    except json.JSONDecodeError:
+        return output
+    if not isinstance(payload, dict) or not isinstance(request_payload, dict):
+        return output
+
+    evidence = payload.get("evidence")
+    allowed = request_payload.get("allowed_evidence_source_keys")
+    if not isinstance(evidence, list) or not isinstance(allowed, list):
+        return output
+
+    index_by_key = {
+        key: index
+        for index, key in enumerate(allowed)
+        if isinstance(key, str)
+    }
+    converted = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            return output
+        source_key = item.get("source_key")
+        if not isinstance(source_key, str) or source_key not in index_by_key:
+            return output
+        converted.append(
+            {
+                "source_index": index_by_key[source_key],
+                "observation": item["observation"],
+            }
+        )
+    payload["evidence"] = converted
+    return json.dumps(payload, separators=(",", ":"))
+
+
 class ScriptedClient:
     provider_name = "mock"
 
@@ -52,10 +97,14 @@ class ScriptedClient:
         key = (request.agent_id, request.metadata["phase"])
         if not self.scripted[key]:
             raise AssertionError(f"No scripted response for {key}")
+        output = _adapt_scripted_specialist_v3(
+            request,
+            self.scripted[key].popleft(),
+        )
         return ProviderResponse(
             provider_request_id=f"mock-{request.agent_id}-{request.metadata['phase']}",
             model_id=request.model_id,
-            output_text=self.scripted[key].popleft(),
+            output_text=output,
             usage=TokenUsage(input_tokens=20, output_tokens=20),
             latency_ms=1,
         )
