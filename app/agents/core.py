@@ -15,6 +15,25 @@ from .registry import CORE_AGENT_REGISTRY, AgentRegistry
 
 T = TypeVar("T", bound=BaseModel)
 
+
+def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
+    """Return exact dot-paths present in a JSON-like payload, including containers."""
+    paths: set[str] = set()
+    if prefix:
+        paths.add(prefix)
+
+    if isinstance(value, Mapping):
+        for key, nested in value.items():
+            child = f"{prefix}.{key}" if prefix else str(key)
+            paths.update(_grounded_json_paths(nested, child))
+    elif isinstance(value, (list, tuple)):
+        for index, nested in enumerate(value):
+            child = f"{prefix}.{index}" if prefix else str(index)
+            paths.update(_grounded_json_paths(nested, child))
+
+    return paths
+
+
 PALERMO_MAX_OUTPUT_TOKENS = 16384
 PALERMO_TIMEOUT_SECONDS = 90.0
 
@@ -147,6 +166,13 @@ class TheProfessor(CoreAgent):
         }
         if task_force_report is not None:
             payload["task_force_report"] = task_force_report
+
+        # FINALIZE grounding contract: expose only exact paths present in the
+        # immutable inputs. Compute the catalog before adding it to the payload
+        # so the catalog cannot cite itself.
+        payload["allowed_evidence_source_keys"] = sorted(
+            _grounded_json_paths(payload)
+        )
 
         return await self._run(
             system_id=system_id,
