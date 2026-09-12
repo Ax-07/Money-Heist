@@ -1023,6 +1023,69 @@ function applyQuickTestSplit() {
   renderSplitSelection();
 }
 
+// Batch 16.21q — Duration presets
+function applyDurationSplit(durationDays, label) {
+  clearError();
+  if (!datasetPreview || !datasetPreview.candle_count || !splitSelection) {
+    throw new Error(
+      `Prévisualise d'abord le dataset avant d'utiliser le preset ${label}.`
+    );
+  }
+
+  const available = datasetPreview.candle_count;
+  const axis = datasetPreview.candle_close_ms || [];
+  const warmupBars = 35;
+  const minimumPeriodBars = 3;
+
+  if (axis.length !== available) {
+    throw new Error(
+      "Timeline dataset indisponible ou incohérente : prévisualise à nouveau le dataset."
+    );
+  }
+  if (available < warmupBars + minimumPeriodBars) {
+    throw new Error(
+      `Le preset ${label} nécessite au moins `
+      + `${warmupBars + minimumPeriodBars} bougies.`
+    );
+  }
+
+  // Comme Test rapide, on démarre juste après le warm-up afin d'éviter de
+  // parcourir inutilement toute l'histoire pour un preset court.
+  const start = warmupBars;
+  const durationMs = durationDays * 24 * 60 * 60 * 1000;
+  const targetEndMs = Number(axis[start]) + durationMs;
+  let end = start;
+
+  while (
+    end + 1 < available
+    && Number(axis[end + 1]) <= targetEndMs
+  ) {
+    end += 1;
+  }
+
+  const testBars = end - start + 1;
+  if (testBars < minimumPeriodBars) {
+    throw new Error(
+      `Pas assez de bougies pour construire DESIGN / VALIDATION / OOS sur ${label}.`
+    );
+  }
+
+  const designBars = Math.max(1, Math.floor(testBars * 0.60));
+  const validationBoundaryBars = Math.max(
+    designBars + 1,
+    Math.floor(testBars * 0.80),
+  );
+
+  splitSelection = {
+    start,
+    designEnd: start + designBars - 1,
+    validationEnd: start + validationBoundaryBars - 1,
+    end,
+  };
+  mockAgentCoverage = false;
+  renderSplitSelection();
+}
+
 $("symbol").addEventListener("change", () => {
   applyMarketPreset($("symbol").value.trim());
 });
@@ -1034,6 +1097,20 @@ $("split-quick-test").addEventListener("click", () => {
     showError(error);
   }
 });
+
+for (const [id, days, label] of [
+  ["split-1-month", 30, "1 mois"],
+  ["split-3-months", 90, "3 mois"],
+  ["split-1-year", 365, "1 an"],
+]) {
+  $(id).addEventListener("click", () => {
+    try {
+      applyDurationSplit(days, label);
+    } catch (error) {
+      showError(error);
+    }
+  });
+}
 
 $("csv-file").addEventListener("change", () => {
   csvText = "";
