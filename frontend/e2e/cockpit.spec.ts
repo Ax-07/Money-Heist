@@ -1,0 +1,2 @@
+import { expect, test } from "@playwright/test";
+test("cockpit exposes settings without asking for browser secrets",async({page})=>{await page.goto("/dashboard");await page.getByRole("button",{name:"Réglages"}).click();await expect(page.getByText("Réglages Money Heist")).toBeVisible();await page.getByRole("tab",{name:"Interface"}).click();await expect(page.getByText(/Aucun secret n’est stocké/)).toBeVisible();await expect(page.getByText(/API key/i)).toHaveCount(0)});

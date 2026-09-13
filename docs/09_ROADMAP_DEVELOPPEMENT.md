@@ -478,3 +478,20 @@ Si le développement révèle qu’un batch est trop gros :
    autorité de portefeuille ou autorité LIVE.
 4. Définir toute future allocation multi-crews comme une couche déterministe/opérateur-gatée avec
    un Master Risk Engine séparé de la logique analytique des agents.
+
+<!-- BATCH22_FRONTEND_V2 -->
+## Batch 22 — Frontend V2 / Trading Cockpit
+
+**État du lot :** livré comme overlay d'intégration sur la baseline `34351184f193e658a375667bdf19594d2defb3ec`.
+
+Objectif : remplacer progressivement l'expérience Dashboard V1 par un cockpit Next.js unifié LIVE/PAPER/SHADOW/BACKTEST sans déplacer l'autorité métier dans le navigateur.
+
+Livré : foundation Next.js/TypeScript strict, navigation desktop/mobile, Trading Workspace, chart via adapter Lightweight Charts, Backtests DESIGN/VALIDATION/OOS, Historical Replay, Decision Trace, vues Opportunités/Ordres/Positions/Historique/Agents/Evaluation, Settings read-only lorsque le backend n'expose pas d'écriture, API V2 minimale et documentation `12_FRONTEND_ET_INTERFACE.md`.
+
+Le Dashboard V1 n'est pas supprimé dans ce batch. La migration est volontairement non destructive.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+## Batch 22.1 — Frontend V2 Backtest Cockpit Completion
+
+Le lanceur suit Dataset → Périodes → Risk → IA → Exécution → Données avancées → Walk-Forward → Revue. Les defaults deviennent visibles/modifiables et les datasets/artefacts de replay V2 sont persistés localement.
+

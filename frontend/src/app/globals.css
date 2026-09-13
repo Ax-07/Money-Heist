@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --background: 222 26% 7%;
+  --foreground: 210 20% 96%;
+  --card: 222 22% 10%;
+  --muted: 217 16% 58%;
+  --border: 218 20% 18%;
+  --accent: 268 83% 67%;
+}
+* { border-color: hsl(var(--border)); }
+html, body { min-height: 100%; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+body { margin: 0; font-feature-settings: "tnum" 1, "ss01" 1; }
+::selection { background: rgba(167, 139, 250, .35); }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+.grid-bg { background-image: linear-gradient(rgba(148,163,184,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.035) 1px, transparent 1px); background-size: 24px 24px; }
+.panel { @apply rounded-xl border border-slate-800/90 bg-slate-950/55 shadow-sm; }
+.panel-title { @apply text-xs font-semibold uppercase tracking-[0.16em] text-slate-400; }
+.metric-value { @apply font-mono text-xl font-semibold tracking-tight text-slate-100; }

@@ -654,3 +654,18 @@ sélectionnables. Les stale guards entourent composition et replay afin qu’un 
 impose une régénération plutôt qu’une réutilisation silencieuse.
 
 <!-- BATCH20_ARCHITECTURE_END -->
+
+<!-- BATCH22_FRONTEND_V2 -->
+## Addendum Batch 22 — Frontend V2 / Trading Cockpit
+
+Le frontend devient une application séparée `frontend/` en Next.js + React + TypeScript. FastAPI reste l'autorité métier. Le navigateur accède aux contrats via un proxy Next server-side et une couche API centralisée/Zod.
+
+Le Frontend V2 ne recalcule ni Feature Engine, ni Scanner, ni TradeProposal, ni RiskDecision, ni backtest. L'extension FastAPI `/api/frontend/v2` expose seulement les capacités non sensibles, les candles Kraken publiques et un adapter de replay autour du moteur Batch 16.
+
+Aucun WebSocket/SSE opérateur n'existant dans la baseline `34351184f193e658a375667bdf19594d2defb3ec`, la V2 utilise un polling centralisé TanStack Query. Toute future couche temps réel devra conserver une connexion centralisée et ne changera pas les frontières de sécurité.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+## Addendum Batch 22.1 — Backtest Cockpit durable
+
+Frontend V2 conserve `BacktestDashboardService` comme autorité d'exécution mais ajoute un sidecar durable sous `.money-heist/frontend-v2/`. Il persiste bibliothèque de datasets, configuration figée, progression/traces, résumé et exports nécessaires au replay. Aucun calcul métier n'est déplacé hors du moteur Batch 16.
+

@@ -674,3 +674,33 @@ Lorsqu’une décision ouverte devient ferme :
 4. ajouter une entrée de changelog.
 
 Le journal ne doit pas devenir une copie complète des autres documents.
+
+<!-- BATCH22_FRONTEND_V2 -->
+### ADR-029 — Frontend Money Heist V2 en Next.js
+
+**Date :** 2026-09-12  
+**Statut :** ACCEPTED
+
+**Décision :**
+Le cockpit Frontend V2 utilise Next.js + React + TypeScript strict. Le backend Python/FastAPI reste responsable de la logique métier, du Risk Engine, de l'exécution, des secrets et de la sécurité.
+
+Le chart est abstrait derrière `TradingChartAdapter`. En l'absence de bibliothèque propriétaire TradingView légalement fournie dans le dépôt, la première implémentation utilise TradingView Lightweight Charts.
+
+La baseline ne fournit pas de WebSocket/SSE opérateur ni d'API HTTP sécurisée d'armement LIVE. La V2 utilise donc le polling centralisé et n'ajoute aucun bouton LIVE factice.
+
+**Conséquences :**
+- server state via TanStack Query, validation runtime via Zod ;
+- Zustand limité aux préférences UI ;
+- aucun secret dans le navigateur ou `NEXT_PUBLIC_*` ;
+- aucune décision ou statistique de production recalculée côté frontend ;
+- le Dashboard V1 reste présent pendant la migration ;
+- une évolution temps réel ou TradingView propriétaire reste possible derrière les adapters.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+### ADR-030 — Sidecar durable Frontend V2 pour Historical Replay
+
+**Date :** 2026-09-13  
+**Statut :** ACCEPTED
+
+Les entrées immuables et sorties déjà produites du Backtest Cockpit sont persistées sous `.money-heist/frontend-v2/`, surchargeable par `MONEY_HEIST_FRONTEND_V2_STORAGE_DIR`. Ce sidecar ne devient jamais un second moteur de backtest et ne recalcule ni Scanner, agents, Risk, fills ni métriques.
+

@@ -445,3 +445,18 @@ lorsque
 le mode IA du backtest utilise un fournisseur réel pour l’évaluation.
 
 <!-- BATCH20_REPLAY_END -->
+
+<!-- BATCH22_FRONTEND_V2 -->
+## Extension Batch 22 — Historical Replay visuel
+
+Frontend V2 fournit un workspace de replay sans créer de second moteur historique. Pour les campagnes lancées via l'endpoint V2, un sidecar borné conserve la requête immuable et agrège les `AgentTraceView` déjà émises pendant l'exécution. Après le run, le replay combine : candles du dataset original, traces agents/Risk, exports closed-trades, exports equity.
+
+Le frontend respecte donc l'ordre du Batch 16 et ne résout jamais lui-même l'intrabar, le STOP_FIRST, les gaps, les fees/slippage ou le lifecycle des positions. Les périodes DESIGN, VALIDATION et OOS restent séparées.
+
+Limitation V1 : le Dashboard Backtest historique reste en mémoire et `CampaignSummary` ne conserve pas le CSV brut ; un replay visuel détaillé n'est donc garanti que pour les campagnes démarrées via Frontend V2 pendant la vie du même processus. Cette limitation doit être supprimée par une future persistance durable des campagnes/datasets/traces, pas par une reconstruction côté navigateur.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+## Extension Batch 22.1 — Backtest Cockpit et replay durable
+
+Le cockpit expose explicitement split, Risk, IA, exécution et Walk-Forward. Un dataset validé est persisté une fois puis référencé par `dataset_id`. À la fin d'une campagne, Frontend V2 snapshotte résumé, traces et exports existants afin de restaurer le replay après redémarrage, sans réexécution du moteur historique.
+

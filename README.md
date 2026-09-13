@@ -1,103 +1,70 @@
-# Money Heist — Batch 01 Fondations
+# Money Heist
 
-Ce dépôt contient les fondations backend du projet Money Heist.
+Money Heist est une plateforme de trading crypto assistée par IA, organisée autour d’une crew d’agents spécialisés, d’un Risk Engine déterministe et de chemins séparés PAPER / SHADOW / LIVE / BACKTEST.
 
-Le Batch 01 implémente uniquement l'infrastructure nécessaire aux lots suivants :
-configuration typée, logs structurés, modèles métier de base, FastAPI, santé/readiness,
-SQLite, SQLAlchemy, Alembic et tests.
+## Architecture
 
-Aucun connecteur exchange, aucun agent IA, aucun Risk Engine et aucun ordre de trading
-ne sont implémentés dans ce lot.
+```text
+Market Data → Feature Engine → Scanner → Crew / Professor / Palermo
+→ TradeProposal → Risk Engine → Broker → Evaluation
+                                 ↓
+                         Frontend V2 Cockpit
+```
 
-## Prérequis
+Le backend Python/FastAPI reste l’autorité métier. Le frontend Next.js observe, configure uniquement les paramètres explicitement autorisés et rejoue les résultats historiques sans recalculer les décisions.
 
-- `uv` installé ;
-- Python 3.13 (uv peut l'installer automatiquement si nécessaire).
+## Backend
 
-## Installation
+Prérequis : Python 3.13 et `uv`.
 
 ```bash
 uv sync
-```
-
-Copier ensuite la configuration d'exemple :
-
-### macOS / Linux
-
-```bash
-cp .env.example .env
-```
-
-### Windows PowerShell
-
-```powershell
-Copy-Item .env.example .env
-```
-
-## Initialiser la base locale
-
-```bash
 uv run python scripts/bootstrap.py
+uv run --env-file .env python scripts/run_dev.py
 ```
 
-Le script applique les migrations Alembic et initialise le runtime système en mode PAPER.
-
-## Lancer l'API
-
-```bash
-uv run python scripts/run_dev.py
-```
-
-Par défaut : `http://127.0.0.1:8000`
-
-Endpoints disponibles :
-
-- `GET /health` : liveness de l'application ;
-- `GET /ready` : disponibilité de la base locale.
-
-## Tests
+Validation :
 
 ```bash
 uv run pytest
-```
-
-Avec couverture :
-
-```bash
-uv run pytest --cov=app --cov-report=term-missing
-```
-
-## Lint
-
-```bash
 uv run ruff check .
 uv run ruff format --check .
 ```
 
-## Sécurité du Batch 01
+API par défaut : `http://127.0.0.1:8000`.
 
-- `LIVE` est explicitement refusé par la configuration de ce batch ;
-- `.env` est ignoré par Git ;
-- aucun secret n'est présent dans le code ou les exemples ;
-- aucune API d'exchange n'existe encore ;
-- les logs sont structurés et n'incluent pas de configuration complète.
+## Frontend V2
 
-## Structure
-
-```text
-app/
-├── agents/          # frontière réservée aux futurs agents
-├── api/             # FastAPI et routes
-├── config/          # configuration typée
-├── domain/          # modèles métier indépendants des frameworks
-├── evaluation/      # frontière réservée
-├── intelligence/    # frontière réservée
-├── market/          # frontière réservée
-├── observability/   # logging/correlation IDs
-├── services/        # services applicatifs
-├── storage/         # SQLAlchemy / accès DB
-└── trading/         # frontière réservée
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-Voir `CHANGELOG_BATCH.md` pour le contenu exact et `docs/10_DECISIONS_ET_CHANGELOG.md`
-pour les décisions techniques enregistrées.
+Puis ouvrir `http://127.0.0.1:3000`.
+
+Le Backtest Cockpit V2.1 persiste ses datasets/campagnes/replays sous `.money-heist/frontend-v2/`. Le chemin peut être surchargé côté backend avec `MONEY_HEIST_FRONTEND_V2_STORAGE_DIR` dans `.env`.
+
+Validation :
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+Le Frontend V2 utilise Next.js, React, TypeScript strict, Tailwind, TanStack Query, Zod, Zustand pour le seul état UI global et Lightweight Charts derrière `TradingChartAdapter`.
+
+## Sécurité
+
+- aucune clé exchange/OpenAI dans le navigateur ;
+- aucun droit de retrait ;
+- Risk Engine non contournable ;
+- LIVE fail-closed et armement opérateur séparé ;
+- Historical Replay et LIVE_EVAL restent PAPER-only ;
+- aucune action critique fictive dans l’interface.
+
+## Documentation
+
+Références principales : `01_PROJECT_MASTER.md` à `11_BACKTESTING_ET_REPLAY_HISTORIQUE.md`, puis `12_FRONTEND_ET_INTERFACE.md` pour le cockpit V2. Le code intégré sur GitHub `main` prévaut lorsqu’une ancienne formulation documentaire est dépassée.

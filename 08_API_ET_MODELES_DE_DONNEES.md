@@ -557,3 +557,24 @@ Les contrats d’autorité utilisent des littéraux/flags fail-closed (`registry
 `risk_authority=False`, `live_authority=False`).
 
 <!-- BATCH20_API_END -->
+
+<!-- BATCH22_FRONTEND_V2 -->
+## Addendum Batch 22 — API Frontend V2
+
+Endpoints opérateur supplémentaires :
+
+```text
+GET  /api/frontend/v2/capabilities
+GET  /api/frontend/v2/market/candles
+GET  /api/frontend/v2/market/constraints
+POST /api/frontend/v2/backtests/runs
+GET  /api/frontend/v2/backtests/runs/{campaign_id}/replay
+```
+
+Le premier endpoint ne retourne aucune valeur secrète et indique explicitement que les contrôles LIVE HTTP ne sont pas exposés. Le endpoint market réutilise le provider public Kraken existant. Le lancement backtest délègue à `BacktestDashboardService`. Le replay V2 assemble le dataset de la requête, les `AgentTraceView` existantes, les exports closed-trades et equity déjà produits ; il ne réexécute aucune décision historique.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+## Addendum Batch 22.1 — API Backtest Cockpit
+
+L'API V2 ajoute une bibliothèque de datasets, le lancement par `dataset_id`, le listing/détail/progress/configuration persistants et le replay durable. Le CSV reste côté backend et n'est pas renvoyé au navigateur pour réutilisation.
+

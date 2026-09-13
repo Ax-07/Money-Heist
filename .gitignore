@@ -23,3 +23,16 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+/btc_candles
+<!-- BATCH22_FRONTEND_V2 -->
+# Frontend V2
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.env.local
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+# Frontend V2 durable runtime artifacts
+.money-heist/frontend-v2/
+

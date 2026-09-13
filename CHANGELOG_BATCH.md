@@ -163,3 +163,26 @@ existants
 restent indépendants et doivent toujours être satisfaits avant tout premier ordre réel.
 
 <!-- BATCH20_CLOSURE_END -->
+
+<!-- BATCH22_FRONTEND_V2 -->
+## Batch 22 — Frontend V2 / Trading Cockpit
+
+- ajout de `frontend/` Next.js/React/TypeScript strict ;
+- cockpit Dashboard/Trading/Backtests/Opportunités/Ordres/Positions/Historique/Agents/Evaluation ;
+- `TradingChartAdapter` + Lightweight Charts ;
+- Historical Replay et Decision Trace sans recalcul client ;
+- API `/api/frontend/v2` minimale, sans capacité LIVE ;
+- Settings fail-closed/read-only pour les paramètres sans API backend ;
+- tests backend/frontend et documentation `12_FRONTEND_ET_INTERFACE.md` ;
+- Dashboard V1 conservé pendant la migration.
+
+<!-- BATCH22_1_BACKTEST_COCKPIT -->
+## Batch 22.1 — Backtest Cockpit Completion
+
+- configuration complète du backtest depuis l'UI ;
+- édition DESIGN/VALIDATION/OOS alignée sur les bougies ;
+- Walk-Forward pilotable ;
+- bibliothèque de datasets persistés ;
+- persistance V2 des configurations, traces, résumés et exports de replay ;
+- aucun changement des frontières PAPER/LIVE ou du Risk Engine.
+
