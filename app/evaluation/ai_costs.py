@@ -3,7 +3,64 @@ from __future__ import annotations
 from collections import defaultdict
 from decimal import Decimal
 
-from .models import AICostMetrics, AIUsageEntry, Metric, OpportunityTrace, ZERO
+from .models import (
+    AICacheSliceMetrics,
+    AICostMetrics,
+    AIUsageEntry,
+    Metric,
+    OpportunityTrace,
+    ZERO,
+)
+
+
+def _cache_slice(items: tuple[AIUsageEntry, ...]) -> AICacheSliceMetrics:
+    input_tokens = sum(item.input_tokens for item in items)
+    cached_tokens = sum(item.cached_input_tokens for item in items)
+    cache_write_tokens = sum(item.cache_write_tokens for item in items)
+    output_tokens = sum(item.output_tokens for item in items)
+    normal_tokens = sum(item.normal_input_tokens for item in items)
+    actual_cost = sum((item.estimated_cost_eur for item in items), ZERO)
+
+    cache_read_ratio = (
+        Metric.available(Decimal(cached_tokens) / Decimal(input_tokens))
+        if input_tokens > 0
+        else Metric.unavailable("NO_AI_INPUT_TOKENS")
+    )
+
+    uncached_values = [item.estimated_cost_without_cache_eur for item in items]
+    if all(value is not None for value in uncached_values):
+        uncached = sum((value for value in uncached_values if value is not None), ZERO)
+        uncached_metric = Metric.available(uncached)
+        savings_metric = Metric.available(uncached - actual_cost)
+    else:
+        uncached_metric = Metric.unavailable("UNCACHED_COST_NOT_RECORDED")
+        savings_metric = Metric.unavailable("UNCACHED_COST_NOT_RECORDED")
+
+    return AICacheSliceMetrics(
+        request_count=len(items),
+        input_tokens=input_tokens,
+        normal_input_tokens=normal_tokens,
+        cached_input_tokens=cached_tokens,
+        cache_write_tokens=cache_write_tokens,
+        output_tokens=output_tokens,
+        cache_read_ratio=cache_read_ratio,
+        actual_cost_eur=actual_cost,
+        estimated_cost_without_cache_eur=uncached_metric,
+        net_cache_savings_eur=savings_metric,
+    )
+
+
+def _group_cache(
+    usage: tuple[AIUsageEntry, ...],
+    key,
+) -> dict[str, AICacheSliceMetrics]:
+    grouped: dict[str, list[AIUsageEntry]] = defaultdict(list)
+    for item in usage:
+        grouped[str(key(item))].append(item)
+    return {
+        name: _cache_slice(tuple(items))
+        for name, items in sorted(grouped.items())
+    }
 
 
 def calculate_ai_cost_metrics(
@@ -76,4 +133,14 @@ def calculate_ai_cost_metrics(
         average_cost_per_opportunity=average_per_opportunity,
         average_cost_per_risk_decision=average_per_risk,
         average_cost_per_executed_trade=average_per_trade,
+        cache=_cache_slice(usage),
+        cache_by_agent=AICostMetrics.freeze_cache(
+            _group_cache(usage, lambda item: item.agent_id)
+        ),
+        cache_by_model=AICostMetrics.freeze_cache(
+            _group_cache(usage, lambda item: item.model_id)
+        ),
+        cache_by_route=AICostMetrics.freeze_cache(
+            _group_cache(usage, lambda item: item.route_id)
+        ),
     )

@@ -548,10 +548,8 @@ def build_master_professor_shadow_gateway_request(
         "correlations, thresholds, "
         "orders, reservations, Risk decisions, registry changes, broker actions, or LIVE actions. "
         "The output is advisory only and always requires operator review. "
-        f"Echo analysis_id={analysis.analysis_id}, "
-        f"analysis_fingerprint_sha256={analysis.fingerprint_sha256}, "
-        "and current_policy_fingerprint_sha256="
-        f"{current_allocation_policy.fingerprint_sha256}."
+        "Echo analysis_id, analysis_fingerprint_sha256, and "
+        "current_policy_fingerprint_sha256 exactly from the supplied input payload."
     )
     return AIGatewayRequest(
         request_id=request_id,

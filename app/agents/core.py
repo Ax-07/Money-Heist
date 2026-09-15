@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from typing import Annotated, Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -76,19 +76,13 @@ def _indexed_final_output_model(
     if not allowed_source_keys:
         raise ValueError("FINALIZE atomic evidence catalogue must not be empty")
 
-    bounded_index = Annotated[
-        int,
-        Field(ge=0, le=len(allowed_source_keys) - 1),
-    ]
-    evidence_model = create_model(
-        f"{output_model.__name__}IndexedEvidenceV5",
-        __base__=_IndexedFinalEvidenceReference,
-        source_index=(bounded_index, ...),
-    )
+    # Keep the provider JSON Schema byte-for-byte stable across evidence catalogue
+    # sizes. The exact 0 <= source_index < len(allowed_source_keys) check remains
+    # fail-closed in _canonicalize_indexed_final_result below.
     return create_model(
         output_model.__name__,
         __base__=output_model,
-        evidence=(list[evidence_model], ...),
+        evidence=(list[_IndexedFinalEvidenceReference], ...),
     )
 
 
@@ -256,7 +250,7 @@ class TheProfessor(CoreAgent):
 
         # Keep historical Professor v4 behavior addressable, while production
         # v5 exposes only atomic leaf paths with explicit index->path mapping.
-        if self.prompt.version == "v5":
+        if self.prompt.version in {"v5", "v6"}:
             allowed_source_keys = tuple(
                 sorted(_grounded_json_leaf_paths(payload))
             )
@@ -289,7 +283,7 @@ class TheProfessor(CoreAgent):
         # Lightweight custom gateways used by older tests may return the
         # canonical model directly; the downstream grounding validator remains.
         if (
-            self.prompt.version == "v5"
+            self.prompt.version in {"v5", "v6"}
             and allowed_source_keys is not None
             and result is not None
             and result.output.__class__ is provider_output_model

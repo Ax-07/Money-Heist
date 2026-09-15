@@ -5,7 +5,12 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.routes.frontend_v2 import FrontendV2Store, router
+from app.api.routes.frontend_v2 import (
+    FrontendAIInput,
+    FrontendV2Store,
+    _dataset_upload_max_bytes,
+    router,
+)
 from app.dashboard.backtest import BacktestDashboardService, DatasetInput, DatasetPreview
 from app.domain.enums import SystemMode
 
@@ -100,3 +105,100 @@ def test_dataset_library_survives_store_recreation(tmp_path: Path) -> None:
     assert restored.symbol == "BTC/EUR"
     assert restored_preview is not None
     assert restored_preview.content_sha256 == "abc123"
+    dataset_dir = first._dataset_dir(preview.dataset_id)
+    assert (dataset_dir / "dataset.csv").read_text(encoding="utf-8") == dataset.csv_text
+    assert "csv_text" not in (dataset_dir / "input.json").read_text(encoding="utf-8")
+
+
+def test_openai_model_catalog_is_verified_usd_snapshot(tmp_path: Path) -> None:
+    with _client(tmp_path) as client:
+        response = client.get("/api/frontend/v2/ai/openai/models")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pricing_currency"] == "USD"
+    assert payload["pricing_snapshot_at"] == "2026-09-13"
+    models = {item["model_id"]: item for item in payload["models"]}
+    assert set(models) == {
+        "gpt-6-astra",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+    }
+    assert models["gpt-5.6-terra"]["input_per_million_usd"] == "2.00"
+    assert models["gpt-5.6-terra"]["cached_input_per_million_usd"] == "0.20"
+    assert models["gpt-5.6-terra"]["output_per_million_usd"] == "12.00"
+    assert models["gpt-5.6-sol"]["pricing_valid_until"] == "2026-11-21"
+
+
+def test_frontend_live_eval_derives_legacy_pricing_from_usd_catalog() -> None:
+    frontend = FrontendAIInput(
+        mode="LIVE_EVAL",
+        hard_budget_usd="5",
+        model_id="gpt-5.6-luna",
+        reasoning_effort="low",
+    )
+    legacy = frontend.to_legacy_ai_input()
+    assert str(legacy.hard_budget_eur) == "5"
+    assert str(legacy.input_per_million_eur) == "0.20"
+    assert str(legacy.cached_input_per_million_eur) == "0.02"
+    assert str(legacy.output_per_million_eur) == "1.20"
+
+
+def test_frontend_live_eval_rejects_unknown_or_unsupported_model_configuration() -> None:
+    try:
+        FrontendAIInput(
+            mode="LIVE_EVAL",
+            hard_budget_usd="5",
+            model_id="not-a-model",
+            reasoning_effort="low",
+        )
+    except ValueError as exc:
+        assert "verified OpenAI pricing catalog" in str(exc)
+    else:
+        raise AssertionError("unknown model must fail closed")
+
+    try:
+        FrontendAIInput(
+            mode="LIVE_EVAL",
+            hard_budget_usd="5",
+            model_id="gpt-6-astra",
+            reasoning_effort="none",
+        )
+    except ValueError as exc:
+        assert "unsupported" in str(exc)
+    else:
+        raise AssertionError("unsupported reasoning effort must fail closed")
+
+
+def test_dataset_upload_default_limit_allows_large_one_minute_csv(monkeypatch) -> None:
+    monkeypatch.delenv("MONEY_HEIST_DATASET_UPLOAD_MAX_MB", raising=False)
+    limit = _dataset_upload_max_bytes()
+    assert limit is not None
+    assert limit >= 50 * 1024 * 1024
+
+
+def test_raw_dataset_upload_persists_without_json_wrapping(tmp_path: Path) -> None:
+    rows = ["timestamp,open,high,low,close,volume"]
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    for index in range(120):
+        instant = datetime.fromtimestamp(base.timestamp() + index * 60, tz=UTC)
+        rows.append(f"{instant.isoformat().replace('+00:00', 'Z')},100,101,99,100.5,1")
+    csv_text = "\n".join(rows) + "\n"
+
+    with _client(tmp_path) as client:
+        response = client.post(
+            "/api/frontend/v2/backtests/datasets/upload",
+            params={
+                "symbol": "BTC/USDC",
+                "timeframe": "1m",
+                "source": "unit-test:raw-upload.csv",
+            },
+            content=csv_text.encode("utf-8"),
+            headers={"content-type": "text/csv"},
+        )
+    assert response.status_code == 201, response.text
+    dataset_id = response.json()["dataset_id"]
+    store = FrontendV2Store(storage_dir=tmp_path)
+    restored = store.load_dataset(dataset_id)
+    assert restored is not None
+    assert restored.csv_text == csv_text

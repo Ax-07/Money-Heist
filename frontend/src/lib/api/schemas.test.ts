@@ -4,6 +4,7 @@ import {
   dashboardSnapshotSchema,
   frontendCapabilitiesSchema,
   marketCandlesSchema,
+  openAiModelCatalogSchema,
   riskDecisionSchema,
   type DashboardSnapshot,
   type MarketCandles,
@@ -88,5 +89,34 @@ describe("critical API contracts", () => {
     expectTypeOf<MarketCandles["candles"][number]["open"]>().toEqualTypeOf<string>();
     expectTypeOf<DashboardSnapshot["events"]>().toBeArray();
     expectTypeOf<Awaited<ReturnType<typeof marketCandlesQuery>>>().toEqualTypeOf<MarketCandles>();
+  });
+
+  it("parses the verified OpenAI USD pricing catalog", () => {
+    const catalog = openAiModelCatalogSchema.parse({
+      schema_version: "money-heist.openai-model-catalog.v1",
+      provider: "openai",
+      pricing_currency: "USD",
+      pricing_snapshot_at: "2026-09-13",
+      models: [{
+        model_id: "gpt-5.6-terra",
+        display_name: "GPT-5.6 Terra",
+        input_per_million_usd: "2.00",
+        cached_input_per_million_usd: "0.20",
+        output_per_million_usd: "12.00",
+        reasoning_efforts: ["none", "low", "medium", "high", "xhigh", "max"],
+        default_reasoning_effort: "medium",
+        recommended: true,
+        pricing_currency: "USD",
+        pricing_tier: "STANDARD",
+        pricing_source: "OPENAI_OFFICIAL",
+        pricing_snapshot_at: "2026-09-13",
+        pricing_valid_until: null,
+        standard_context_max_tokens: 272000,
+        source_url: "https://openai.com/api/pricing/",
+        notes: [],
+      }],
+    });
+    expect(catalog.models[0]?.input_per_million_usd).toBe("2.00");
+    expect(catalog.models[0]?.pricing_currency).toBe("USD");
   });
 });

@@ -9,11 +9,12 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.dashboard.backtest import (
     AgentTraceView,
@@ -68,9 +69,173 @@ _TIMEFRAME_SECONDS = {
 _TERMINAL_CAMPAIGN_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
+_DATASET_UPLOAD_DEFAULT_MAX_MB = 256
+
+
+def _dataset_upload_max_bytes() -> int | None:
+    raw = os.getenv(
+        "MONEY_HEIST_DATASET_UPLOAD_MAX_MB",
+        str(_DATASET_UPLOAD_DEFAULT_MAX_MB),
+    ).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = _DATASET_UPLOAD_DEFAULT_MAX_MB
+    if value <= 0:
+        return None
+    return value * 1024 * 1024
+
 
 class FrozenModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+ReasoningEffort = Literal["none", "low", "medium", "high", "xhigh", "max"]
+
+
+class OpenAIModelCatalogEntry(FrozenModel):
+    model_id: str
+    display_name: str
+    input_per_million_usd: str
+    cached_input_per_million_usd: str
+    output_per_million_usd: str
+    reasoning_efforts: tuple[ReasoningEffort, ...]
+    default_reasoning_effort: ReasoningEffort
+    recommended: bool = False
+    pricing_currency: Literal["USD"] = "USD"
+    pricing_tier: Literal["STANDARD"] = "STANDARD"
+    pricing_source: Literal["OPENAI_OFFICIAL"] = "OPENAI_OFFICIAL"
+    pricing_snapshot_at: str = "2026-09-13"
+    pricing_valid_until: str | None = None
+    standard_context_max_tokens: int = 272_000
+    source_url: str = "https://openai.com/api/pricing/"
+    notes: tuple[str, ...] = ()
+
+
+_OPENAI_MODEL_CATALOG = (
+    OpenAIModelCatalogEntry(
+        model_id="gpt-6-astra",
+        display_name="GPT-6 Astra",
+        input_per_million_usd="10.00",
+        cached_input_per_million_usd="1.00",
+        output_per_million_usd="50.00",
+        reasoning_efforts=("low", "medium", "high", "xhigh", "max"),
+        default_reasoning_effort="medium",
+        notes=("Tarification Standard pour contexte inférieur à 272K tokens.",),
+    ),
+    OpenAIModelCatalogEntry(
+        model_id="gpt-5.6-sol",
+        display_name="GPT-5.6 Sol",
+        input_per_million_usd="4.00",
+        cached_input_per_million_usd="0.40",
+        output_per_million_usd="20.00",
+        reasoning_efforts=("none", "low", "medium", "high", "xhigh", "max"),
+        default_reasoning_effort="medium",
+        pricing_valid_until="2026-11-21",
+        notes=(
+            "Tarification promotionnelle OpenAI disponible au moins jusqu'au 21 novembre 2026.",
+            "Tarification Standard pour contexte inférieur à 272K tokens.",
+        ),
+    ),
+    OpenAIModelCatalogEntry(
+        model_id="gpt-5.6-terra",
+        display_name="GPT-5.6 Terra",
+        input_per_million_usd="2.00",
+        cached_input_per_million_usd="0.20",
+        output_per_million_usd="12.00",
+        reasoning_efforts=("none", "low", "medium", "high", "xhigh", "max"),
+        default_reasoning_effort="medium",
+        recommended=True,
+        notes=("Tarification Standard pour contexte inférieur à 272K tokens.",),
+    ),
+    OpenAIModelCatalogEntry(
+        model_id="gpt-5.6-luna",
+        display_name="GPT-5.6 Luna",
+        input_per_million_usd="0.20",
+        cached_input_per_million_usd="0.02",
+        output_per_million_usd="1.20",
+        reasoning_efforts=("none", "low", "medium", "high", "xhigh", "max"),
+        default_reasoning_effort="low",
+        notes=("Tarification Standard pour contexte inférieur à 272K tokens.",),
+    ),
+)
+_OPENAI_MODEL_BY_ID = {entry.model_id: entry for entry in _OPENAI_MODEL_CATALOG}
+
+
+class OpenAIModelCatalogView(FrozenModel):
+    schema_version: str = "money-heist.openai-model-catalog.v1"
+    provider: Literal["openai"] = "openai"
+    pricing_currency: Literal["USD"] = "USD"
+    pricing_snapshot_at: str = "2026-09-13"
+    models: tuple[OpenAIModelCatalogEntry, ...] = _OPENAI_MODEL_CATALOG
+
+
+class FrontendAIInput(FrozenModel):
+    mode: Literal["MOCK", "CACHED", "LIVE_EVAL"] = "MOCK"
+    hard_budget_usd: Decimal = Decimal("1")
+    model_id: str = "mock-backtest-v1"
+    reasoning_effort: ReasoningEffort = "low"
+    mock_agent_coverage: bool = False
+
+    @model_validator(mode="after")
+    def validate_frontend_ai(self) -> FrontendAIInput:
+        if not self.hard_budget_usd.is_finite() or self.hard_budget_usd < 0:
+            raise ValueError("hard_budget_usd must be finite and >= 0")
+        if self.mode == "MOCK":
+            if not self.model_id.startswith("mock-"):
+                raise ValueError("MOCK mode requires a mock model_id")
+            return self
+        if self.mock_agent_coverage:
+            raise ValueError("mock_agent_coverage is available only in MOCK mode")
+        model = _OPENAI_MODEL_BY_ID.get(self.model_id)
+        if model is None:
+            raise ValueError("model_id is not in the verified OpenAI pricing catalog")
+        if self.reasoning_effort not in model.reasoning_efforts:
+            raise ValueError(
+                f"reasoning_effort {self.reasoning_effort!r} is unsupported by {self.model_id}"
+            )
+        return self
+
+    def to_legacy_ai_input(self) -> AIInput:
+        # Compatibility bridge only: the core gateway still exposes historical *_eur
+        # field names. Frontend V2 values are USD and no FX conversion is performed.
+        if self.mode == "MOCK":
+            return AIInput(
+                mode=self.mode,
+                hard_budget_eur=self.hard_budget_usd,
+                model_id=self.model_id,
+                reasoning_effort=self.reasoning_effort,
+                input_per_million_eur=Decimal("0"),
+                output_per_million_eur=Decimal("0"),
+                cached_input_per_million_eur=None,
+                mock_agent_coverage=self.mock_agent_coverage,
+            )
+        model = _OPENAI_MODEL_BY_ID[self.model_id]
+        return AIInput(
+            mode=self.mode,
+            hard_budget_eur=self.hard_budget_usd,
+            model_id=self.model_id,
+            reasoning_effort=self.reasoning_effort,
+            input_per_million_eur=Decimal(model.input_per_million_usd),
+            output_per_million_eur=Decimal(model.output_per_million_usd),
+            cached_input_per_million_eur=Decimal(model.cached_input_per_million_usd),
+            mock_agent_coverage=False,
+        )
+
+
+class CampaignAIConfigurationView(FrozenModel):
+    mode: str
+    hard_budget: str
+    model_id: str
+    reasoning_effort: str
+    input_per_million: str
+    cached_input_per_million: str | None
+    output_per_million: str
+    currency: Literal["USD", "EUR"]
+    pricing_source: str
+    pricing_snapshot_at: str | None = None
+    pricing_tier: str | None = None
+    mock_agent_coverage: bool
 
 
 class FrontendCapabilities(FrozenModel):
@@ -175,7 +340,7 @@ class StoredCampaignRequest(FrozenModel):
     split: SplitInput
     risk: RiskInput
     market: MarketConstraintsInput
-    ai: AIInput = Field(default_factory=AIInput)
+    ai: FrontendAIInput = Field(default_factory=FrontendAIInput)
     execution: ExecutionInput = Field(default_factory=ExecutionInput)
     walk_forward: WalkForwardInput = Field(default_factory=WalkForwardInput)
     derivatives: HistoricalDerivativesInput | None = None
@@ -188,7 +353,7 @@ class StoredCampaignRequest(FrozenModel):
             split=self.split,
             risk=self.risk,
             market=self.market,
-            ai=self.ai,
+            ai=self.ai.to_legacy_ai_input(),
             execution=self.execution,
             walk_forward=self.walk_forward,
             derivatives=self.derivatives,
@@ -232,7 +397,7 @@ class CampaignConfigurationView(FrozenModel):
     split: SplitInput
     risk: RiskInput
     market: MarketConstraintsInput
-    ai: AIInput
+    ai: CampaignAIConfigurationView
     execution: ExecutionInput
     walk_forward: WalkForwardInput
     system_id: str
@@ -242,6 +407,7 @@ class CampaignConfigurationView(FrozenModel):
 class _FrontendCampaignRecord:
     request: CampaignRequest
     dataset_id: str
+    frontend_ai: FrontendAIInput | None = None
     traces: dict[int, AgentTraceView] = field(default_factory=dict)
     watcher: asyncio.Task[None] | None = None
     persist_signature: tuple[Any, ...] | None = None
@@ -286,6 +452,13 @@ class FrontendV2Store:
         os.replace(temporary, path)
 
     @staticmethod
+    def _atomic_text(path: Path, payload: str) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.tmp")
+        temporary.write_text(payload, encoding="utf-8")
+        os.replace(temporary, path)
+
+    @staticmethod
     def _read_json(path: Path) -> Any | None:
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -310,13 +483,22 @@ class FrontendV2Store:
     def save_dataset(self, dataset: DatasetInput, preview: DatasetPreview) -> None:
         directory = self._dataset_dir(preview.dataset_id)
         directory.mkdir(parents=True, exist_ok=True)
-        self._atomic_json(directory / "input.json", dataset.model_dump(mode="json"))
+        payload = dataset.model_dump(mode="json")
+        csv_text = str(payload.pop("csv_text"))
+        self._atomic_text(directory / "dataset.csv", csv_text)
+        self._atomic_json(directory / "input.json", payload)
         self._atomic_json(directory / "preview.json", preview.model_dump(mode="json"))
 
     def load_dataset(self, dataset_id: str) -> DatasetInput | None:
-        payload = self._read_json(self._dataset_dir(dataset_id) / "input.json")
+        directory = self._dataset_dir(dataset_id)
+        payload = self._read_json(directory / "input.json")
         if payload is None:
             return None
+        if "csv_text" not in payload:
+            try:
+                payload["csv_text"] = (directory / "dataset.csv").read_text(encoding="utf-8")
+            except OSError:
+                return None
         try:
             return DatasetInput.model_validate(payload)
         except ValueError:
@@ -353,8 +535,13 @@ class FrontendV2Store:
         request: CampaignRequest,
         *,
         dataset_id: str,
+        frontend_ai: FrontendAIInput | None = None,
     ) -> _FrontendCampaignRecord:
-        record = _FrontendCampaignRecord(request=request, dataset_id=dataset_id)
+        record = _FrontendCampaignRecord(
+            request=request,
+            dataset_id=dataset_id,
+            frontend_ai=frontend_ai,
+        )
         self._records[campaign_id] = record
         if campaign_id in self._order:
             self._order.remove(campaign_id)
@@ -368,6 +555,9 @@ class FrontendV2Store:
             {
                 "dataset_id": dataset_id,
                 "config": request_payload,
+                "frontend_ai": (
+                    None if frontend_ai is None else frontend_ai.model_dump(mode="json")
+                ),
             },
         )
         self._trim_memory()
@@ -389,6 +579,12 @@ class FrontendV2Store:
             return None
         try:
             dataset_id = str(payload["dataset_id"])
+            frontend_ai_payload = payload.get("frontend_ai")
+            frontend_ai = (
+                None
+                if frontend_ai_payload is None
+                else FrontendAIInput.model_validate(frontend_ai_payload)
+            )
             if "request" in payload:  # Batch 22 compatibility
                 request = CampaignRequest.model_validate(payload["request"])
             else:
@@ -399,7 +595,11 @@ class FrontendV2Store:
                 request = CampaignRequest(dataset=dataset, **config)
         except (KeyError, TypeError, ValueError):
             return None
-        record = _FrontendCampaignRecord(request=request, dataset_id=dataset_id)
+        record = _FrontendCampaignRecord(
+            request=request,
+            dataset_id=dataset_id,
+            frontend_ai=frontend_ai,
+        )
         traces_payload = self._read_json(self._campaign_dir(campaign_id) / "traces.json")
         if isinstance(traces_payload, list):
             for item in traces_payload:
@@ -540,6 +740,56 @@ def _runtime_mode(value: Any) -> str:
     return str(getattr(value, "value", value))
 
 
+def _campaign_ai_configuration(record: _FrontendCampaignRecord) -> CampaignAIConfigurationView:
+    if record.frontend_ai is not None:
+        ai = record.frontend_ai
+        if ai.mode == "MOCK":
+            return CampaignAIConfigurationView(
+                mode=ai.mode,
+                hard_budget=str(ai.hard_budget_usd),
+                model_id=ai.model_id,
+                reasoning_effort=ai.reasoning_effort,
+                input_per_million="0",
+                cached_input_per_million=None,
+                output_per_million="0",
+                currency="USD",
+                pricing_source="MOCK",
+                mock_agent_coverage=ai.mock_agent_coverage,
+            )
+        model = _OPENAI_MODEL_BY_ID[ai.model_id]
+        return CampaignAIConfigurationView(
+            mode=ai.mode,
+            hard_budget=str(ai.hard_budget_usd),
+            model_id=ai.model_id,
+            reasoning_effort=ai.reasoning_effort,
+            input_per_million=model.input_per_million_usd,
+            cached_input_per_million=model.cached_input_per_million_usd,
+            output_per_million=model.output_per_million_usd,
+            currency="USD",
+            pricing_source=model.pricing_source,
+            pricing_snapshot_at=model.pricing_snapshot_at,
+            pricing_tier=model.pricing_tier,
+            mock_agent_coverage=False,
+        )
+    ai = record.request.ai
+    return CampaignAIConfigurationView(
+        mode=str(getattr(ai.mode, "value", ai.mode)),
+        hard_budget=str(ai.hard_budget_eur),
+        model_id=ai.model_id,
+        reasoning_effort=ai.reasoning_effort,
+        input_per_million=str(ai.input_per_million_eur),
+        cached_input_per_million=(
+            None
+            if ai.cached_input_per_million_eur is None
+            else str(ai.cached_input_per_million_eur)
+        ),
+        output_per_million=str(ai.output_per_million_eur),
+        currency="EUR",
+        pricing_source="LEGACY_MANUAL",
+        mock_agent_coverage=ai.mock_agent_coverage,
+    )
+
+
 @router.get("/capabilities", response_model=FrontendCapabilities)
 def frontend_capabilities(request: Request) -> FrontendCapabilities:
     settings = request.app.state.settings
@@ -553,6 +803,11 @@ def frontend_capabilities(request: Request) -> FrontendCapabilities:
         live_system_id=settings.live_system_id,
         live_timeframes=settings.live_timeframe_values,
     )
+
+
+@router.get("/ai/openai/models", response_model=OpenAIModelCatalogView)
+def openai_model_catalog() -> OpenAIModelCatalogView:
+    return OpenAIModelCatalogView()
 
 
 def _kraken_market_provider(timeframe: str) -> KrakenPublicMarketDataProvider:
@@ -653,6 +908,62 @@ def get_backtest_dataset(
     return preview
 
 
+@router.post("/backtests/datasets/upload", response_model=DatasetPreview, status_code=201)
+async def upload_backtest_dataset(
+    request: Request,
+    service: BacktestService,
+    store: FrontendStore,
+    symbol: str = Query(min_length=1),
+    timeframe: str = Query(min_length=1),
+    source: str = Query(default="frontend_v2:upload.csv", min_length=1),
+    candle_interval_seconds: int | None = Query(default=None, ge=1),
+) -> DatasetPreview:
+    max_bytes = _dataset_upload_max_bytes()
+    content_length = request.headers.get("content-length")
+    if max_bytes is not None and content_length is not None:
+        with contextlib.suppress(ValueError):
+            if int(content_length) > max_bytes:
+                raise HTTPException(
+                    status_code=413,
+                    detail=(
+                        f"dataset upload exceeds configured limit ({max_bytes // 1024 // 1024} MiB)"
+                    ),
+                )
+
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if max_bytes is not None and len(raw) > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"dataset upload exceeds configured limit ({max_bytes // 1024 // 1024} MiB)"
+                ),
+            )
+    try:
+        csv_text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=422, detail="dataset CSV must be UTF-8") from exc
+    if not csv_text.strip():
+        raise HTTPException(status_code=422, detail="dataset CSV is empty")
+
+    payload = DatasetInput(
+        csv_text=csv_text,
+        symbol=symbol,
+        timeframe=timeframe,
+        source=source,
+        candle_interval_seconds=candle_interval_seconds,
+    )
+    try:
+        preview = service.preview_dataset(payload)
+    except (BacktestDashboardError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not preview.is_valid:
+        raise HTTPException(status_code=422, detail="dataset preview is not valid")
+    store.save_dataset(payload, preview)
+    return preview
+
+
 @router.post("/backtests/datasets", response_model=DatasetPreview, status_code=201)
 def save_backtest_dataset(
     payload: DatasetInput,
@@ -673,6 +984,8 @@ async def _launch_campaign(
     payload: CampaignRequest,
     service: BacktestDashboardService,
     store: FrontendV2Store,
+    *,
+    frontend_ai: FrontendAIInput | None = None,
 ) -> CampaignProgressView:
     try:
         preview = service.preview_dataset(payload.dataset)
@@ -686,6 +999,7 @@ async def _launch_campaign(
         progress.campaign_id,
         payload,
         dataset_id=preview.dataset_id,
+        frontend_ai=frontend_ai,
     )
     store.persist_progress(progress)
     record.watcher = asyncio.create_task(
@@ -717,7 +1031,12 @@ async def start_backtest_from_dataset(
     dataset = store.load_dataset(payload.dataset_id)
     if dataset is None:
         raise HTTPException(status_code=404, detail="Unknown persisted dataset_id")
-    return await _launch_campaign(payload.to_campaign_request(dataset), service, store)
+    return await _launch_campaign(
+        payload.to_campaign_request(dataset),
+        service,
+        store,
+        frontend_ai=payload.ai,
+    )
 
 
 @router.get("/backtests/runs", response_model=tuple[CampaignSummary, ...])
@@ -785,7 +1104,7 @@ def get_backtest_configuration(
         split=record.request.split,
         risk=record.request.risk,
         market=record.request.market,
-        ai=record.request.ai,
+        ai=_campaign_ai_configuration(record),
         execution=record.request.execution,
         walk_forward=record.request.walk_forward,
         system_id=record.request.system_id,

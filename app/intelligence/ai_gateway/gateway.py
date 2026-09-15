@@ -22,8 +22,17 @@ from .models import (
     ProviderRequest,
     TokenUsage,
 )
-from .pricing import calculate_cost_eur, estimate_max_request_cost_eur
-from .routing import ModelRoute, ModelRouter
+from .pricing import (
+    calculate_cost_eur,
+    calculate_uncached_cost_eur,
+    estimate_max_request_cost_eur,
+)
+from .prompt_cache import (
+    build_cacheable_developer_prefix,
+    schema_fingerprint,
+    stable_prefix_fingerprint,
+)
+from .routing import ModelRoute, ModelRouter, PromptCacheMode
 from .strict_schema import build_strict_json_schema
 from .usage import AIUsageRecorder, InMemoryAIUsageRecorder
 
@@ -59,15 +68,24 @@ class AIGateway(Generic[StructuredT]):
     ) -> AIGatewayResult[StructuredT]:
         schema_name = self._schema_name(output_model)
         json_schema = build_strict_json_schema(output_model)
+        schema_sha256 = schema_fingerprint(json_schema)
         last_error: Exception | None = None
 
         for route in self._router.route_chain(request.model_route):
             max_output_tokens = request.max_output_tokens or route.max_output_tokens
+            cacheable_prefix, prefix_sha256 = self._cache_transport(
+                route=route,
+                request=request,
+                schema_name=schema_name,
+                schema_sha256=schema_sha256,
+            )
             reservation_cost = estimate_max_request_cost_eur(
                 input_text=request.input_text,
                 instructions=request.instructions,
                 max_output_tokens=max_output_tokens,
                 pricing=route.pricing,
+                json_schema=json_schema,
+                cacheable_developer_prefix=cacheable_prefix,
             )
             if not self._budget.can_reserve(reservation_cost):
                 last_error = BudgetExceededError(
@@ -82,14 +100,15 @@ class AIGateway(Generic[StructuredT]):
                     output_model=output_model,
                     schema_name=schema_name,
                     json_schema=json_schema,
+                    schema_sha256=schema_sha256,
+                    cacheable_prefix=cacheable_prefix,
+                    prefix_sha256=prefix_sha256,
                     max_output_tokens=max_output_tokens,
                     reservation_cost=reservation_cost,
                 )
             except BudgetExceededError as exc:
                 snapshot = self._budget.snapshot()
                 if snapshot.spent_eur > snapshot.hard_limit_eur:
-                    # A provider call has already been charged above the hard limit.
-                    # Never route/fallback into a second paid call.
                     raise
                 last_error = exc
                 continue
@@ -106,6 +125,9 @@ class AIGateway(Generic[StructuredT]):
         output_model: type[StructuredT],
         schema_name: str,
         json_schema: dict,
+        schema_sha256: str,
+        cacheable_prefix: str | None,
+        prefix_sha256: str | None,
         max_output_tokens: int,
         reservation_cost,
     ) -> AIGatewayResult[StructuredT]:
@@ -114,6 +136,7 @@ class AIGateway(Generic[StructuredT]):
             raise AIConfigurationError(f"No AI client registered for provider {route.provider!r}")
 
         request_usage_records: list[AIUsageRecord] = []
+        cache_mode = route.prompt_cache_policy.mode.value
         for attempt in range(1, self._max_attempts + 1):
             reservation_id = self._budget.reserve(reservation_cost)
             provider_request = ProviderRequest(
@@ -123,17 +146,32 @@ class AIGateway(Generic[StructuredT]):
                 model_id=route.model_id,
                 input_text=request.input_text,
                 instructions=request.instructions,
+                cacheable_developer_prefix=cacheable_prefix,
                 schema_name=schema_name,
                 json_schema=json_schema,
+                schema_sha256=schema_sha256,
                 max_output_tokens=max_output_tokens,
                 timeout_seconds=request.timeout_seconds or route.timeout_seconds,
                 reasoning_effort=route.reasoning_effort,
+                prompt_cache_mode=cache_mode,
+                prompt_cache_ttl=route.prompt_cache_policy.ttl,
+                prompt_cache_key=route.prompt_cache_policy.prompt_cache_key,
+                prompt_render_version=request.prompt_render_version,
+                stable_prefix_sha256=prefix_sha256,
                 metadata={
                     **request.metadata,
                     "system_id": request.system_id,
                     "agent_id": request.agent_id,
                     "prompt_version": request.prompt_version,
+                    "prompt_render_version": request.prompt_render_version,
                     "route_id": route.route_id,
+                    "prompt_cache_mode": cache_mode,
+                    "schema_sha256": schema_sha256,
+                    **(
+                        {"stable_prefix_sha256": prefix_sha256}
+                        if prefix_sha256 is not None
+                        else {}
+                    ),
                 },
             )
 
@@ -143,9 +181,11 @@ class AIGateway(Generic[StructuredT]):
                 incomplete_usage = TokenUsage(
                     input_tokens=exc.input_tokens,
                     cached_input_tokens=exc.cached_input_tokens,
+                    cache_write_tokens=exc.cache_write_tokens,
                     output_tokens=exc.output_tokens,
                 )
                 actual_cost = calculate_cost_eur(incomplete_usage, route.pricing)
+                uncached_cost = calculate_uncached_cost_eur(incomplete_usage, route.pricing)
 
                 settle_error: BudgetExceededError | None = None
                 try:
@@ -153,18 +193,18 @@ class AIGateway(Generic[StructuredT]):
                 except BudgetExceededError as budget_exc:
                     settle_error = budget_exc
 
-                usage_record = AIUsageRecord(
-                    request_id=request.request_id,
-                    system_id=request.system_id,
-                    agent_id=request.agent_id,
-                    route_id=route.route_id,
+                usage_record = self._usage_record(
+                    request=request,
+                    route=route,
                     model_id=exc.model_id,
-                    input_tokens=incomplete_usage.input_tokens,
-                    cached_input_tokens=incomplete_usage.cached_input_tokens,
-                    output_tokens=incomplete_usage.output_tokens,
-                    estimated_cost=actual_cost,
+                    usage=incomplete_usage,
+                    actual_cost=actual_cost,
+                    uncached_cost=uncached_cost,
                     latency_ms=exc.latency_ms,
                     attempt=attempt,
+                    cache_mode=cache_mode,
+                    prefix_sha256=prefix_sha256,
+                    prompt_cache_diagnostics=exc.prompt_cache_diagnostics,
                 )
                 await self._usage_recorder.record(usage_record)
 
@@ -182,19 +222,20 @@ class AIGateway(Generic[StructuredT]):
                 raise
 
             actual_cost = calculate_cost_eur(provider_response.usage, route.pricing)
+            uncached_cost = calculate_uncached_cost_eur(provider_response.usage, route.pricing)
             self._budget.settle(reservation_id, actual_cost)
-            usage_record = AIUsageRecord(
-                request_id=request.request_id,
-                system_id=request.system_id,
-                agent_id=request.agent_id,
-                route_id=route.route_id,
+            usage_record = self._usage_record(
+                request=request,
+                route=route,
                 model_id=provider_response.model_id,
-                input_tokens=provider_response.usage.input_tokens,
-                cached_input_tokens=provider_response.usage.cached_input_tokens,
-                output_tokens=provider_response.usage.output_tokens,
-                estimated_cost=actual_cost,
+                usage=provider_response.usage,
+                actual_cost=actual_cost,
+                uncached_cost=uncached_cost,
                 latency_ms=provider_response.latency_ms,
                 attempt=attempt,
+                cache_mode=cache_mode,
+                prefix_sha256=prefix_sha256,
+                prompt_cache_diagnostics=provider_response.prompt_cache_diagnostics,
             )
             await self._usage_recorder.record(usage_record)
             request_usage_records.append(usage_record)
@@ -221,6 +262,61 @@ class AIGateway(Generic[StructuredT]):
             )
 
         raise RuntimeError("Unreachable AI gateway state")
+
+    @staticmethod
+    def _usage_record(
+        *,
+        request: AIGatewayRequest,
+        route: ModelRoute,
+        model_id: str,
+        usage: TokenUsage,
+        actual_cost,
+        uncached_cost,
+        latency_ms: int,
+        attempt: int,
+        cache_mode: str,
+        prefix_sha256: str | None,
+        prompt_cache_diagnostics: dict | None,
+    ) -> AIUsageRecord:
+        return AIUsageRecord(
+            request_id=request.request_id,
+            system_id=request.system_id,
+            agent_id=request.agent_id,
+            route_id=route.route_id,
+            model_id=model_id,
+            input_tokens=usage.input_tokens,
+            cached_input_tokens=usage.cached_input_tokens,
+            cache_write_tokens=usage.cache_write_tokens,
+            output_tokens=usage.output_tokens,
+            estimated_cost=actual_cost,
+            estimated_cost_without_cache=uncached_cost,
+            latency_ms=latency_ms,
+            attempt=attempt,
+            prompt_cache_mode=cache_mode,
+            prompt_render_version=request.prompt_render_version,
+            stable_prefix_sha256=prefix_sha256,
+            prompt_cache_diagnostics=prompt_cache_diagnostics,
+        )
+
+    @staticmethod
+    def _cache_transport(
+        *,
+        route: ModelRoute,
+        request: AIGatewayRequest,
+        schema_name: str,
+        schema_sha256: str,
+    ) -> tuple[str | None, str | None]:
+        if route.prompt_cache_policy.mode is not PromptCacheMode.OPENAI_EXPLICIT:
+            return None, None
+        prefix = build_cacheable_developer_prefix(
+            agent_id=request.agent_id,
+            prompt_version=request.prompt_version,
+            prompt_render_version=request.prompt_render_version,
+            instructions=request.instructions,
+            schema_name=schema_name,
+            schema_sha256=schema_sha256,
+        )
+        return prefix, stable_prefix_fingerprint(prefix)
 
     async def _backoff(self, attempt: int) -> None:
         if self._retry_backoff_seconds == 0:

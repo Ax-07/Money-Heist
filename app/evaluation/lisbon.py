@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from .models import (
+    AICacheSliceMetrics,
     AgentMetrics,
     LisbonEvaluationReport,
     LisbonRecommendation,
@@ -40,13 +41,9 @@ def self_funding_ratio(
 
 
 class DeterministicLisbonReporter:
-    """Read-only economics reporter.
+    """Read-only economics reporter; it owns no Risk/budget/broker authority."""
 
-    It deliberately receives metrics only. It has no RiskEngine, budget controller,
-    broker, registry mutation API, or agent-state mutation capability.
-    """
-
-    report_version = "batch10.lisbon.v1"
+    report_version = "batch10.lisbon.v2-prompt-cache"
 
     def build(
         self,
@@ -54,6 +51,7 @@ class DeterministicLisbonReporter:
         trading: TradingMetrics,
         total_ai_cost_eur: Decimal,
         agents: tuple[AgentMetrics, ...],
+        cache_metrics: AICacheSliceMetrics | None = None,
     ) -> LisbonEvaluationReport:
         trading_net, basis = _self_funding_basis(trading)
         ratio = self.self_funding_ratio_for(trading_net, total_ai_cost_eur, basis=basis)
@@ -70,6 +68,44 @@ class DeterministicLisbonReporter:
             f"Base SelfFundingRatio: {basis}",
         ]
         recommendations: list[LisbonRecommendation] = []
+
+        if cache_metrics is not None:
+            observations.extend(
+                [
+                    f"AI input normal tokens: {cache_metrics.normal_input_tokens}",
+                    f"AI cache write tokens: {cache_metrics.cache_write_tokens}",
+                    f"AI cache read tokens: {cache_metrics.cached_input_tokens}",
+                ]
+            )
+            if cache_metrics.cache_read_ratio.value is not None:
+                observations.append(
+                    "AI cache read ratio: "
+                    f"{cache_metrics.cache_read_ratio.value}"
+                )
+            savings = cache_metrics.net_cache_savings_eur
+            if savings.value is not None:
+                observations.append(f"AI cache net savings EUR: {savings.value}")
+                if savings.value < ZERO:
+                    recommendations.append(
+                        LisbonRecommendation(
+                            code="PROMPT_CACHE_NEGATIVE_SAVINGS",
+                            message=(
+                                "Les cache writes coutent actuellement plus que les cache reads "
+                                "economises sur cette fenetre; conserver la mesure et revoir "
+                                "l'eligibilite/reutilisation des prefixes, sans padding artificiel."
+                            ),
+                        )
+                    )
+            elif cache_metrics.cache_write_tokens or cache_metrics.cached_input_tokens:
+                recommendations.append(
+                    LisbonRecommendation(
+                        code="PROMPT_CACHE_SAVINGS_UNAVAILABLE",
+                        message=(
+                            "Des tokens de Prompt Cache sont observes mais le cout contrefactuel "
+                            "sans cache n'est pas disponible pour tous les appels."
+                        ),
+                    )
+                )
 
         if trading.closed_trade_count == 0:
             recommendations.append(

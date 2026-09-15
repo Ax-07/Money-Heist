@@ -23,10 +23,24 @@ from .models import (
 from .openai_client import OpenAIResponsesClient
 from .pricing import (
     calculate_cost_eur,
+    calculate_uncached_cost_eur,
     estimate_max_request_cost_eur,
     estimate_upper_bound_input_tokens,
 )
-from .routing import ModelPricing, ModelRoute, ModelRouter
+from .prompt_cache import (
+    PROMPT_TRANSPORT_VERSION,
+    build_cacheable_developer_prefix,
+    schema_fingerprint,
+    stable_prefix_fingerprint,
+)
+from .routing import (
+    ModelPricing,
+    ModelRoute,
+    ModelRouter,
+    PromptCacheCapability,
+    PromptCacheMode,
+    PromptCachePolicy,
+)
 from .usage import AIUsageRecorder, InMemoryAIUsageRecorder
 
 __all__ = [
@@ -51,11 +65,19 @@ __all__ = [
     "TokenUsage",
     "OpenAIResponsesClient",
     "calculate_cost_eur",
+    "calculate_uncached_cost_eur",
     "estimate_max_request_cost_eur",
     "estimate_upper_bound_input_tokens",
+    "PROMPT_TRANSPORT_VERSION",
+    "build_cacheable_developer_prefix",
+    "schema_fingerprint",
+    "stable_prefix_fingerprint",
     "ModelPricing",
     "ModelRoute",
     "ModelRouter",
+    "PromptCacheCapability",
+    "PromptCacheMode",
+    "PromptCachePolicy",
     "AIUsageRecorder",
     "InMemoryAIUsageRecorder",
 ]

@@ -324,9 +324,8 @@ def build_member_ai_gateway_request(
         "Use only the supplied context and identify uncertainty explicitly. "
         "Do not create orders, TradeProposal objects, Risk decisions, permissions, "
         "registry mutations, broker actions, or LIVE actions. "
-        f"Echo task_force_id={contract.task_force_id}, "
-        f"execution_run_id={contract.execution_run_id}, member_id={spec.member_id}, "
-        f"agent_id={spec.agent_id}."
+        "Echo task_force_id, execution_run_id, member_id, and agent_id exactly from "
+        "the supplied input payload."
     )
     metadata = {
         "phase": "task_force_member_analysis",

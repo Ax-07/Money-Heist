@@ -2,6 +2,17 @@ import { z } from "zod";
 
 const decimal = z.union([z.string(), z.number()]).transform(String);
 const periodRole = z.enum(["DESIGN", "VALIDATION", "OOS"]);
+export const reasoningEffortSchema = z.enum(["none", "low", "medium", "high", "xhigh", "max"]);
+
+export const openAiModelSchema = z.object({
+  model_id: z.string(), display_name: z.string(), input_per_million_usd: decimal, cached_input_per_million_usd: decimal, output_per_million_usd: decimal,
+  reasoning_efforts: z.array(reasoningEffortSchema), default_reasoning_effort: reasoningEffortSchema, recommended: z.boolean(),
+  pricing_currency: z.literal("USD"), pricing_tier: z.literal("STANDARD"), pricing_source: z.literal("OPENAI_OFFICIAL"), pricing_snapshot_at: z.string(),
+  pricing_valid_until: z.string().nullable(), standard_context_max_tokens: z.number().int().positive(), source_url: z.string(), notes: z.array(z.string()).default([])
+});
+export const openAiModelCatalogSchema = z.object({
+  schema_version: z.string(), provider: z.literal("openai"), pricing_currency: z.literal("USD"), pricing_snapshot_at: z.string(), models: z.array(openAiModelSchema)
+});
 
 export const metricSchema = z.object({
   name: z.string(), value: decimal.nullable().optional(), availability: z.string(), unit: z.string().nullable().optional(),
@@ -171,9 +182,17 @@ export const riskInputSchema = z.object({
   max_portfolio_risk_pct: z.string(), max_positions: z.number().int().positive(), max_leverage: z.string(), max_correlated_exposure_pct: z.string(), min_expected_rr: z.string().nullable()
 });
 export const marketInputSchema = z.object({qty_step: z.string(), min_qty: z.string(), min_notional: z.string(), max_qty: z.string().nullable(), max_leverage: z.string().nullable()});
-export const aiInputSchema = z.object({
-  mode: z.enum(["MOCK", "CACHED", "LIVE_EVAL"]), hard_budget_eur: z.string(), model_id: z.string(), reasoning_effort: z.enum(["none", "low", "medium", "high", "xhigh", "max"]),
+export const legacyAiInputSchema = z.object({
+  mode: z.enum(["MOCK", "CACHED", "LIVE_EVAL"]), hard_budget_eur: z.string(), model_id: z.string(), reasoning_effort: reasoningEffortSchema,
   input_per_million_eur: z.string(), output_per_million_eur: z.string(), cached_input_per_million_eur: z.string().nullable(), mock_agent_coverage: z.boolean()
+});
+export const frontendAiInputSchema = z.object({
+  mode: z.enum(["MOCK", "CACHED", "LIVE_EVAL"]), hard_budget_usd: z.string(), model_id: z.string(), reasoning_effort: reasoningEffortSchema, mock_agent_coverage: z.boolean()
+});
+export const campaignAiConfigurationSchema = z.object({
+  mode: z.string(), hard_budget: z.string(), model_id: z.string(), reasoning_effort: z.string(), input_per_million: z.string(),
+  cached_input_per_million: z.string().nullable(), output_per_million: z.string(), currency: z.enum(["USD", "EUR"]), pricing_source: z.string(),
+  pricing_snapshot_at: z.string().nullable().optional(), pricing_tier: z.string().nullable().optional(), mock_agent_coverage: z.boolean()
 });
 export const executionInputSchema = z.object({
   initial_balance: z.string(), maker_fee_bps: z.string(), taker_fee_bps: z.string(), market_slippage_bps: z.string(), code_version: z.string(), execution_model_version: z.string(), random_seed: z.number().int().nonnegative()
@@ -181,25 +200,23 @@ export const executionInputSchema = z.object({
 export const walkForwardInputSchema = z.object({enabled: z.boolean(), design_bars: z.number().int().positive(), validation_bars: z.number().int().positive(), oos_bars: z.number().int().positive(), step_bars: z.number().int().positive()});
 export const historicalDerivativesInputSchema = z.object({csv_text:z.string().min(1),max_age_seconds:z.number().int().positive()});
 export const frozenDenverPriorInputSchema = z.object({json_text:z.string().min(1),activation_mode:z.enum(["OOS_ONLY","ALL_PERIODS"])});
-export const campaignConfigSchema = z.object({
-  split: splitSchema,
-  risk: riskInputSchema,
-  market: marketInputSchema,
-  ai: aiInputSchema,
-  execution: executionInputSchema,
-  walk_forward: walkForwardInputSchema,
+const campaignConfigFields = {
+  split: splitSchema, risk: riskInputSchema, market: marketInputSchema, execution: executionInputSchema, walk_forward: walkForwardInputSchema,
   derivatives: historicalDerivativesInputSchema.nullable(), denver_prior: frozenDenverPriorInputSchema.nullable(), system_id: z.string().min(1)
-});
-export const campaignRequestSchema = campaignConfigSchema.extend({dataset: datasetInputSchema});
+};
+export const campaignConfigSchema = z.object({...campaignConfigFields, ai: frontendAiInputSchema});
+export const campaignRequestSchema = z.object({...campaignConfigFields, ai: legacyAiInputSchema, dataset: datasetInputSchema});
 export const storedCampaignRequestSchema = campaignConfigSchema.extend({dataset_id: z.string().min(1)});
-export const campaignConfigurationSchema = campaignConfigSchema.extend({
-  campaign_id: z.string(), dataset_id: z.string(), dataset: datasetPreviewSchema
+export const campaignConfigurationSchema = z.object({
+  ...campaignConfigFields, ai: campaignAiConfigurationSchema, campaign_id: z.string(), dataset_id: z.string(), dataset: datasetPreviewSchema
 });
 
 export type DashboardSnapshot = z.infer<typeof dashboardSnapshotSchema>;
 export type DashboardSystem = z.infer<typeof dashboardSystemSchema>;
 export type DashboardDecision = z.infer<typeof decisionSchema>;
 export type FrontendCapabilities = z.infer<typeof frontendCapabilitiesSchema>;
+export type OpenAiModel = z.infer<typeof openAiModelSchema>;
+export type OpenAiModelCatalog = z.infer<typeof openAiModelCatalogSchema>;
 export type MarketCandles = z.infer<typeof marketCandlesSchema>;
 export type MarketConstraints = z.infer<typeof marketConstraintsSchema>;
 export type BacktestReplay = z.infer<typeof replaySchema>;

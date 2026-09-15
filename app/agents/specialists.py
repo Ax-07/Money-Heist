@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
@@ -54,7 +54,7 @@ class UngroundedEvidenceError(ValueError):
 
 
 class _IndexedEvidenceReference(BaseModel):
-    """Provider-facing evidence item with a request-bounded source index."""
+    """Provider-facing evidence item; exact catalogue bounds are validated locally."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -71,22 +71,13 @@ def _indexed_evidence_output_model(
     if not allowed_source_keys:
         raise ValueError("allowed evidence source keys must not be empty")
 
-    bounded_index = Annotated[
-        int,
-        Field(ge=0, le=len(allowed_source_keys) - 1),
-    ]
-    evidence_model = create_model(
-        f"{output_model.__name__}IndexedEvidenceV3",
-        __base__=_IndexedEvidenceReference,
-        source_index=(bounded_index, ...),
-    )
-    # Preserve the canonical schema name for provider routing, telemetry,
-    # deterministic MOCK providers and cache/audit surfaces. The class object is
-    # still request-specific; only its public schema name remains canonical.
+    # The provider schema is deliberately stable across opportunities. The exact
+    # request-specific upper bound is enforced fail-closed by
+    # _canonicalize_indexed_evidence_result after provider validation.
     return create_model(
         output_model.__name__,
         __base__=output_model,
-        evidence=(list[evidence_model], ...),
+        evidence=(list[_IndexedEvidenceReference], ...),
     )
 
 
@@ -311,7 +302,7 @@ class SpecialistAgent(CoreAgent):
         provider_output_model: type[SpecialistAnalysis] = self.output_model
         allowed_source_keys: tuple[str, ...] | None = None
 
-        if self.prompt.version in {"v2", "v3", "v4"}:
+        if self.prompt.version in {"v2", "v3", "v4", "v5"}:
             grounding_payload: dict[str, Any] = {
                 "opportunity": opportunity,
                 "market_context": market_context,
@@ -319,7 +310,7 @@ class SpecialistAgent(CoreAgent):
             if context_payload is not None:
                 grounding_payload["specialist_context"] = context_payload
 
-            if self.prompt.version == "v4":
+            if self.prompt.version in {"v4", "v5"}:
                 allowed_source_keys = tuple(
                     sorted(_grounded_json_leaf_paths(grounding_payload))
                 )
@@ -336,7 +327,7 @@ class SpecialistAgent(CoreAgent):
                 )
                 payload["allowed_evidence_source_keys"] = list(allowed_source_keys)
 
-            if self.prompt.version in {"v3", "v4"}:
+            if self.prompt.version in {"v3", "v4", "v5"}:
                 provider_output_model = _indexed_evidence_output_model(
                     self.output_model,
                     allowed_source_keys,
@@ -354,7 +345,7 @@ class SpecialistAgent(CoreAgent):
         # Tests/custom gateways may still return the canonical historical model;
         # in that case the fail-closed post-validator remains active.
         if (
-            self.prompt.version in {"v3", "v4"}
+            self.prompt.version in {"v3", "v4", "v5"}
             and allowed_source_keys is not None
             and result.output.__class__ is provider_output_model
         ):
@@ -369,7 +360,7 @@ class SpecialistAgent(CoreAgent):
             opportunity=opportunity,
             market_context=market_context,
             specialist_context=context_payload,
-            leaf_only=self.prompt.version == "v4",
+            leaf_only=self.prompt.version in {"v4", "v5"},
         )
         self._validate_analysis_against_context(result.output, prepared_context)
         return result

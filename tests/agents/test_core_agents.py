@@ -86,7 +86,7 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
 
         assert plan.output.decision == "MINI_CREW"
         assert final.output.direction == "NO_TRADE"
-        assert [request.prompt_version for request in gateway.requests] == ["v5", "v5"]
+        assert [request.prompt_version for request in gateway.requests] == ["v6", "v6"]
         assert all(request.agent_id == "professor" for request in gateway.requests)
         assert gateway.requests[0].opportunity_id == opportunity_id
         plan_payload = json.loads(gateway.requests[0].input_text)
@@ -251,7 +251,7 @@ def _find_schema_property(node, property_name):
     return None
 
 
-def test_professor_v5_strict_schema_bounds_atomic_source_index_and_canonicalizes():
+def test_professor_v6_stable_schema_atomic_source_index_and_canonicalizes():
     async def scenario():
         exact_key = "market_context.close"
         canonical = ProfessorFinalDecision(
@@ -293,23 +293,53 @@ def test_professor_v5_strict_schema_bounds_atomic_source_index_and_canonicalizes
         source_index_schema = _find_schema_property(schema, "source_index")
         assert source_index_schema is not None
         assert source_index_schema["minimum"] == 0
-        assert source_index_schema["maximum"] == len(gateway.allowed_source_keys) - 1
+        assert "maximum" not in source_index_schema
         assert '"source_key"' not in json.dumps(schema, sort_keys=True)
 
         provider_payload = canonical.model_dump(mode="python")
         provider_payload["evidence"] = [
             {
                 "source_index": len(gateway.allowed_source_keys),
-                "observation": "out of range must fail",
+                "observation": "provider-level schema remains stable",
             }
         ]
-        with pytest.raises(ValidationError):
-            provider_model.model_validate(provider_payload)
+        provider_model.model_validate(provider_payload)
 
     asyncio.run(scenario())
 
 
-def test_professor_v5_legacy_finalize_does_not_require_evidence_field():
+def test_professor_v6_provider_schema_fingerprint_stable_across_catalog_sizes():
+    async def scenario():
+        canonical = ProfessorFinalDecision(
+            direction="NO_TRADE", confidence=0.7, thesis=["x"], evidence=[]
+        )
+        first = IndexedFinalGateway(canonical)
+        second = IndexedFinalGateway(canonical)
+        await TheProfessor(first).finalize_with_schema(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT"},
+            market_context={"close": 100.0},
+            specialist_analyses=[],
+            palermo_review={"verdict": "CAUTION"},
+            output_model=ProfessorFinalDecision,
+        )
+        await TheProfessor(second).finalize_with_schema(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT", "trigger": "x"},
+            market_context={"close": 100.0, "rsi": 51.0, "nested": {"adx": 22.0}},
+            specialist_analyses=[],
+            palermo_review={"verdict": "CAUTION"},
+            output_model=ProfessorFinalDecision,
+        )
+        schema_a = json.dumps(build_strict_json_schema(first.output_models[0]), sort_keys=True)
+        schema_b = json.dumps(build_strict_json_schema(second.output_models[0]), sort_keys=True)
+        assert schema_a == schema_b
+        assert len(first.allowed_source_keys) != len(second.allowed_source_keys)
+
+    asyncio.run(scenario())
+
+
+def test_professor_v6_legacy_finalize_does_not_require_evidence_field():
     async def scenario():
         canonical = ProfessorDecision(
             direction="NO_TRADE",
@@ -379,7 +409,7 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
     assert CORE_AGENT_REGISTRY.get("professor").state.value == "ACTIVE"
     assert CORE_AGENT_REGISTRY.get("palermo").state.value == "ACTIVE"
 
-    expected_versions = {"professor": "v5", "palermo": "v3", "lisbon": "v1"}
+    expected_versions = {"professor": "v6", "palermo": "v3", "lisbon": "v1"}
     for entry in CORE_AGENT_REGISTRY.list():
         assert entry.core is True
         assert entry.allowed_tools == ()
@@ -393,14 +423,14 @@ def test_prompt_registry_rejects_unknown_version():
 
 
 def test_decision_contract_v2_is_versioned_and_preserves_v1():
-    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4", "v5")
+    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4", "v5", "v6")
     assert CORE_PROMPTS.versions("palermo") == ("v1", "v2", "v3")
 
     # Historical prompt versions remain immutable and addressable.
     assert CORE_PROMPTS.get("professor", "v4").version == "v4"
     assert CORE_PROMPTS.get("palermo", "v2").version == "v2"
 
-    professor = CORE_PROMPTS.get("professor", "v5").instructions
+    professor = CORE_PROMPTS.get("professor", "v6").instructions
     palermo = CORE_PROMPTS.get("palermo", "v3").instructions
 
     assert "planning_constraints" in professor

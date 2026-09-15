@@ -337,6 +337,23 @@ def test_gateway_input_is_canonical_and_contains_grounding_context():
     assert "Do not create orders" in first.instructions
 
 
+def test_gateway_instructions_are_stable_across_execution_ids():
+    first_contract = _contract(execution_run_id="run-cache-a")
+    second_contract = _contract(execution_run_id="run-cache-b")
+    first_spec = first_contract.member_specs[0]
+    second_spec = second_contract.member_specs[0]
+    first = build_member_ai_gateway_request(
+        first_contract, member_id=first_spec.member_id, context_payload={"price": "62000"}
+    )
+    second = build_member_ai_gateway_request(
+        second_contract, member_id=second_spec.member_id, context_payload={"price": "62000"}
+    )
+    assert first.instructions == second.instructions
+    assert first.input_text != second.input_text
+    assert "run-cache-a" not in first.instructions
+    assert "run-cache-b" not in second.instructions
+
+
 def test_gateway_request_requires_materialized_context_and_known_member():
     contract = _contract()
     spec = contract.member_specs[0]

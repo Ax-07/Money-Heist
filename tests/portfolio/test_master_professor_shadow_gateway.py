@@ -278,6 +278,23 @@ def test_gateway_request_contains_only_operator_candidate_amounts() -> None:
     assert "never invent" in request.instructions
 
 
+def test_master_gateway_instructions_exclude_dynamic_analysis_identity() -> None:
+    policy, evidence, analysis, candidates, config = _context()
+    request = build_master_professor_shadow_gateway_request(
+        current_allocation_policy=policy,
+        evidence=evidence,
+        analysis=analysis,
+        candidates=candidates,
+        config=config,
+    )
+    assert analysis.analysis_id in request.input_text
+    assert analysis.fingerprint_sha256 in request.input_text
+    assert analysis.analysis_id not in request.instructions
+    assert analysis.fingerprint_sha256 not in request.instructions
+    assert policy.fingerprint_sha256 not in request.instructions
+    assert "supplied input payload" in request.instructions
+
+
 def test_gateway_request_rejects_unconfigured_current_policy() -> None:
     policy, evidence, analysis, candidates, config = _context()
     unconfigured = _policy(configured=False)

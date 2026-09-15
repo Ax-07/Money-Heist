@@ -531,8 +531,8 @@ async def test_missing_or_unavailable_evidence_cannot_be_invented():
     )
     result = await pipeline.run(opportunity=make_opportunity(), market_context=make_context())
     assert result.status is PipelineStatus.FAILED
-    # v3 rejects a non-allowed specialist path at provider schema validation,
-    # before the legacy post-provider grounding validator can run.
+    # The scripted provider emits a canonical source_key that is not valid for
+    # the indexed provider schema, so rejection happens during structured parsing.
     assert result.failure.code is PipelineFailureCode.INVALID_SPECIALIST_OUTPUT
     assert result.trade_proposal is None
 

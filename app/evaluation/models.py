@@ -5,8 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Mapping
-
+from typing import Any, Mapping
 
 ZERO = Decimal("0")
 
@@ -105,6 +104,15 @@ class AIUsageEntry:
     latency_ms: int | None
     attempt: int
     created_at: datetime | None = None
+    input_tokens: int = 0
+    cached_input_tokens: int = 0
+    cache_write_tokens: int = 0
+    output_tokens: int = 0
+    estimated_cost_without_cache_eur: Decimal | None = None
+    prompt_cache_mode: str = "disabled"
+    prompt_render_version: str | None = None
+    stable_prefix_sha256: str | None = None
+    prompt_cache_diagnostics: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.estimated_cost_eur < ZERO:
@@ -113,6 +121,27 @@ class AIUsageEntry:
             raise ValueError("latency_ms must be >= 0")
         if self.attempt < 1:
             raise ValueError("attempt must be >= 1")
+        for name in (
+            "input_tokens",
+            "cached_input_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+        ):
+            if getattr(self, name) < 0:
+                raise ValueError(f"{name} must be >= 0")
+        if self.cached_input_tokens + self.cache_write_tokens > self.input_tokens:
+            raise ValueError(
+                "cached_input_tokens + cache_write_tokens cannot exceed input_tokens"
+            )
+        if (
+            self.estimated_cost_without_cache_eur is not None
+            and self.estimated_cost_without_cache_eur < ZERO
+        ):
+            raise ValueError("estimated_cost_without_cache_eur must be >= 0")
+
+    @property
+    def normal_input_tokens(self) -> int:
+        return self.input_tokens - self.cached_input_tokens - self.cache_write_tokens
 
 
 @dataclass(frozen=True, slots=True)
@@ -236,6 +265,40 @@ class TradingMetrics:
 
 
 @dataclass(frozen=True, slots=True)
+class AICacheSliceMetrics:
+    request_count: int
+    input_tokens: int
+    normal_input_tokens: int
+    cached_input_tokens: int
+    cache_write_tokens: int
+    output_tokens: int
+    cache_read_ratio: Metric
+    actual_cost_eur: Decimal
+    estimated_cost_without_cache_eur: Metric
+    net_cache_savings_eur: Metric
+
+    @property
+    def estimated_uncached_cost_eur(self) -> Metric:
+        """Compatibility alias for callers using the shorter uncached-cost name."""
+        return self.estimated_cost_without_cache_eur
+
+
+def _empty_cache_slice() -> AICacheSliceMetrics:
+    return AICacheSliceMetrics(
+        request_count=0,
+        input_tokens=0,
+        normal_input_tokens=0,
+        cached_input_tokens=0,
+        cache_write_tokens=0,
+        output_tokens=0,
+        cache_read_ratio=Metric.unavailable("NO_AI_INPUT_TOKENS"),
+        actual_cost_eur=ZERO,
+        estimated_cost_without_cache_eur=Metric.available(ZERO),
+        net_cache_savings_eur=Metric.available(ZERO),
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class AICostMetrics:
     total_cost_eur: Decimal
     by_agent: Mapping[str, Decimal]
@@ -248,9 +311,25 @@ class AICostMetrics:
     average_cost_per_opportunity: Metric
     average_cost_per_risk_decision: Metric
     average_cost_per_executed_trade: Metric
+    cache: AICacheSliceMetrics = field(default_factory=_empty_cache_slice)
+    cache_by_agent: Mapping[str, AICacheSliceMetrics] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
+    cache_by_model: Mapping[str, AICacheSliceMetrics] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
+    cache_by_route: Mapping[str, AICacheSliceMetrics] = field(
+        default_factory=lambda: MappingProxyType({})
+    )
 
     @staticmethod
     def freeze(mapping: Mapping[str, Decimal]) -> Mapping[str, Decimal]:
+        return MappingProxyType(dict(sorted(mapping.items())))
+
+    @staticmethod
+    def freeze_cache(
+        mapping: Mapping[str, AICacheSliceMetrics],
+    ) -> Mapping[str, AICacheSliceMetrics]:
         return MappingProxyType(dict(sorted(mapping.items())))
 
 

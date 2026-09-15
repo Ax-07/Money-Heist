@@ -7,8 +7,8 @@ async function proxy(request: NextRequest, context: {params: Promise<{path: stri
   const url = new URL(`${upstream}/${path.map(encodeURIComponent).join("/")}`);
   request.nextUrl.searchParams.forEach((value, key) => url.searchParams.append(key, value));
   const method = request.method.toUpperCase();
-  const body = method === "GET" || method === "HEAD" ? undefined : await request.arrayBuffer();
-  const response = await fetch(url, {
+  const body = method === "GET" || method === "HEAD" ? undefined : request.body ?? undefined;
+  const init: RequestInit & {duplex?: "half"} = {
     method,
     body,
     headers: {
@@ -16,7 +16,9 @@ async function proxy(request: NextRequest, context: {params: Promise<{path: stri
       "content-type": request.headers.get("content-type") ?? "application/json"
     },
     cache: "no-store"
-  });
+  };
+  if (body) init.duplex = "half";
+  const response = await fetch(url, init);
   const headers = new Headers();
   const contentType = response.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);

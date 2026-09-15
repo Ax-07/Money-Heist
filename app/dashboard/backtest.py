@@ -36,8 +36,8 @@ from app.services.backtest import (
     BacktestSplitReport,
     DatasetRef,
     HistoricalPositionLifecycle,
-    HistoricalSetupAttributionError,
     HistoricalReplayRunner,
+    HistoricalSetupAttributionError,
     ReplayClock,
     ReplayIdFactory,
     WalkForwardReport,
@@ -56,14 +56,6 @@ from app.services.backtest.advanced_mock import (
     DeterministicAdvancedSpecialistMockProvider,
     adapt_mock_indexed_evidence,
 )
-from app.services.backtest.runner import HistoricalReplayCancelledError
-from app.services.backtest.historical_derivatives_analytics import (
-    HistoricalDerivativesAnalyticsArchive,
-)
-from app.services.backtest.derivatives_runtime import (
-    historical_derivatives_execution_assumptions,
-    historical_derivatives_runner_kwargs,
-)
 from app.services.backtest.denver_prior import FrozenDenverPriorCatalog
 from app.services.backtest.denver_runtime import (
     DenverActivationMode,
@@ -71,11 +63,19 @@ from app.services.backtest.denver_runtime import (
     denver_runner_kwargs,
     validate_denver_prior_compatibility,
 )
+from app.services.backtest.derivatives_runtime import (
+    historical_derivatives_execution_assumptions,
+    historical_derivatives_runner_kwargs,
+)
+from app.services.backtest.historical_derivatives_analytics import (
+    HistoricalDerivativesAnalyticsArchive,
+)
 from app.services.backtest.mtf_runtime import (
     mtf_execution_assumptions,
     mtf_runner_kwargs,
     supports_full_mtf_source,
 )
+from app.services.backtest.runner import HistoricalReplayCancelledError
 from app.services.orchestration import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
 from app.services.paper_pipeline.pipeline import PaperTradingPipeline
@@ -88,6 +88,29 @@ from app.trading.paper import PaperBroker, PaperBrokerConfig
 from app.trading.risk import KillSwitchState, MarketConstraints, RiskEngine, RiskProfile
 
 MAX_CSV_BYTES = 25_000_000
+DATASET_CSV_DEFAULT_MAX_MB = 256
+
+
+def dataset_csv_max_bytes() -> int | None:
+    """Return the configurable OHLCV dataset limit in bytes.
+
+    MONEY_HEIST_DATASET_UPLOAD_MAX_MB=0 disables the application-level dataset
+    size limit. Auxiliary historical payloads (Rio/Denver) keep their existing
+    25 MB guard through MAX_CSV_BYTES.
+    """
+
+    raw = os.getenv(
+        "MONEY_HEIST_DATASET_UPLOAD_MAX_MB",
+        str(DATASET_CSV_DEFAULT_MAX_MB),
+    ).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = DATASET_CSV_DEFAULT_MAX_MB
+    if value <= 0:
+        return None
+    return value * 1024 * 1024
+
 
 _TIMEFRAME_SECONDS = {
     "1m": 60,
@@ -113,8 +136,11 @@ class DatasetInput(FrozenModel):
 
     @model_validator(mode="after")
     def normalize(self) -> DatasetInput:
-        if len(self.csv_text.encode("utf-8")) > MAX_CSV_BYTES:
-            raise ValueError("csv_text exceeds the 25 MB dashboard limit")
+        max_bytes = dataset_csv_max_bytes()
+        if max_bytes is not None and len(self.csv_text.encode("utf-8")) > max_bytes:
+            raise ValueError(
+                f"csv_text exceeds configured dataset limit ({max_bytes // 1024 // 1024} MiB)"
+            )
         for field_name in ("symbol", "timeframe", "source"):
             value = str(getattr(self, field_name)).strip()
             if not value:
@@ -130,9 +156,7 @@ class HistoricalDerivativesInput(FrozenModel):
     @model_validator(mode="after")
     def validate_archive_input(self) -> HistoricalDerivativesInput:
         if len(self.csv_text.encode("utf-8")) > MAX_CSV_BYTES:
-            raise ValueError(
-                "historical derivatives csv_text exceeds the 25 MB dashboard limit"
-            )
+            raise ValueError("historical derivatives csv_text exceeds the 25 MB dashboard limit")
         if not self.csv_text.strip():
             raise ValueError("historical derivatives csv_text must not be blank")
         return self
@@ -145,9 +169,7 @@ class FrozenDenverPriorInput(FrozenModel):
     @model_validator(mode="after")
     def validate_prior_input(self) -> FrozenDenverPriorInput:
         if len(self.json_text.encode("utf-8")) > MAX_CSV_BYTES:
-            raise ValueError(
-                "frozen Denver prior json_text exceeds the 25 MB dashboard limit"
-            )
+            raise ValueError("frozen Denver prior json_text exceeds the 25 MB dashboard limit")
         if not self.json_text.strip():
             raise ValueError("frozen Denver prior json_text must not be blank")
         return self
@@ -299,22 +321,12 @@ class CampaignRequest(FrozenModel):
     def validate_system(self) -> CampaignRequest:
         if not self.system_id.strip():
             raise ValueError("system_id must not be blank")
-        if (
-            self.derivatives is not None
-            and not supports_full_mtf_source(self.dataset.timeframe)
-        ):
+        if self.derivatives is not None and not supports_full_mtf_source(self.dataset.timeframe):
             raise ValueError(
-                "historical derivatives activation requires source timeframe "
-                "1m, 5m, or 15m"
+                "historical derivatives activation requires source timeframe 1m, 5m, or 15m"
             )
-        if (
-            self.denver_prior is not None
-            and not supports_full_mtf_source(self.dataset.timeframe)
-        ):
-            raise ValueError(
-                "Denver prior activation requires source timeframe "
-                "1m, 5m, or 15m"
-            )
+        if self.denver_prior is not None and not supports_full_mtf_source(self.dataset.timeframe):
+            raise ValueError("Denver prior activation requires source timeframe 1m, 5m, or 15m")
         if self.ai.mode is BacktestAIMode.LIVE_EVAL and self.execution.code_version in {
             "batch16.7-working-tree",
             "working-tree-unknown",
@@ -962,8 +974,7 @@ class BacktestDashboardService:
             )
             if (
                 historical_derivatives_archive is not None
-                and historical_derivatives_archive.symbol
-                != parsed.dataset_ref.symbol
+                and historical_derivatives_archive.symbol != parsed.dataset_ref.symbol
             ):
                 raise BacktestDashboardError(
                     "historical derivatives archive symbol does not match dataset"
@@ -975,9 +986,7 @@ class BacktestDashboardService:
                     symbol=parsed.dataset_ref.symbol,
                     decision_timeframe="1h",
                 )
-                denver_mode = DenverActivationMode(
-                    request.denver_prior.activation_mode
-                )
+                denver_mode = DenverActivationMode(request.denver_prior.activation_mode)
                 target_start = (
                     request.split.oos_start
                     if denver_mode is DenverActivationMode.OOS_ONLY
@@ -985,9 +994,7 @@ class BacktestDashboardService:
                 )
                 historical_denver_prior.validate_for_target(
                     period_start=target_start,
-                    formal_oos=(
-                        denver_mode is DenverActivationMode.OOS_ONLY
-                    ),
+                    formal_oos=(denver_mode is DenverActivationMode.OOS_ONLY),
                 )
             config = self._backtest_config(
                 request,
@@ -1025,9 +1032,7 @@ class BacktestDashboardService:
                 market_constraints=market_constraints,
                 ai=request.ai,
                 budget=campaign_budget,
-                historical_derivatives_archive=(
-                    historical_derivatives_archive
-                ),
+                historical_derivatives_archive=(historical_derivatives_archive),
                 historical_denver_prior=historical_denver_prior,
                 runtime=runtime,
             )
@@ -1058,9 +1063,7 @@ class BacktestDashboardService:
                         market_constraints=market_constraints,
                         ai=request.ai,
                         budget=campaign_budget,
-                        historical_derivatives_archive=(
-                            historical_derivatives_archive
-                        ),
+                        historical_derivatives_archive=(historical_derivatives_archive),
                         historical_denver_prior=historical_denver_prior,
                         runtime=runtime,
                     )
@@ -1171,13 +1174,9 @@ class BacktestDashboardService:
         request: FrozenDenverPriorInput,
     ) -> FrozenDenverPriorCatalog:
         try:
-            return FrozenDenverPriorCatalog.from_json(
-                request.json_text.strip()
-            )
+            return FrozenDenverPriorCatalog.from_json(request.json_text.strip())
         except (ValueError, KeyError, TypeError) as exc:
-            raise BacktestDashboardError(
-                f"frozen Denver prior is invalid: {exc}"
-            ) from exc
+            raise BacktestDashboardError(f"frozen Denver prior is invalid: {exc}") from exc
 
     @staticmethod
     def _parse_historical_derivatives(
@@ -1194,9 +1193,7 @@ class BacktestDashboardService:
             ) as handle:
                 handle.write(request.csv_text)
                 temp_path = Path(handle.name)
-            return HistoricalDerivativesAnalyticsArchive.from_canonical_csv(
-                temp_path
-            )
+            return HistoricalDerivativesAnalyticsArchive.from_canonical_csv(temp_path)
         except (OSError, ValueError) as exc:
             raise BacktestDashboardError(
                 f"historical derivatives archive is invalid: {exc}"
@@ -1260,8 +1257,7 @@ class BacktestDashboardService:
             missing_fields=tuple(imported.quality.missing_fields),
             suggested_split=self._split_from_indices(imported.candles, suggested_indices),
             candle_close_ms=tuple(
-                int(candle.close_time.timestamp() * 1000)
-                for candle in imported.candles
+                int(candle.close_time.timestamp() * 1000) for candle in imported.candles
             ),
             suggested_split_indices=suggested_indices,
         )
@@ -1339,9 +1335,7 @@ class BacktestDashboardService:
         self,
         request: CampaignRequest,
         *,
-        historical_derivatives_archive: (
-            HistoricalDerivativesAnalyticsArchive | None
-        ) = None,
+        historical_derivatives_archive: (HistoricalDerivativesAnalyticsArchive | None) = None,
         historical_denver_prior: FrozenDenverPriorCatalog | None = None,
     ) -> BacktestConfig:
         model_versions = {
@@ -1370,15 +1364,11 @@ class BacktestDashboardService:
             "ai_output_per_million_eur": str(request.ai.output_per_million_eur),
             "ai_cached_input_per_million_eur": str(request.ai.cached_input_per_million_eur),
         }
-        assumptions.update(
-            mtf_execution_assumptions(request.dataset.timeframe)
-        )
+        assumptions.update(mtf_execution_assumptions(request.dataset.timeframe))
         if request.derivatives is not None:
             archive = historical_derivatives_archive
             if archive is None:
-                archive = self._parse_historical_derivatives(
-                    request.derivatives
-                )
+                archive = self._parse_historical_derivatives(request.derivatives)
             if archive.symbol != request.dataset.symbol.strip().upper():
                 raise BacktestDashboardError(
                     "historical derivatives archive symbol does not match dataset"
@@ -1396,9 +1386,7 @@ class BacktestDashboardService:
         if request.denver_prior is not None:
             prior = historical_denver_prior
             if prior is None:
-                prior = self._parse_frozen_denver_prior(
-                    request.denver_prior
-                )
+                prior = self._parse_frozen_denver_prior(request.denver_prior)
             assumptions.update(
                 denver_prior_execution_assumptions(
                     prior,
@@ -1435,9 +1423,7 @@ class BacktestDashboardService:
         market_constraints: MarketConstraints,
         ai: AIInput,
         budget: AIBudgetLedger,
-        historical_derivatives_archive: (
-            HistoricalDerivativesAnalyticsArchive | None
-        ) = None,
+        historical_derivatives_archive: (HistoricalDerivativesAnalyticsArchive | None) = None,
         historical_denver_prior: FrozenDenverPriorCatalog | None = None,
         runtime: _CampaignRuntime | None = None,
     ) -> tuple[
@@ -1461,9 +1447,7 @@ class BacktestDashboardService:
                 market_constraints=market_constraints,
                 ai=ai,
                 budget=budget,
-                historical_derivatives_archive=(
-                    historical_derivatives_archive
-                ),
+                historical_derivatives_archive=(historical_derivatives_archive),
                 historical_denver_prior=historical_denver_prior,
                 runtime=runtime,
             )
@@ -1492,9 +1476,7 @@ class BacktestDashboardService:
             for role in BacktestPeriodRole
         )
         try:
-            denver_catalog = catalog_from_historical_runs(
-                denver_sources
-            )
+            denver_catalog = catalog_from_historical_runs(denver_sources)
         except HistoricalSetupAttributionError as exc:
             exports["denver-setup-stats-status.json"] = (
                 "application/json",
@@ -1519,9 +1501,7 @@ class BacktestDashboardService:
                     {
                         "status": "AVAILABLE",
                         "catalog_id": denver_catalog.catalog_id,
-                        "observation_count": len(
-                            denver_catalog.observations
-                        ),
+                        "observation_count": len(denver_catalog.observations),
                     },
                     separators=(",", ":"),
                     sort_keys=True,
@@ -1546,9 +1526,7 @@ class BacktestDashboardService:
         market_constraints: MarketConstraints,
         ai: AIInput,
         budget: AIBudgetLedger,
-        historical_derivatives_archive: (
-            HistoricalDerivativesAnalyticsArchive | None
-        ) = None,
+        historical_derivatives_archive: (HistoricalDerivativesAnalyticsArchive | None) = None,
         historical_denver_prior: FrozenDenverPriorCatalog | None = None,
         runtime: _CampaignRuntime | None = None,
     ) -> _RunExecution:
@@ -1644,9 +1622,7 @@ class BacktestDashboardService:
             journal=journal,
             clock=clock,
         )
-        runner_kwargs = mtf_runner_kwargs(
-            run.config.execution_assumptions
-        )
+        runner_kwargs = mtf_runner_kwargs(run.config.execution_assumptions)
         runner_kwargs.update(
             historical_derivatives_runner_kwargs(
                 run.config.execution_assumptions,

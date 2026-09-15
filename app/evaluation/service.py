@@ -29,10 +29,9 @@ class EvaluationService:
             trading=trading,
             total_ai_cost_eur=ai_costs.total_cost_eur,
             agents=agents,
+            cache_metrics=ai_costs.cache,
         )
 
-        economic_net = lisbon.economic_net
-        ratio = lisbon.self_funding_ratio
         return EvaluationReport(
             report_version=self.report_version,
             trading=trading,
@@ -40,8 +39,8 @@ class EvaluationService:
             agents=agents,
             opportunity_traces=source.opportunity_traces,
             counterfactual_outcomes=source.counterfactual_outcomes,
-            economic_net=economic_net,
-            self_funding_ratio=ratio,
+            economic_net=lisbon.economic_net,
+            self_funding_ratio=lisbon.self_funding_ratio,
             lisbon=lisbon,
         )
 

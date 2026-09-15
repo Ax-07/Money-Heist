@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 
 from .errors import (
     IncompleteAIProviderError,
@@ -38,25 +39,7 @@ class OpenAIResponsesClient:
         self._http_client = http_client
 
     async def complete(self, request: ProviderRequest) -> ProviderResponse:
-        payload: dict[str, Any] = {
-            "model": request.model_id,
-            "input": request.input_text,
-            "text": {
-                "format": {
-                    "type": "json_schema",
-                    "name": request.schema_name,
-                    "schema": request.json_schema,
-                    "strict": True,
-                }
-            },
-            "max_output_tokens": request.max_output_tokens,
-            "reasoning": {"effort": request.reasoning_effort},
-            "store": False,
-            "metadata": self._safe_metadata(request.metadata),
-        }
-        if request.instructions:
-            payload["instructions"] = request.instructions
-
+        payload = self._build_payload(request)
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -99,13 +82,10 @@ class OpenAIResponsesClient:
         except ValueError as exc:
             raise RetryableAIProviderError("OpenAI returned invalid JSON") from exc
 
-        usage_raw = body.get("usage") or {}
-        input_details = usage_raw.get("input_tokens_details") or {}
-        usage = TokenUsage(
-            input_tokens=int(usage_raw.get("input_tokens") or 0),
-            cached_input_tokens=int(input_details.get("cached_tokens") or 0),
-            output_tokens=int(usage_raw.get("output_tokens") or 0),
-        )
+        usage = self._parse_usage(body)
+        diagnostics = body.get("prompt_cache_diagnostics")
+        if diagnostics is not None and not isinstance(diagnostics, dict):
+            diagnostics = {"raw": str(diagnostics)[:1000]}
 
         status = body.get("status")
         if status == "incomplete":
@@ -116,10 +96,12 @@ class OpenAIResponsesClient:
                     "OpenAI response incomplete: max_output_tokens",
                     input_tokens=usage.input_tokens,
                     cached_input_tokens=usage.cached_input_tokens,
+                    cache_write_tokens=usage.cache_write_tokens,
                     output_tokens=usage.output_tokens,
                     latency_ms=latency_ms,
                     provider_request_id=body.get("id"),
                     model_id=str(body.get("model") or request.model_id),
+                    prompt_cache_diagnostics=diagnostics,
                 )
 
         self._validate_response_status(body)
@@ -130,7 +112,82 @@ class OpenAIResponsesClient:
             output_text=output_text,
             usage=usage,
             latency_ms=latency_ms,
+            prompt_cache_diagnostics=diagnostics,
         )
+
+    @staticmethod
+    def _build_payload(request: ProviderRequest) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "model": request.model_id,
+            "text": {
+                "format": {
+                    "type": "json_schema",
+                    "name": request.schema_name,
+                    "schema": request.json_schema,
+                    "strict": True,
+                }
+            },
+            "max_output_tokens": request.max_output_tokens,
+            "reasoning": {"effort": request.reasoning_effort},
+            "store": False,
+            "metadata": OpenAIResponsesClient._safe_metadata(request.metadata),
+        }
+
+        if request.prompt_cache_mode == "openai_explicit":
+            # GPT-5.6+ explicit breakpoints cannot be attached to top-level
+            # `instructions`; reusable developer instructions must be represented as
+            # a developer input_text block. Dynamic content follows in a user message.
+            payload["input"] = [
+                {
+                    "role": "developer",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": request.cacheable_developer_prefix,
+                            "prompt_cache_breakpoint": {"mode": "explicit"},
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": request.input_text,
+                        }
+                    ],
+                },
+            ]
+            payload["prompt_cache_options"] = {
+                "mode": "explicit",
+                "ttl": request.prompt_cache_ttl,
+            }
+            if request.prompt_cache_key:
+                payload["prompt_cache_key"] = request.prompt_cache_key
+        else:
+            # Preserve the pre-cache transport exactly for routes that do not declare
+            # support or when the cache policy is disabled.
+            payload["input"] = request.input_text
+            if request.instructions:
+                payload["instructions"] = request.instructions
+
+        return payload
+
+    @staticmethod
+    def _parse_usage(body: dict[str, Any]) -> TokenUsage:
+        usage_raw = body.get("usage") or {}
+        input_details = usage_raw.get("input_tokens_details") or {}
+        try:
+            return TokenUsage(
+                input_tokens=int(usage_raw.get("input_tokens") or 0),
+                cached_input_tokens=int(input_details.get("cached_tokens") or 0),
+                cache_write_tokens=int(input_details.get("cache_write_tokens") or 0),
+                output_tokens=int(usage_raw.get("output_tokens") or 0),
+            )
+        except (TypeError, ValueError, ValidationError) as exc:
+            raise NonRetryableAIProviderError(
+                "OpenAI returned impossible or invalid token usage accounting"
+            ) from exc
 
     @staticmethod
     def _validate_response_status(body: dict[str, Any]) -> None:
@@ -166,8 +223,6 @@ class OpenAIResponsesClient:
 
     @staticmethod
     def _safe_metadata(metadata: dict[str, str]) -> dict[str, str]:
-        # Only caller-supplied non-secret metadata is accepted;
-        # the API key never enters this mapping.
         return {str(k)[:64]: str(v)[:512] for k, v in metadata.items()}
 
     @staticmethod

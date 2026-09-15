@@ -33,4 +33,10 @@ export const api = {
     requestJson(endpoint, schema),
   post: <Schema extends z.ZodTypeAny>(endpoint: string, schema: Schema, body: unknown) =>
     requestJson(endpoint, schema, { method: "POST", body: JSON.stringify(body) }),
+  postRaw: <Schema extends z.ZodTypeAny>(
+    endpoint: string,
+    schema: Schema,
+    body: BodyInit,
+    contentType: string,
+  ) => requestJson(endpoint, schema, { method: "POST", body, headers: { "Content-Type": contentType } }),
 };

@@ -34,18 +34,22 @@ class IncompleteAIProviderError(NonRetryableAIProviderError):
         *,
         input_tokens: int,
         cached_input_tokens: int,
+        cache_write_tokens: int = 0,
         output_tokens: int,
         latency_ms: int,
         provider_request_id: str | None,
         model_id: str,
+        prompt_cache_diagnostics: dict | None = None,
     ) -> None:
         super().__init__(message)
         self.input_tokens = input_tokens
         self.cached_input_tokens = cached_input_tokens
+        self.cache_write_tokens = cache_write_tokens
         self.output_tokens = output_tokens
         self.latency_ms = latency_ms
         self.provider_request_id = provider_request_id
         self.model_id = model_id
+        self.prompt_cache_diagnostics = prompt_cache_diagnostics
 
 
 class StructuredOutputError(AIGatewayError):

@@ -146,7 +146,7 @@ def test_specialists_use_versioned_gateway_contract(
         request = gateway.requests[0]
         assert result.output == output
         assert request.agent_id == output.agent
-        assert request.prompt_version == "v4"
+        assert request.prompt_version == "v5"
         assert request.opportunity_id == opportunity_id
         assert request.metadata["phase"] == "specialist_independent_round_1"
         assert len(gateway.output_models) == 1
@@ -230,7 +230,7 @@ def _find_schema_property(node, property_name):
     return None
 
 
-def test_v4_strict_schema_bounds_atomic_source_index_and_canonicalizes():
+def test_v5_stable_schema_and_atomic_source_index_canonicalizes():
     async def scenario():
         exact_key = "market_context.decision_context.market.snapshots.1h.rsi_14"
         gateway = IndexedSchemaGateway(_berlin_output(exact_key))
@@ -264,18 +264,41 @@ def test_v4_strict_schema_bounds_atomic_source_index_and_canonicalizes():
         source_index_schema = _find_schema_property(schema, "source_index")
         assert source_index_schema is not None
         assert source_index_schema["minimum"] == 0
-        assert source_index_schema["maximum"] == len(gateway.allowed_source_keys) - 1
+        assert "maximum" not in source_index_schema
         assert '"source_key"' not in json.dumps(schema, sort_keys=True)
 
+        # The provider-level schema is deliberately stable across requests.
+        # Money Heist enforces the current catalogue upper bound locally.
         provider_payload = _berlin_output(exact_key).model_dump(mode="python")
         provider_payload["evidence"] = [
             {
                 "source_index": len(gateway.allowed_source_keys),
-                "observation": "out of range must fail",
+                "observation": "provider-level schema remains stable",
             }
         ]
-        with pytest.raises(ValidationError):
-            provider_model.model_validate(provider_payload)
+        provider_model.model_validate(provider_payload)
+
+    asyncio.run(scenario())
+
+
+def test_v5_provider_schema_fingerprint_is_stable_across_catalog_sizes():
+    async def scenario():
+        small = IndexedSchemaGateway(_berlin_output("market_context.features.adx"))
+        large = IndexedSchemaGateway(_berlin_output("market_context.features.adx"))
+        await Berlin(small).analyze(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT"},
+            market_context={"features": {"adx": 28.0}},
+        )
+        await Berlin(large).analyze(
+            system_id="balanced_v1",
+            opportunity={"symbol": "BTCUSDT", "trigger": "breakout"},
+            market_context={"features": {"adx": 28.0, "rsi": 52.0, "atr": 1.2}},
+        )
+        small_schema = json.dumps(build_strict_json_schema(small.output_models[0]), sort_keys=True)
+        large_schema = json.dumps(build_strict_json_schema(large.output_models[0]), sort_keys=True)
+        assert small_schema == large_schema
+        assert len(small.allowed_source_keys) != len(large.allowed_source_keys)
 
     asyncio.run(scenario())
 
@@ -340,7 +363,7 @@ def test_evidence_must_reference_an_existing_input_field():
     asyncio.run(scenario())
 
 
-def test_v4_atomic_evidence_contract_exposes_exact_mtf_leaf_paths():
+def test_v5_atomic_evidence_contract_exposes_exact_mtf_leaf_paths():
     async def scenario():
         exact_key = "market_context.decision_context.market.snapshots.1h.rsi_14"
         gateway = FakeGateway([_berlin_output(exact_key)])
@@ -391,7 +414,7 @@ def test_v4_atomic_evidence_contract_exposes_exact_mtf_leaf_paths():
     asyncio.run(scenario())
 
 
-def test_v4_grounding_still_fails_closed_on_semantic_path_alias():
+def test_v5_grounding_still_fails_closed_on_semantic_path_alias():
     async def scenario():
         gateway = FakeGateway(
             [_berlin_output("market_context.market.snapshots.1h.rsi_14")]
@@ -427,7 +450,7 @@ def test_v4_grounding_still_fails_closed_on_semantic_path_alias():
     asyncio.run(scenario())
 
 
-def test_v4_evidence_rejects_container_path_even_when_container_exists():
+def test_v5_evidence_rejects_container_path_even_when_container_exists():
     async def scenario():
         gateway = FakeGateway([_berlin_output("opportunity.triggers")])
         with pytest.raises(UngroundedEvidenceError):
@@ -534,12 +557,13 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
         assert entry.core is False
         assert entry.allowed_tools == ()
         assert entry.model_route == "core_reasoning"
-        assert entry.prompt_version == "v4"
-        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v4"
+        assert entry.prompt_version == "v5"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v5"
         # Historical prompt versions remain immutable and addressable.
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v1").version == "v1"
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v2").version == "v2"
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v3").version == "v3"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, "v4").version == "v4"
         instructions = SPECIALIST_PROMPTS.get(
             entry.agent_id,
             entry.prompt_version,
