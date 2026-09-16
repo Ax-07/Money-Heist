@@ -116,6 +116,23 @@ def _references(replay_result: Any) -> tuple[ForwardOutcomeReference, ...]:
     return tuple(output)
 
 
+def resolve_outcome_decision_timeframe(replay_result: Any) -> str:
+    return _decision_timeframe(replay_result)
+
+
+def build_outcome_decision_candles(
+    *,
+    replay_result: Any,
+    candles: Sequence[Any],
+    decision_timeframe: str,
+) -> tuple[Candle, ...]:
+    return _decision_candles(
+        replay_result=replay_result,
+        candles=candles,
+        decision_timeframe=decision_timeframe,
+    )
+
+
 def build_forward_outcomes_report(
     replay_result: Any,
     candles: Sequence[Any],
@@ -149,4 +166,9 @@ def build_forward_outcomes_report(
     )
 
 
-__all__ = ["ForwardOutcomeReport", "build_forward_outcomes_report"]
+__all__ = [
+    "ForwardOutcomeReport",
+    "build_forward_outcomes_report",
+    "build_outcome_decision_candles",
+    "resolve_outcome_decision_timeframe",
+]

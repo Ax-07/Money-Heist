@@ -240,3 +240,15 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - limite causale explicite : aucun outcome pour `SCANNER:NO_TRIGGER` ou trigger sous seuil candidat ;
 - exports `*-funnel-outcome-attribution.json` ;
 - aucun changement Scanner/Professor/Risk/exécution/DecisionContext.
+
+<!-- BATCH23A4_SCANNER_FORWARD_OUTCOMES -->
+## Batch 23A.4 — Scanner Forward Outcomes
+
+- Forward Outcomes H1/H3/H5/H10/H20 pour chaque évaluation Scanner ;
+- couverture explicite `NO_TRIGGER`, `TRIGGER_BELOW_CANDIDATE_THRESHOLD`, `CANDIDATE_OPPORTUNITY` ;
+- score exact, seuil Scanner réellement utilisé et marge au seuil conservés ;
+- agrégations descriptives par classification, score exact, trigger et régime ;
+- conservation stricte avec Batch 23A.1 Decision Funnel ;
+- réutilisation du moteur Forward Outcomes 23A.2 et des mêmes frontières temporelles ;
+- exports `*-scanner-forward-outcomes.json` ;
+- aucun changement Scanner/Professor/Risk/exécution/DecisionContext.

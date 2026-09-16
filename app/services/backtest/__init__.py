@@ -16,6 +16,10 @@ from .funnel_outcome_attribution import (
     FunnelOutcomeAttributionReport,
     build_funnel_outcome_attribution_report,
 )
+from .scanner_forward_outcomes import (
+    ScannerForwardOutcomeReport,
+    build_scanner_forward_outcomes_report,
+)
 from .evaluation import (
     BacktestEvaluationBundle,
     equity_points_from_replay,
@@ -29,6 +33,7 @@ from .exports import (
     decision_funnel_to_json,
     forward_outcomes_to_json,
     funnel_outcome_attribution_to_json,
+    scanner_forward_outcomes_to_json,
     equity_curve_to_csv,
     manifest_to_json,
     split_report_to_json,
@@ -150,6 +155,7 @@ __all__ = [
     "DecisionFunnelReport",
     "ForwardOutcomeReport",
     "FunnelOutcomeAttributionReport",
+    "ScannerForwardOutcomeReport",
     "DeterministicAdvancedSpecialistMockProvider",
     "DenverSetupStatsContextProvider",
     "HistoricalExitEvent",
@@ -184,6 +190,7 @@ __all__ = [
     "build_decision_funnel_report",
     "build_forward_outcomes_report",
     "build_funnel_outcome_attribution_report",
+    "build_scanner_forward_outcomes_report",
     "build_run_manifest",
     "build_walk_forward_plan",
     "business_payload",
@@ -194,6 +201,7 @@ __all__ = [
     "decision_funnel_to_json",
     "forward_outcomes_to_json",
     "funnel_outcome_attribution_to_json",
+    "scanner_forward_outcomes_to_json",
     "equity_curve_to_csv",
     "equity_points_from_replay",
     "evaluate_historical_replay",

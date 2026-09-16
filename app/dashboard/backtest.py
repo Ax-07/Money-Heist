@@ -38,6 +38,7 @@ from app.services.backtest import (
     DecisionFunnelReport,
     ForwardOutcomeReport,
     FunnelOutcomeAttributionReport,
+    ScannerForwardOutcomeReport,
     HistoricalPositionLifecycle,
     HistoricalReplayRunner,
     HistoricalSetupAttributionError,
@@ -47,6 +48,7 @@ from app.services.backtest import (
     build_decision_funnel_report,
     build_forward_outcomes_report,
     build_funnel_outcome_attribution_report,
+    build_scanner_forward_outcomes_report,
     build_run_manifest,
     build_walk_forward_plan,
     catalog_from_historical_runs,
@@ -54,6 +56,7 @@ from app.services.backtest import (
     decision_funnel_to_json,
     forward_outcomes_to_json,
     funnel_outcome_attribution_to_json,
+    scanner_forward_outcomes_to_json,
     equity_curve_to_csv,
     evaluate_historical_replay,
     execute_walk_forward,
@@ -506,6 +509,7 @@ class _RunExecution:
     decision_funnel: DecisionFunnelReport
     forward_outcomes: ForwardOutcomeReport
     funnel_outcome_attribution: FunnelOutcomeAttributionReport
+    scanner_forward_outcomes: ScannerForwardOutcomeReport
 
 
 @dataclass(slots=True)
@@ -1493,6 +1497,12 @@ class BacktestDashboardService:
                     execution.funnel_outcome_attribution
                 ),
             )
+            exports[f"{prefix}-scanner-forward-outcomes.json"] = (
+                "application/json",
+                scanner_forward_outcomes_to_json(
+                    execution.scanner_forward_outcomes
+                ),
+            )
 
         denver_sources = tuple(
             (
@@ -1717,6 +1727,14 @@ class BacktestDashboardService:
             decision_funnel,
             forward_outcomes,
         )
+        scanner_config = runner.scanner.config
+        scanner_forward_outcomes = build_scanner_forward_outcomes_report(
+            replay,
+            candles,
+            decision_funnel,
+            scanner_version=str(scanner_config.scanner_version),
+            min_priority_score=int(scanner_config.min_priority_score),
+        )
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
         period = self._period_summary(
             role, replay, evaluation, period_report, decision_funnel
@@ -1729,6 +1747,7 @@ class BacktestDashboardService:
             decision_funnel=decision_funnel,
             forward_outcomes=forward_outcomes,
             funnel_outcome_attribution=funnel_outcome_attribution,
+            scanner_forward_outcomes=scanner_forward_outcomes,
         )
 
     @staticmethod
