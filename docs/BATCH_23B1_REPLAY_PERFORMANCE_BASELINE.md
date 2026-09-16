@@ -2,7 +2,7 @@
 
 <!-- BATCH23B1_REPLAY_PERFORMANCE_BASELINE -->
 
-**Baseline :** `4368a99944eb04ba3b53cc31f6b379041aa3cbf3`  
+**Baseline :** `4368a99944eb04ba3b53cc31f6b379041aa3cbf3`
 **Type :** optimisation non métier + observabilité + UX opérateur
 
 ## Objectif
