@@ -1,0 +1,49 @@
+Money Heist — Batch 24A.3 — Technical Events
+Baseline: 98f1ffc01590eef8351d1110a4354d07355c5d86
+btc_analytics_v1 audit: 07e9af22d8f5cc509d9a8dd50a2e7451249295c1 (event registry p4.v1)
+
+CREATED
+app/analytics/events/__init__.py
+app/analytics/events/engine.py
+app/analytics/events/integration.py
+app/analytics/events/models.py
+app/analytics/events/registry.py
+tests/analytics/events/__init__.py
+tests/analytics/events/conftest.py
+tests/analytics/events/test_causality.py
+tests/analytics/events/test_derived_price_events.py
+tests/analytics/events/test_engine_crosses.py
+tests/analytics/events/test_engine_thresholds.py
+tests/analytics/events/test_integration.py
+tests/analytics/events/test_isolation.py
+tests/analytics/events/test_models_and_evidence.py
+tests/analytics/events/test_real_indicator_transitions.py
+tests/analytics/events/test_registry.py
+tests/analytics/events/test_warmup_and_ordering.py
+docs/BATCH_24A3_TECHNICAL_EVENTS.md
+apply_batch_24a3_docs.py
+INTEGRATION_BATCH_24A3.md
+MANIFEST_BATCH_24A3.txt
+SHA256SUMS_BATCH_24A3.txt
+
+DOCS MODIFIED AFTER RUNNING apply_batch_24a3_docs.py
+docs/02_ARCHITECTURE.md
+docs/08_API_ET_MODELES_DE_DONNEES.md
+docs/09_ROADMAP_DEVELOPPEMENT.md
+docs/10_DECISIONS_ET_CHANGELOG.md
+docs/11_BACKTESTING_ET_REPLAY_HISTORIQUE.md
+docs/ANALYTICS_INDICATOR_PARITY.md
+CHANGELOG_BATCH.md
+
+INTENTIONALLY UNCHANGED
+app/analytics/indicators/**
+app/market/features/**
+app/market/scanner/**
+app/services/decision_context/**
+app/agents/**
+app/services/orchestration/**
+app/trading/risk/**
+app/trading/paper/**
+app/trading/live/**
+app/services/backtest/models.py
+app/services/backtest/reproducibility.py
