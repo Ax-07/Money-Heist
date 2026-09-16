@@ -199,3 +199,13 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - nettoyage des artefacts historiques référencé (`c4ffda0`, `9f42d3e`).
 
 <!-- DOC_REALIGN_POST_BATCH22_CHANGELOG_END -->
+
+<!-- DOCS_SINGLE_SOURCE_20260916 -->
+## Normalisation documentaire — source unique `docs/`
+
+- suppression des neuf miroirs historiques de documents permanents à la racine ;
+- `docs/` devient la source documentaire canonique unique ;
+- `INDEX_ARCHIVE.md` est remplacé par `docs/README.md` ;
+- tests Recruitment/Task Force réalignés sur les chemins canoniques ;
+- ajout d’ADR-032 pour figer la règle de layout ;
+- aucun changement de runtime, Risk Engine, broker ou autorité LIVE.

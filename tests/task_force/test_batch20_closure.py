@@ -69,9 +69,10 @@ def test_task_force_orchestration_bridges_are_public() -> None:
 
 
 def test_batch20_documentation_closure_is_present() -> None:
-    state = (ROOT / "00_ETAT_ACTUEL_POST_BATCH_15.md").read_text(encoding="utf-8")
-    roadmap = (ROOT / "09_ROADMAP_DEVELOPPEMENT.md").read_text(encoding="utf-8")
-    decisions = (ROOT / "10_DECISIONS_ET_CHANGELOG.md").read_text(encoding="utf-8")
+    docs = ROOT / "docs"
+    state = (docs / "00_ETAT_ACTUEL_POST_BATCH_15.md").read_text(encoding="utf-8")
+    roadmap = (docs / "09_ROADMAP_DEVELOPPEMENT.md").read_text(encoding="utf-8")
+    decisions = (docs / "10_DECISIONS_ET_CHANGELOG.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG_BATCH.md").read_text(encoding="utf-8")
 
     assert state.startswith("# Money Heist — État actuel post-Batch 22.1")
@@ -81,22 +82,25 @@ def test_batch20_documentation_closure_is_present() -> None:
     assert "ADR-027 — Task Force temporaire registry-only" in decisions
     assert "BATCH20_CLOSURE_START" in changelog
 
-
-def test_documentation_mirrors_remain_identical() -> None:
+def test_documentation_is_canonical_under_docs_only() -> None:
     names = (
         "00_ETAT_ACTUEL_POST_BATCH_15.md",
+        "01_PROJECT_MASTER.md",
+        "02_ARCHITECTURE.md",
         "03_SYSTEME_AGENTS.md",
+        "04_TRADING_ET_RISQUE.md",
+        "05_MARKET_DATA_ET_EXECUTION.md",
         "06_EVALUATION_ET_APPRENTISSAGE.md",
+        "07_SECURITE_ET_OPERATIONS.md",
         "08_API_ET_MODELES_DE_DONNEES.md",
         "09_ROADMAP_DEVELOPPEMENT.md",
         "10_DECISIONS_ET_CHANGELOG.md",
         "11_BACKTESTING_ET_REPLAY_HISTORIQUE.md",
+        "12_FRONTEND_ET_INTERFACE.md",
     )
     for name in names:
-        root_text = (ROOT / name).read_text(encoding="utf-8")
-        docs_text = (ROOT / "docs" / name).read_text(encoding="utf-8")
-        assert root_text == docs_text
-
+        assert not (ROOT / name).exists(), f"unexpected root duplicate: {name}"
+        assert (ROOT / "docs" / name).is_file(), name
 
 def test_docs_only_layout_is_preserved() -> None:
     for name in (

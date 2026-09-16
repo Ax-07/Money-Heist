@@ -67,7 +67,10 @@ Le Frontend V2 utilise Next.js, React, TypeScript strict, Tailwind, TanStack Que
 
 ## Documentation
 
-Références principales : `00_ETAT_ACTUEL_POST_BATCH_15.md`, les documents permanents sous `docs/`, leurs miroirs historiques à la racine lorsqu’ils existent, puis `12_FRONTEND_ET_INTERFACE.md` et `docs/ADR_031_OPENAI_PROMPT_CACHE_ET_COUTS.md`. Le code intégré sur GitHub `main` prévaut lorsqu’une ancienne formulation documentaire est dépassée.
+La documentation permanente a une seule source de vérité : `docs/`.
+Commencer par [`docs/README.md`](docs/README.md), puis consulter
+`docs/00_ETAT_ACTUEL_POST_BATCH_15.md` pour l’état courant. Les documents numérotés ne sont plus
+dupliqués à la racine du dépôt.
 
 <!-- DOC_REALIGN_README_20260915_START -->
 

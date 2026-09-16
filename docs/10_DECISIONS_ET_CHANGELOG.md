@@ -737,3 +737,24 @@ Le Prompt Cache fournisseur reste distinct du cache de réponses `money-heist.ba
 - nettoyage des artefacts historiques référencé (`c4ffda0`, `9f42d3e`).
 
 <!-- DOC_REALIGN_CHANGELOG_20260915_END -->
+
+<!-- ADR032_DOCS_SINGLE_SOURCE -->
+### ADR-032 — Source documentaire unique sous `docs/`
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+**Décision :**
+Les documents permanents numérotés `00` à `12` sont canoniques uniquement sous `docs/`. Les anciennes
+copies racine sont supprimées. `README.md` reste le point d’entrée du dépôt et `docs/README.md`
+devient l’index documentaire.
+
+**Raison :**
+La duplication racine / `docs/` créait un risque de divergence silencieuse et imposait des tests de
+synchronisation sans valeur fonctionnelle.
+
+**Conséquences :**
+- une seule copie à maintenir pour chaque document permanent ;
+- les tests documentaires lisent `docs/` directement ;
+- un test de layout interdit le retour des doublons racine ;
+- les documents opérateur transverses (`LIVE_*`, `CHANGELOG_BATCH.md`) restent à la racine.
