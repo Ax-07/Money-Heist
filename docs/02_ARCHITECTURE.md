@@ -1,8 +1,8 @@
 # Money Heist — Architecture Technique
 
 **Document :** Architecture technique  
-**Version :** 0.2
-**Statut :** Architecture active — alignée post-Batch 22.1
+**Version :** 0.3
+**Statut :** Architecture active — alignée post-Batch 23A.1
 **Référence :** `01_PROJECT_MASTER.md`
 
 ---
@@ -693,3 +693,24 @@ Next.js Frontend V2 / Backtest Cockpit
 Le Prompt Cache est une optimisation de transport/coût du AI Gateway. Il n’est ni une mémoire métier ni une source d’autorité. Le Master Professor reste advisory/operator-gated. Le Frontend reste un client du backend et ne recalcule aucune décision critique.
 
 <!-- DOC_REALIGN_POST_BATCH22_ARCHITECTURE_END -->
+
+<!-- BATCH23A1_ARCHITECTURE -->
+## Addendum Batch 23A.1 — Causal Measurement / Decision Funnel
+
+`app.evaluation.decision_funnel` est une couche de mesure **read-only** placée après les sorties déjà produites par Historical Replay et Evaluation.
+
+```text
+HistoricalReplayResult + Evaluation
+→ DecisionFunnel aggregation
+→ PeriodSummary / exports JSON
+```
+
+Règles d'architecture :
+- aucun appel supplémentaire au Scanner, aux agents, au Risk Engine ou au broker ;
+- aucun changement de prompt, seuil, sizing ou règle d'exécution ;
+- aucun `DecisionFunnelReport` n'est injecté dans `DecisionContext` ;
+- les résultats postérieurs au choix sont séparés dans `post_hoc` ;
+- seuls deux compteurs techniques pré-Scanner sont ajoutés au runner pour expliquer les bougies non évaluées par le Scanner ;
+- l'agrégation est compatible avec une extension future PAPER/SHADOW/LIVE mais Batch 23A.1 est branché d'abord sur Historical Replay.
+
+Cette couche augmente l'observabilité sans déplacer l'autorité métier. Le Risk Engine reste l'autorité finale d'autorisation.

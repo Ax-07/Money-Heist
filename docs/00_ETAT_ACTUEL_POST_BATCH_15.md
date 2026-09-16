@@ -1,10 +1,10 @@
-# Money Heist — État actuel post-Batch 22.1
+# Money Heist — État actuel post-Batch 23A.1
 
 **Statut :** référence d’alignement active  
-**Date :** 2026-09-15
+**Date :** 2026-09-16
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références existantes
-**Baseline documentaire :** `9f42d3ebc52b71feeedf3b58160187d18bab5a62` (`main`)
-**Baseline fonctionnelle récente :** `8373fe1` — Frontend cockpit + OpenAI Prompt Cache
+**Baseline documentaire :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd` (`main`)
+**Baseline fonctionnelle récente :** `fbec1d3` — Batch 23A.1 Decision Funnel Baseline
 
 ---
 
@@ -146,6 +146,42 @@ Ordre recommandé :
 
 GitHub `main` reste la référence intégrée lorsqu’une formulation historique subsiste dans un addendum ancien.
 
-## 11. Prochain chantier
+<!-- BATCH23A1_STATE_CLOSURE -->
+## 11. Batch 23A.1 — Decision Funnel Baseline
 
-La priorité n’est plus de construire le pipeline de base. Elle est de mesurer sa qualité avec de vraies campagnes longues, d’améliorer la parité du contexte décisionnel LIVE ↔ Historical Replay, puis de fermer les gates nécessaires à une promotion LIVE contrôlée.
+Batch 23A.1 est livré sur `main` au commit `fbec1d3fadaf811c6e84d33741aa08166cc472cd`.
+
+La couche `DecisionFunnelReport` mesure le chemin Historical Replay sans modifier son comportement :
+
+```text
+candles
+→ Scanner
+→ CandidateOpportunity
+→ Compute Gate
+→ orchestration IA
+→ Professor FINAL
+→ TradeProposal
+→ Risk Engine
+→ ordre/fill PAPER
+```
+
+Deux compteurs techniques pré-Scanner sont conservés : warm-up incomplet et clôture hors timeframe de décision. Le rapport agrège ensuite triggers Scanner, opportunités, gates IA, décisions Professor, Risk et exécution.
+
+Invariants documentés :
+- `candles_evaluated = pre_scanner_skips + scanner_evaluations` ;
+- `scanner_evaluations = scanner_no_trigger + scanner_triggered` ;
+- aucun seuil Scanner/Professor/Risk n'est modifié ;
+- le rapport n'entre jamais dans `DecisionContext` ;
+- les données postérieures à la décision, notamment `closed_trades`, restent dans `post_hoc` ;
+- le fingerprint business historique reste indépendant des nouveaux compteurs d'observation.
+
+Exports de campagne :
+- `design-decision-funnel.json` ;
+- `validation-decision-funnel.json` ;
+- `oos-decision-funnel.json`.
+
+---
+
+## 12. Prochain chantier
+
+Le prochain sous-lot est **Batch 23A.2 — Forward Outcomes** : mesurer post-hoc le devenir de chaque `CandidateOpportunity` sans réinjecter ces résultats dans la décision courante. Ensuite viennent les campagnes longues multi-régimes, la parité LIVE ↔ Historical Replay et les gates nécessaires à une promotion LIVE contrôlée.

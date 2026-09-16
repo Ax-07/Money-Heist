@@ -1,7 +1,7 @@
 # Money Heist — API et Modèles de Données
 
 **Document :** Contrats, schémas et API internes  
-**Version :** 0.2
+**Version :** 0.3
 **Statut :** Référence active — contrats et API intégrés
 
 ---
@@ -597,3 +597,29 @@ Une route ne peut activer `OPENAI_EXPLICIT` que si elle déclare la capability c
 Le transport courant est `money-heist.prompt-transport.v2`.
 
 <!-- DOC_REALIGN_PROMPT_CACHE_API_END -->
+
+<!-- BATCH23A1_API_MODELS -->
+## Addendum Batch 23A.1 — modèles Decision Funnel
+
+Contrats publics ajoutés sous `app.evaluation.decision_funnel` :
+- `DecisionFunnelObservationCounts` ;
+- `DecisionFunnelCounts` ;
+- `DecisionFunnelReasonCount` ;
+- `DecisionFunnelPostHoc` ;
+- `DecisionFunnelReport`.
+
+Le rapport expose notamment :
+- bougies évaluées et skips pré-Scanner ;
+- évaluations Scanner, no-trigger, triggered, opportunités ;
+- Compute Gate allowed/blocked ;
+- orchestrations IA déclenchées ;
+- `NO_ANALYSIS`, `NO_TRADE`, échecs d'orchestration ;
+- `TradeProposal` créées ;
+- Risk `REJECTED` / `RESIZED` / `APPROVED` ;
+- ordres soumis et fills ;
+- reason codes agrégés et triés de manière déterministe ;
+- closed trades / ordres broker / fills broker dans une section `post_hoc`.
+
+`PeriodSummary.decision_funnel` est optionnel afin que les anciens `summary.json` restent lisibles. Les nouveaux exports sont `design-decision-funnel.json`, `validation-decision-funnel.json` et `oos-decision-funnel.json`.
+
+Le schéma du Decision Funnel est observationnel : il n'est pas une entrée de `BacktestConfig`, ne change pas `run_id` et n'est jamais une entrée de décision.

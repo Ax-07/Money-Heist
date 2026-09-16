@@ -1,6 +1,6 @@
 # Money Heist — Décisions et Changelog
 
-**Document :** Journal des décisions d’architecture et évolutions de documentation  
+**Document :** Journal des décisions d’architecture et évolutions de documentation
 **Version :** 1.0
 **Statut :** Actif
 
@@ -37,7 +37,7 @@ REJECTED
 
 **Statut :** ACCEPTED
 
-**Décision :**  
+**Décision :**
 Le système utilise une crew multi-agents orchestrée par The Professor.
 
 **Raison :**
@@ -52,7 +52,7 @@ Le code doit prévoir un registre d’agents et un orchestrateur.
 
 **Statut :** ACCEPTED
 
-**Décision :**  
+**Décision :**
 Le Risk Engine n’est pas un agent discrétionnaire.
 
 **Raison :**
@@ -222,7 +222,7 @@ Les clés de trading LIVE ne doivent pas disposer de droits de retrait.
 
 ### ADR-016 — Version Python Batch 01
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -239,7 +239,7 @@ Toute hausse de version Python devra être testée et enregistrée comme décisi
 
 ### ADR-017 — Gestion des dépendances avec uv
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -256,7 +256,7 @@ Les commandes de référence deviennent `uv sync` et `uv run ...`.
 
 ### ADR-018 — Base locale SQLite + SQLAlchemy/Alembic
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -274,7 +274,7 @@ plus tard grâce à la séparation `domain` / `storage`.
 
 ### ADR-019 — Exchange initial Market Data : Kraken Spot public / EUR
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -304,7 +304,7 @@ Cette décision concerne le **Market Data du Batch 13**. Elle n'active aucun ord
 
 ### ADR-020 — Premier marché LIVE : Kraken Spot / EUR
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -322,7 +322,7 @@ Réduire la surface de risque du prototype et rester cohérent avec le Market Da
 
 ### ADR-021 — Activation LIVE Batch 15 fail-closed
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -343,7 +343,7 @@ La livraison du Batch 15 ne doit jamais être interprétée comme « le système
 
 ### ADR-022 — Backtesting & Historical Replay avant premier ordre réel
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -376,7 +376,7 @@ Le code post-Batch 15 possède l’import historique, le replay scanner, le Pape
 
 ### ADR-023 — GitHub comme référence intégrée et synchronisation des sources projet
 
-**Date :** 2026-09-07  
+**Date :** 2026-09-07
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -397,7 +397,7 @@ Après les Batchs 01 à 15, certaines sources initiales décrivaient encore le p
 
 ### ADR-024 — Contrat de reproductibilité et validation historique Batch 16
 
-**Date :** 2026-09-08  
+**Date :** 2026-09-08
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -434,7 +434,7 @@ Une comparaison historique n’est exploitable que si dataset, code, modèles, p
 
 ### ADR-025 — Backtest Dashboard PAPER-only et cache IA V2
 
-**Date :** 2026-09-08  
+**Date :** 2026-09-08
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -455,7 +455,7 @@ Le cache IA passe au schéma `money-heist.backtest-ai-cache.v2`. La clé exclut 
 
 ### ADR-026 — Recruitment lifecycle séparé, OOS et advisory-only
 
-**Date :** 2026-09-09  
+**Date :** 2026-09-09
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -477,7 +477,7 @@ L'advisory peut seulement produire `REJECT`, `EXTEND`, `PROBATION` ou `RECOMMEND
 
 ### ADR-027 — Task Force temporaire registry-only, operator-gated et advisory-only
 
-**Date :** 2026-09-09  
+**Date :** 2026-09-09
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -678,7 +678,7 @@ Le journal ne doit pas devenir une copie complète des autres documents.
 <!-- BATCH22_FRONTEND_V2 -->
 ### ADR-029 — Frontend Money Heist V2 en Next.js
 
-**Date :** 2026-09-12  
+**Date :** 2026-09-12
 **Statut :** ACCEPTED
 
 **Décision :**
@@ -699,7 +699,7 @@ La baseline ne fournit pas de WebSocket/SSE opérateur ni d'API HTTP sécurisée
 <!-- BATCH22_1_BACKTEST_COCKPIT -->
 ### ADR-030 — Sidecar durable Frontend V2 pour Historical Replay
 
-**Date :** 2026-09-13  
+**Date :** 2026-09-13
 **Statut :** ACCEPTED
 
 Les entrées immuables et sorties déjà produites du Backtest Cockpit sont persistées sous `.money-heist/frontend-v2/`, surchargeable par `MONEY_HEIST_FRONTEND_V2_STORAGE_DIR`. Ce sidecar ne devient jamais un second moteur de backtest et ne recalcule ni Scanner, agents, Risk, fills ni métriques.
@@ -758,3 +758,34 @@ synchronisation sans valeur fonctionnelle.
 - les tests documentaires lisent `docs/` directement ;
 - un test de layout interdit le retour des doublons racine ;
 - les documents opérateur transverses (`LIVE_*`, `CHANGELOG_BATCH.md`) restent à la racine.
+
+<!-- ADR033_DECISION_FUNNEL -->
+### ADR-033 — Decision Funnel strictement observationnel
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+**Décision :**
+La mesure causale Batch 23A.1 agrège uniquement des sorties déjà produites par Historical Replay / Evaluation. Elle ne déclenche aucun composant décisionnel supplémentaire et n'est jamais injectée dans `DecisionContext`.
+
+Deux compteurs techniques pré-Scanner sont autorisés dans le runner pour distinguer warm-up incomplet et clôtures hors timeframe de décision. Les statistiques postérieures au choix, notamment les trades clôturés, sont explicitement séparées dans `post_hoc`.
+
+**Raison :**
+Avant de modifier les seuils du Scanner, les règles du Professor ou les paramètres Risk, il faut pouvoir expliquer quantitativement où les opportunités sont filtrées tout en garantissant l'identité comportementale du replay.
+
+**Conséquences :**
+- aucun changement de seuil/prompt/règle d'exécution dans 23A.1 ;
+- `DecisionFunnelReport` ne fait pas partie de `BacktestConfig` et ne modifie pas `run_id` ;
+- le fingerprint business historique reste indépendant des compteurs d'observation ;
+- les reason codes existants sont réutilisés/normalisés plutôt que remplacés ;
+- les futurs Forward Outcomes restent post-hoc et ne peuvent pas créer de look-ahead.
+
+**Commit de référence :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd`.
+
+<!-- BATCH23A1_CHANGELOG_CLOSURE -->
+## Changelog documentation — 2026-09-16 — Clôture Batch 23A.1
+
+- Batch 23A.1 Decision Funnel Baseline livré et validé ;
+- état courant, architecture, contrats API/modèles, roadmap, ADR et documentation Historical Replay réalignés ;
+- prochaine étape explicitée : Batch 23A.2 Forward Outcomes ;
+- aucune autorité LIVE, règle Risk, seuil Scanner ou prompt agent modifié par cette clôture.

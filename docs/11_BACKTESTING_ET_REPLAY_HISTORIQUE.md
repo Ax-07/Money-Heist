@@ -1,8 +1,8 @@
 # Money Heist — Backtesting & Historical Replay
 
 **Document :** Contrat détaillé Batch 16  
-**Version :** 1.2
-**Date :** 2026-09-11
+**Version :** 1.3
+**Date :** 2026-09-16
 **Statut :** Référence technique active
 
 ---
@@ -482,3 +482,47 @@ money-heist.backtest-ai-cache.v2
 La policy Prompt Cache et `prompt_render_version` font partie des hypothèses versionnées d’une campagne lorsque le Dashboard/Frontend les expose. La persistance Batch 22.1 supersède la limitation historique « campagne seulement en mémoire » pour les campagnes V2 : dataset, configuration, progression/traces, résumé et exports nécessaires au replay sont persistés dans le sidecar local.
 
 <!-- DOC_REALIGN_REPLAY_CACHE_DISTINCTION_END -->
+
+<!-- BATCH23A1_REPLAY_DECISION_FUNNEL -->
+## Extension Batch 23A.1 — Decision Funnel Baseline
+
+Batch 23A.1 ajoute une couche de mesure causale après le replay sans modifier le chemin de décision.
+
+Le runner conserve deux compteurs pré-Scanner :
+- `pre_scanner_warmup_skipped` ;
+- `pre_scanner_not_decision_close_skipped`.
+
+Les points effectivement scannés sont ensuite agrégés en :
+- `scanner_evaluations`, `scanner_no_trigger`, `scanner_triggered` ;
+- `candidate_opportunities` ;
+- Compute Gate allowed/blocked ;
+- orchestrations IA déclenchées ;
+- Professor PLAN `NO_ANALYSIS` et Professor FINAL `NO_TRADE` ;
+- propositions créées ;
+- décisions Risk `REJECTED`, `RESIZED`, `APPROVED` ;
+- ordres soumis et fills.
+
+Les événements/causes sont agrégés sous forme de reason codes déterministes. `closed_trades`, nombre total d'ordres broker et nombre total de fills broker sont placés dans `post_hoc`, car ils sont postérieurs à la décision initiale.
+
+Invariants :
+```text
+candles_evaluated
+= pre_scanner_warmup_skipped
++ pre_scanner_not_decision_close_skipped
++ scanner_evaluations
+
+scanner_evaluations
+= scanner_no_trigger
++ scanner_triggered
+```
+
+Le `DecisionFunnelReport` :
+- ne déclenche aucun appel Scanner/IA/Risk/broker ;
+- n'entre jamais dans `DecisionContext` ;
+- ne modifie pas `BacktestConfig` ni `run_id` ;
+- ne modifie pas le fingerprint business historique ;
+- est exporté par période sous `*-decision-funnel.json`.
+
+**Commit de référence :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd`.
+
+La prochaine extension 23A.2 ajoutera des Forward Outcomes post-hoc pour chaque opportunité, sans rendre ces données visibles au pipeline décisionnel au temps de l'opportunité.

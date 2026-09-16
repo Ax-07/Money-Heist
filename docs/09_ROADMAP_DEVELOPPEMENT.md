@@ -1,8 +1,8 @@
 # Money Heist — Roadmap de Développement
 
-**Document :** Plan de développement par lots  
-**Version :** 0.5
-**Statut :** Roadmap active — alignée post-Batch 22.1
+**Document :** Plan de développement par lots
+**Version :** 0.6
+**Statut :** Roadmap active — alignée post-Batch 23A.1
 
 ---
 
@@ -475,15 +475,16 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-État de construction : Batch 22.1 Frontend Backtest Cockpit livré, Prompt Cache OpenAI intégré et dépôt nettoyé des anciens artefacts Batch.
+État de construction : Batch 23A.1 Decision Funnel Baseline livré sur `main` au commit `fbec1d3fadaf811c6e84d33741aa08166cc472cd`. Le pipeline est désormais instrumenté pour expliquer quantitativement où les opportunités sont filtrées sans modifier le comportement de trading.
 
 Priorités suivantes :
 
-1. exécuter des campagnes historiques longues et multi-régimes avec DESIGN / VALIDATION / OOS et walk-forward ;
-2. mesurer la fréquence de trade, la qualité des opportunités, les coûts IA et l’apport marginal des agents ;
-3. poursuivre la parité du contexte décisionnel LIVE ↔ Historical Replay ;
-4. valider explicitement timeframes de production et limites numériques Balanced ;
-5. maintenir le LIVE non promu tant que PAPER/SHADOW, sécurité et preflight ne sont pas satisfaits.
+1. livrer Batch 23A.2 — Forward Outcomes post-hoc pour chaque `CandidateOpportunity`, sans feedback dans `DecisionContext` ;
+2. exécuter des campagnes historiques longues et multi-régimes avec DESIGN / VALIDATION / OOS et walk-forward en exploitant le Decision Funnel ;
+3. mesurer la fréquence de trade, les pertes de funnel, la qualité des opportunités, les coûts IA et l’apport marginal des agents avant tout assouplissement de seuil ;
+4. poursuivre la parité du contexte décisionnel LIVE ↔ Historical Replay ;
+5. valider explicitement timeframes de production et limites numériques Balanced ;
+6. maintenir le LIVE non promu tant que PAPER/SHADOW, sécurité et preflight ne sont pas satisfaits.
 
 <!-- BATCH22_FRONTEND_V2 -->
 ## Batch 22 — Frontend V2 / Trading Cockpit
@@ -508,3 +509,24 @@ Le lanceur suit Dataset → Périodes → Risk → IA → Exécution → Donnée
 Batch 22 / 22.1 est livré. Le Prompt Cache OpenAI a été intégré ensuite dans le AI Gateway et le dépôt a été nettoyé des anciens artefacts de livraison Batch. La roadmap historique est conservée pour traçabilité ; la section « Prochaine action » ci-dessus porte l’orientation courante.
 
 <!-- DOC_REALIGN_POST_BATCH22_ROADMAP_END -->
+
+<!-- BATCH23A1_ROADMAP -->
+## Batch 23A.1 — Decision Funnel Baseline
+
+**État : livré et validé le 2026-09-16.**
+**Commit de référence :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd`.
+
+Livré :
+- instrumentation Historical Replay strictement observationnelle ;
+- compteurs pré-Scanner warm-up / clôtures hors timeframe de décision ;
+- funnel Scanner → CandidateOpportunity → Compute Gate → IA → Professor → TradeProposal → Risk → ordre/fill ;
+- reason codes agrégés ;
+- invariants de conservation ;
+- exposition additive dans `PeriodSummary` ;
+- exports JSON par période ;
+- tests de non-régression/reproductibilité ;
+- aucune modification de seuil Scanner/Professor/Risk ou règle d'exécution.
+
+### Batch 23A.2 — Forward Outcomes
+
+Prochain sous-lot : calculer des outcomes post-hoc pour toutes les opportunités, y compris `NO_ANALYSIS`, `NO_TRADE`, `RISK_REJECTED` et `EXECUTED`, avec horizons H1/H3/H5/H10/H20, excursion favorable/défavorable, first-hit et provenance. Ces outcomes ne doivent jamais être disponibles dans le `DecisionContext` de l'opportunité évaluée.
