@@ -37,6 +37,7 @@ from app.services.backtest import (
     DatasetRef,
     DecisionFunnelReport,
     ForwardOutcomeReport,
+    FunnelOutcomeAttributionReport,
     HistoricalPositionLifecycle,
     HistoricalReplayRunner,
     HistoricalSetupAttributionError,
@@ -45,12 +46,14 @@ from app.services.backtest import (
     WalkForwardReport,
     build_decision_funnel_report,
     build_forward_outcomes_report,
+    build_funnel_outcome_attribution_report,
     build_run_manifest,
     build_walk_forward_plan,
     catalog_from_historical_runs,
     closed_trades_to_csv,
     decision_funnel_to_json,
     forward_outcomes_to_json,
+    funnel_outcome_attribution_to_json,
     equity_curve_to_csv,
     evaluate_historical_replay,
     execute_walk_forward,
@@ -502,6 +505,7 @@ class _RunExecution:
     evaluation: Any
     decision_funnel: DecisionFunnelReport
     forward_outcomes: ForwardOutcomeReport
+    funnel_outcome_attribution: FunnelOutcomeAttributionReport
 
 
 @dataclass(slots=True)
@@ -1483,6 +1487,12 @@ class BacktestDashboardService:
                 "application/json",
                 forward_outcomes_to_json(execution.forward_outcomes),
             )
+            exports[f"{prefix}-funnel-outcome-attribution.json"] = (
+                "application/json",
+                funnel_outcome_attribution_to_json(
+                    execution.funnel_outcome_attribution
+                ),
+            )
 
         denver_sources = tuple(
             (
@@ -1702,6 +1712,11 @@ class BacktestDashboardService:
         )
         decision_funnel = build_decision_funnel_report(replay, evaluation)
         forward_outcomes = build_forward_outcomes_report(replay, candles)
+        funnel_outcome_attribution = build_funnel_outcome_attribution_report(
+            replay,
+            decision_funnel,
+            forward_outcomes,
+        )
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
         period = self._period_summary(
             role, replay, evaluation, period_report, decision_funnel
@@ -1713,6 +1728,7 @@ class BacktestDashboardService:
             evaluation=evaluation,
             decision_funnel=decision_funnel,
             forward_outcomes=forward_outcomes,
+            funnel_outcome_attribution=funnel_outcome_attribution,
         )
 
     @staticmethod

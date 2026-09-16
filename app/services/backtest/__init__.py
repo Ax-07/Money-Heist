@@ -12,6 +12,10 @@ from .clock import ReplayClock, as_utc
 from .dataset import DatasetRef, canonical_candle_rows
 from .decision_funnel import DecisionFunnelReport, build_decision_funnel_report
 from .forward_outcomes import ForwardOutcomeReport, build_forward_outcomes_report
+from .funnel_outcome_attribution import (
+    FunnelOutcomeAttributionReport,
+    build_funnel_outcome_attribution_report,
+)
 from .evaluation import (
     BacktestEvaluationBundle,
     equity_points_from_replay,
@@ -24,6 +28,7 @@ from .exports import (
     closed_trades_to_csv,
     decision_funnel_to_json,
     forward_outcomes_to_json,
+    funnel_outcome_attribution_to_json,
     equity_curve_to_csv,
     manifest_to_json,
     split_report_to_json,
@@ -144,6 +149,7 @@ __all__ = [
     "DatasetRef",
     "DecisionFunnelReport",
     "ForwardOutcomeReport",
+    "FunnelOutcomeAttributionReport",
     "DeterministicAdvancedSpecialistMockProvider",
     "DenverSetupStatsContextProvider",
     "HistoricalExitEvent",
@@ -177,6 +183,7 @@ __all__ = [
     "build_paper_ablation_executor",
     "build_decision_funnel_report",
     "build_forward_outcomes_report",
+    "build_funnel_outcome_attribution_report",
     "build_run_manifest",
     "build_walk_forward_plan",
     "business_payload",
@@ -186,6 +193,7 @@ __all__ = [
     "closed_trades_to_csv",
     "decision_funnel_to_json",
     "forward_outcomes_to_json",
+    "funnel_outcome_attribution_to_json",
     "equity_curve_to_csv",
     "equity_points_from_replay",
     "evaluate_historical_replay",

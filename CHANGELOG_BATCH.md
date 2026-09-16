@@ -229,3 +229,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - provenance dataset/run et statut terminal conservés ;
 - exports `*-forward-outcomes.json` ;
 - aucune donnée Forward Outcomes injectée dans `DecisionContext`, aucun changement Scanner/Professor/Risk/exécution.
+
+<!-- BATCH23A3_FUNNEL_OUTCOME_ATTRIBUTION -->
+## Batch 23A.3 — Funnel Outcome Attribution
+
+- croisement post-hoc CandidateOpportunity / Decision Funnel / Forward Outcomes ;
+- agrégations descriptives par statut terminal, régime, trigger, Compute Gate, Professor, Risk et échecs ;
+- statistiques brutes et directionnelles H1/H3/H5/H10/H20 sans seuil arbitraire ;
+- couverture multi-valuée explicite pour triggers, agents sélectionnés et reason codes Risk ;
+- limite causale explicite : aucun outcome pour `SCANNER:NO_TRIGGER` ou trigger sous seuil candidat ;
+- exports `*-funnel-outcome-attribution.json` ;
+- aucun changement Scanner/Professor/Risk/exécution/DecisionContext.
