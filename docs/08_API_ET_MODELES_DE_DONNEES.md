@@ -724,3 +724,16 @@ Contrats ajoutés : `StructureSource`, `AnalyticsMarketStructureObservation`,
 `CausalZigZagInputBar`, `CausalZigZagPivot` et registry ZigZag versionné.
 Les pivots portent `pivot_at`, `confirmed_at`, prix, ATR verrouillé, seuil,
 amplitudes, nombre de barres, provenance indicator/cursor, ID et fingerprint.
+
+<!-- BATCH_24A5_PATTERNS_CAUSAL_LIFECYCLE -->
+## Batch 24A.5 — Patterns & Causal Lifecycle
+
+- registry expérimental versionné de 12 patterns adapté de P5.v2 ;
+- source primaire de pivots `CAUSAL_ZIGZAG` via contrat source-agnostic `PatternPivot` ;
+- lifecycle causal `FORMING / CONFIRMED / FAILED / INVALIDATED` ;
+- `detected_at` distinct de l'origine géométrique et aucune back-propagation du statut final ;
+- breakout/invalidation sur clôture, policy intrabar conservatrice ;
+- IDs stables, state fingerprints évolutifs, provenance des pivots conservée ;
+- intégration `AnalyticsSnapshot` et `pattern_registry_version` ;
+- observation-only : aucun impact Scanner/DecisionContext/Agents/Risk/PAPER/LIVE/Forward Outcomes ;
+- calibration et comparaison de sources réservées au Batch 24A.6.

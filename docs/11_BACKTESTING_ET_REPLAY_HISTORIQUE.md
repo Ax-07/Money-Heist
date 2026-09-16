@@ -678,3 +678,16 @@ Le ZigZag consomme exclusivement des candles closes déjà visibles dans le repl
 l'ATR14 produit par Analytics Indicators. Pour tout `as_of=T`, seuls les pivots avec
 `confirmed_at <= T` sont exposés. Un suffixe futur ne peut modifier les pivots déjà
 confirmés visibles à T.
+
+<!-- BATCH_24A5_PATTERNS_CAUSAL_LIFECYCLE -->
+## Batch 24A.5 — Patterns & Causal Lifecycle
+
+- registry expérimental versionné de 12 patterns adapté de P5.v2 ;
+- source primaire de pivots `CAUSAL_ZIGZAG` via contrat source-agnostic `PatternPivot` ;
+- lifecycle causal `FORMING / CONFIRMED / FAILED / INVALIDATED` ;
+- `detected_at` distinct de l'origine géométrique et aucune back-propagation du statut final ;
+- breakout/invalidation sur clôture, policy intrabar conservatrice ;
+- IDs stables, state fingerprints évolutifs, provenance des pivots conservée ;
+- intégration `AnalyticsSnapshot` et `pattern_registry_version` ;
+- observation-only : aucun impact Scanner/DecisionContext/Agents/Risk/PAPER/LIVE/Forward Outcomes ;
+- calibration et comparaison de sources réservées au Batch 24A.6.

@@ -308,3 +308,16 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - policy OHLC conservatrice sans ordre intrabar inventé ;
 - IDs/fingerprints déterministes et prefix invariance ;
 - aucun changement Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.
+
+<!-- BATCH_24A5_PATTERNS_CAUSAL_LIFECYCLE -->
+## Batch 24A.5 — Patterns & Causal Lifecycle
+
+- registry expérimental versionné de 12 patterns adapté de P5.v2 ;
+- source primaire de pivots `CAUSAL_ZIGZAG` via contrat source-agnostic `PatternPivot` ;
+- lifecycle causal `FORMING / CONFIRMED / FAILED / INVALIDATED` ;
+- `detected_at` distinct de l'origine géométrique et aucune back-propagation du statut final ;
+- breakout/invalidation sur clôture, policy intrabar conservatrice ;
+- IDs stables, state fingerprints évolutifs, provenance des pivots conservée ;
+- intégration `AnalyticsSnapshot` et `pattern_registry_version` ;
+- observation-only : aucun impact Scanner/DecisionContext/Agents/Risk/PAPER/LIVE/Forward Outcomes ;
+- calibration et comparaison de sources réservées au Batch 24A.6.
