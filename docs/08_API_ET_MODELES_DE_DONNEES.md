@@ -701,3 +701,8 @@ Analytics n'est installé.
 
 Aucun champ Analytics n'est ajouté à `CandidateOpportunity` ni à
 `DecisionContextV1` dans ce batch.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+### Batch 24A.2 — Analytics Indicator contracts
+
+24A.2 adds typed `IndicatorValue` and `AnalyticsIndicatorSnapshot` contracts. The snapshot preserves symbol, timeframe, `as_of`, `source_cursor_fingerprint`, registry version/fingerprint, warmup/availability states and a deterministic snapshot fingerprint. It is embedded in the 24A.1 `AnalyticsSnapshot` under the typed `indicators` component.

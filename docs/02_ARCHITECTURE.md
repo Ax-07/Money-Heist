@@ -795,3 +795,8 @@ ni de resampler indépendant.
 
 `BacktestRun != AnalyticsLabRun`. Les versions Analytics restent hors du business
 fingerprint tant que la couche demeure observation-only.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+### Batch 24A.2 — Rich Indicators (observation-only)
+
+`app/analytics/indicators` adds a versioned, deterministic, causal indicator registry beside — not inside — the production Feature Engine. It consumes only canonical closed candles already exposed by Money Heist historical MTF contracts. No decision path imports this package. Analytics indicator identities affect Analytics fingerprints only.

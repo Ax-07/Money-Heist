@@ -881,3 +881,8 @@ post-hoc canonique. Toute future injection Analytics dans `DecisionContextV1`
 devra être traitée comme un batch comportemental distinct.
 
 Voir `docs/ADR_037_ANALYTICS_LAB_OBSERVATION_ONLY.md`.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+### Décision Batch 24A.2 — séparation Feature Engine / Analytics Indicators
+
+Le Feature Engine de production reste inchangé. Analytics possède un registre indépendant, versionné et fingerprinté. Les divergences ADX (initialisation) et Volume Ratio (inclusion/exclusion de la bougie courante) sont intentionnelles, testées et documentées. Une évolution du registre change l'identité Analytics mais pas l'identité business du backtest.

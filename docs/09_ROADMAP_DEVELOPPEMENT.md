@@ -575,3 +575,8 @@ Sous-batchs suivants explicitement hors scope de 24A.1 : 24A.2 Indicators,
 24A.3 Technical Events, 24A.4 ZigZag, 24A.5 Patterns, 24A.6 Calibration,
 24A.7 Contexts/Sequences, 24B Attribution, 24C Frontend, 24D Decision Quality
 Research.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+### Batch 24A.2 — Rich Indicators & Parity Catalogue
+
+24A.2 installs the observation-only rich indicator catalogue and explicit semantic parity catalogue. Technical Events (24A.3), causal structure/ZigZag (24A.4), patterns and forward-outcome research remain out of scope.

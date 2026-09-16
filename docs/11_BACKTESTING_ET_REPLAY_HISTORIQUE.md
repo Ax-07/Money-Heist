@@ -650,3 +650,8 @@ Analytics.
 Les Forward Outcomes 23A ne sont pas consommés par `app.analytics`; une future
 jointure décision + Analytics + outcomes appartiendra à une couche d'attribution
 séparée.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+### Batch 24A.2 — projection indicateurs au replay
+
+Le moteur Analytics Indicators consomme les bougies closes du `HistoricalMultiTimeframeCursor` / `HistoricalMultiTimeframeSlice`; il ne resample pas et n'ingère aucune donnée lui-même. À T, seules les bougies dont `close_time <= as_of` peuvent contribuer. Le `source_cursor_fingerprint` est conservé dans le snapshot Indicators.

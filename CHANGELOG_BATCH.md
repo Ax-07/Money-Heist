@@ -274,3 +274,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
   historique attendu ;
 - guards AST anti-couplage décisionnel, Forward Outcomes et LIVE ;
 - aucune modification fonctionnelle Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.
+
+<!-- BATCH_24A2_RICH_INDICATORS -->
+## Batch 24A.2 — Rich Indicators & Parity Catalogue
+
+- registre d'indicateurs Analytics riche, versionné et fingerprinté ;
+- snapshots Indicators typés avec warmup/availability explicites ;
+- causalité/prefix invariance ;
+- parité vérifiée EMA/RSI/MACD/ATR/Bollinger ;
+- divergences ADX et Volume Ratio explicites ;
+- MFI/CMF/OBV/VWAP/StochRSI/Donchian et rolling ranges ;
+- aucune modification du Feature Engine ni du pipeline de décision/trading.
