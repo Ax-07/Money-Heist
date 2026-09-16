@@ -91,7 +91,7 @@ class KrakenSpotLiveBroker:
             payload["price"] = self._decimal_text(intent.limit_price)
         try:
             result = await self._api.add_order(payload)
-        except LiveAmbiguousSubmissionError as exc:
+        except LiveAmbiguousSubmissionError:
             unknown = replace(
                 pending,
                 status=LiveOrderStatus.RECONCILIATION_REQUIRED,

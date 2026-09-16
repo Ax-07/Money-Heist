@@ -20,7 +20,6 @@ from .execution import (
     validate_task_force_member_analysis,
 )
 from .gates import (
-    TaskForceComputeDecision,
     TaskForceComputeRequest,
     TaskForceGateStatus,
     evaluate_task_force_compute,

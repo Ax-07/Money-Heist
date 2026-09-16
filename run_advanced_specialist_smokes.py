@@ -348,7 +348,7 @@ async def smoke_rio(*, symbol: str) -> None:
     )
     provider = KrakenFuturesRioContextProvider(analytics)
 
-    snapshot = await provider.refresh(symbol)
+    await provider.refresh(symbol)
     decision_time = datetime.now(UTC)
     contexts = provider.contexts_for(
         opportunity=SimpleNamespace(symbol=symbol),

@@ -4,7 +4,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
 
 from app.agents import CORE_AGENT_REGISTRY, CORE_PROMPTS, Lisbon, Palermo, TheProfessor
 from app.agents.models import LisbonReport, PalermoReview, ProfessorDecision, ProfessorPlan

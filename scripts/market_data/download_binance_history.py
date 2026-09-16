@@ -30,8 +30,6 @@ import csv
 import hashlib
 import io
 import json
-import os
-import shutil
 import sys
 import time
 import urllib.error
@@ -42,7 +40,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterable, Iterator, Sequence
+from typing import Iterator, Sequence
 
 BASE_URL = "https://data.binance.vision/data/spot"
 USER_AGENT = "Money-Heist-Historical-Data/1.0"
@@ -855,7 +853,7 @@ def main() -> int:
         "comparisons": {},
     }
 
-    print(f"Money Heist historical data preparation")
+    print("Money Heist historical data preparation")
     print(f"  symbol: {symbol} ({args.display_symbol})")
     print(f"  period: {start} -> {end} UTC (inclusive)")
     print(f"  native intervals: {', '.join(args.intervals)}")

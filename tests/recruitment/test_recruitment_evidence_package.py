@@ -11,7 +11,6 @@ from app.evaluation.models import AgentMetrics, Metric
 from app.recruitment import (
     RecruitmentBaselineSpec,
     RecruitmentCampaignExecutionReport,
-    RecruitmentCostEvidenceBasis,
     RecruitmentEvidenceBasis,
     RecruitmentEvidencePackageBasis,
     RecruitmentEvidencePurpose,

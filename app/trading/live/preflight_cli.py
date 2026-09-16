@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 from app.config.settings import Settings
 from app.market.exchange.kraken import (
-    KRAKEN_INITIAL_SYMBOLS,
     KrakenAdapterConfig,
     KrakenPublicMarketDataProvider,
 )
