@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation
-**Version :** 1.0
+**Version :** 1.1
 **Statut :** Actif
 
 ---
@@ -789,3 +789,80 @@ Avant de modifier les seuils du Scanner, les règles du Professor ou les paramè
 - état courant, architecture, contrats API/modèles, roadmap, ADR et documentation Historical Replay réalignés ;
 - prochaine étape explicitée : Batch 23A.2 Forward Outcomes ;
 - aucune autorité LIVE, règle Risk, seuil Scanner ou prompt agent modifié par cette clôture.
+
+<!-- ADR034_FORWARD_OUTCOMES -->
+### ADR-034 — Forward Outcomes strictement post-hoc et bornés par split
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+**Décision :**
+Les Forward Outcomes sont calculés uniquement après la fin du chemin décisionnel de l'observation évaluée. Les horizons H1/H3/H5/H10/H20 sont exprimés dans le timeframe de décision et utilisent le close du `FeatureSnapshot` comme référence.
+
+Un outcome ne peut pas franchir `period_end` du split courant. Un horizon incomplet à cause d'un gap, d'une frontière de période ou des deux ne publie aucune métrique de prix partielle.
+
+**Raison :**
+Mesurer le devenir des opportunités sans introduire de look-ahead ni confondre disponibilité historique future et information accessible au moment de la décision.
+
+**Conséquences :**
+- aucune donnée Forward Outcomes dans `DecisionContext` ;
+- mêmes règles sur DESIGN, VALIDATION et OOS ;
+- provenance dataset/run conservée ;
+- aucun changement `BacktestConfig`, `run_id`, Scanner, Professor, Risk ou broker.
+
+**Commit de référence :** `b78266efe5c0bf203d75348907cac5000472e9c6`.
+
+<!-- ADR035_FUNNEL_OUTCOME_ATTRIBUTION -->
+### ADR-035 — Funnel Outcome Attribution descriptive, sans autorité de tuning
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+**Décision :**
+La couche Funnel Outcome Attribution peut croiser les Forward Outcomes avec les métadonnées déjà émises par le pipeline, mais elle reste strictement descriptive. Elle ne choisit pas un seuil, ne classe pas automatiquement une configuration et ne modifie aucune règle.
+
+Les dimensions multi-valuées telles que triggers, agents sélectionnés et reason codes Risk conservent leur caractère chevauchant.
+
+**Raison :**
+Permettre l'analyse de l'endroit où les opportunités sont filtrées et de leur devenir futur sans transformer une corrélation post-hoc en causalité ou en décision de configuration.
+
+**Conséquences :**
+- pas de winner automatique ;
+- pas de promotion de configuration ;
+- les hypothèses de tuning doivent être testées séparément sur VALIDATION/OOS ;
+- aucune autorité Risk/LIVE n'est déplacée.
+
+**Commit de référence :** `42903cce9e694fdf1f23923fdba0708176e7775a`.
+
+<!-- ADR036_SCANNER_FORWARD_OUTCOMES -->
+### ADR-036 — Scanner Forward Outcomes fondés sur les décisions Scanner réellement émises
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+**Décision :**
+La mesure pré-candidat lit les `ScanResult` déjà produits par Historical Replay et couvre exactement trois classes : `NO_TRIGGER`, `TRIGGER_BELOW_CANDIDATE_THRESHOLD`, `CANDIDATE_OPPORTUNITY`.
+
+Elle conserve le score exact, le `min_priority_score` réellement utilisé et leur marge. Elle réutilise le moteur d'outcomes 23A.2 et ne rappelle jamais le Scanner pour reconstruire une décision.
+
+**Raison :**
+Comparer post-hoc ce qui se trouve de part et d'autre du seuil candidat sans modifier ou réinterpréter rétroactivement le comportement qui a réellement eu lieu.
+
+**Conséquences :**
+- conservation stricte avec les compteurs Decision Funnel ;
+- aucune bande de score arbitraire imposée par la couche de mesure ;
+- aucun tuning automatique du seuil ;
+- mêmes garanties no-lookahead / split boundary que 23A.2.
+
+**Commit de référence :** `611bef38f9e056ea7d7964a0f10191bac58551e4`.
+
+<!-- BATCH23A2_4_CHANGELOG_CLOSURE -->
+## Changelog documentation — 2026-09-16 — Clôture consolidée Batch 23A.2 à 23A.4
+
+- Batch 23A.2 Forward Outcomes livré et validé (`b78266e`) ;
+- Batch 23A.3 Funnel Outcome Attribution livré et validé (`42903cc`) ;
+- Batch 23A.4 Scanner Forward Outcomes livré et validé (`611bef3`) ;
+- état courant, architecture, contrats API/modèles, roadmap et documentation Historical Replay réalignés ;
+- pile 23A désormais capable de mesurer du Scanner pré-candidat jusqu'à Risk/exécution avec outcomes post-hoc ;
+- aucun seuil Scanner, prompt Professor, paramètre Risk, règle d'exécution ou autorité LIVE modifié ;
+- prochaine phase : campagnes longues multi-régimes DESIGN / VALIDATION / OOS avant toute hypothèse de tuning.

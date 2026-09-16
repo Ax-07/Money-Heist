@@ -1,8 +1,8 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots
-**Version :** 0.6
-**Statut :** Roadmap active — alignée post-Batch 23A.1
+**Version :** 0.7
+**Statut :** Roadmap active — alignée post-Batch 23A.4
 
 ---
 
@@ -529,4 +529,35 @@ Livré :
 
 ### Batch 23A.2 — Forward Outcomes
 
-Prochain sous-lot : calculer des outcomes post-hoc pour toutes les opportunités, y compris `NO_ANALYSIS`, `NO_TRADE`, `RISK_REJECTED` et `EXECUTED`, avec horizons H1/H3/H5/H10/H20, excursion favorable/défavorable, first-hit et provenance. Ces outcomes ne doivent jamais être disponibles dans le `DecisionContext` de l'opportunité évaluée.
+**État : livré et validé le 2026-09-16 — `b78266efe5c0bf203d75348907cac5000472e9c6`.**
+
+- H1/H3/H5/H10/H20 dans le timeframe de décision ;
+- rendement close-to-close, max-upside, max-downside et first-hit ;
+- gaps / frontières de période explicites ;
+- aucune métrique de prix partielle pour horizon incomplet ;
+- aucune donnée future dans `DecisionContext`.
+
+### Batch 23A.3 — Funnel Outcome Attribution
+
+**État : livré et validé le 2026-09-16 — `42903cce9e694fdf1f23923fdba0708176e7775a`.**
+
+- croisement candidat ↔ métadonnées du pipeline ↔ Forward Outcomes ;
+- agrégations par statut terminal, régime, triggers, Compute Gate, Professor, Risk et échecs ;
+- métriques brutes et directionnelles lorsque LONG/SHORT existe ;
+- dimensions multi-valuées explicitement non exclusives ;
+- analyse descriptive uniquement, sans classement ou tuning automatique.
+
+### Batch 23A.4 — Scanner Forward Outcomes
+
+**État : livré et validé le 2026-09-16 — `611bef38f9e056ea7d7964a0f10191bac58551e4`.**
+
+- outcome post-hoc pour chaque évaluation Scanner ;
+- couverture `NO_TRIGGER`, `TRIGGER_BELOW_CANDIDATE_THRESHOLD`, `CANDIDATE_OPPORTUNITY` ;
+- score exact, seuil réellement utilisé et marge au seuil ;
+- agrégations par classification, score exact, trigger et régime ;
+- conservation stricte avec le Decision Funnel ;
+- aucun rerun ni changement du Scanner.
+
+### Phase suivante — exploitation empirique
+
+Exécuter des campagnes longues multi-régimes et comparer DESIGN / VALIDATION / OOS avec les quatre vues 23A avant toute proposition de tuning. Une modification de seuil Scanner, de règle Professor ou de Risk devra être traitée comme une hypothèse distincte et validée hors échantillon, pas comme une conséquence automatique d'un agrégat descriptif.

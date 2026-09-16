@@ -1,7 +1,7 @@
 # Money Heist — Backtesting & Historical Replay
 
 **Document :** Contrat détaillé Batch 16  
-**Version :** 1.3
+**Version :** 1.4
 **Date :** 2026-09-16
 **Statut :** Référence technique active
 
@@ -525,4 +525,116 @@ Le `DecisionFunnelReport` :
 
 **Commit de référence :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd`.
 
-La prochaine extension 23A.2 ajoutera des Forward Outcomes post-hoc pour chaque opportunité, sans rendre ces données visibles au pipeline décisionnel au temps de l'opportunité.
+<!-- BATCH23A2_4_REPLAY_MEASUREMENT -->
+## Extension Batch 23A.2 — Forward Outcomes
+
+Batch 23A.2 calcule post-hoc, pour chaque `CandidateOpportunity`, les horizons :
+
+```text
+H1 / H3 / H5 / H10 / H20
+```
+
+Ils sont exprimés dans le timeframe de décision, même lorsque le dataset source utilise un timeframe plus fin.
+
+Référence : close du `FeatureSnapshot` au temps de l'opportunité.
+
+Pour un horizon complet :
+- rendement close-to-close ;
+- max-upside ;
+- max-downside ;
+- timestamps des extrema ;
+- first-hit `MAX_UPSIDE`, `MAX_DOWNSIDE` ou `SAME_CANDLE`.
+
+Pour un horizon incomplet :
+- nombre de barres observées ;
+- gaps ;
+- barres manquantes à cause de `period_end` ;
+- raison `GAP`, `PERIOD_END` ou `GAP_AND_PERIOD_END` ;
+- aucune métrique de prix partielle.
+
+Les outcomes ne franchissent jamais la frontière du split courant.
+
+**Commit de référence :** `b78266efe5c0bf203d75348907cac5000472e9c6`.
+
+## Extension Batch 23A.3 — Funnel Outcome Attribution
+
+Batch 23A.3 croise les Forward Outcomes candidats avec les sorties déjà émises par le pipeline.
+
+Dimensions :
+- statut terminal ;
+- régime ;
+- trigger Scanner ;
+- Compute Gate reason ;
+- Professor PLAN ;
+- agent sélectionné ;
+- échec orchestration ;
+- Professor FINAL direction ;
+- proposal side ;
+- Risk status / reason ;
+- Paper Pipeline failure.
+
+Les statistiques directionnelles utilisent `TradeProposal.side` si disponible, sinon Professor FINAL LONG/SHORT. `NO_TRADE` n'est pas artificiellement transformé en direction.
+
+Les dimensions multi-valuées restent chevauchantes. Le rapport est descriptif et ne choisit aucun seuil.
+
+**Commit de référence :** `42903cce9e694fdf1f23923fdba0708176e7775a`.
+
+## Extension Batch 23A.4 — Scanner Forward Outcomes
+
+Batch 23A.4 couvre aussi les évaluations Scanner qui n'ont jamais produit de candidat.
+
+Invariant principal :
+
+```text
+scanner_evaluations
+=
+scanner_no_trigger
++ trigger_below_candidate_threshold
++ candidate_opportunities
+```
+
+avec également :
+
+```text
+scanner_triggered
+=
+trigger_below_candidate_threshold
++ candidate_opportunities
+```
+
+Chaque record conserve :
+- score Scanner exact ;
+- `min_priority_score` réellement utilisé ;
+- marge score - seuil ;
+- triggers ;
+- régime ;
+- éventuel `candidate_opportunity_id` ;
+- mêmes horizons H1/H3/H5/H10/H20 que Batch 23A.2.
+
+23A.4 lit le `ScanResult` déjà présent dans `HistoricalReplayResult`. Il ne rappelle jamais `DeterministicScanner`.
+
+**Commit de référence :** `611bef38f9e056ea7d7964a0f10191bac58551e4`.
+
+## Exports 23A consolidés
+
+Chaque split DESIGN / VALIDATION / OOS peut produire :
+
+```text
+*-decision-funnel.json
+*-forward-outcomes.json
+*-funnel-outcome-attribution.json
+*-scanner-forward-outcomes.json
+```
+
+Ces exports sont post-hoc/observationnels. Ils ne modifient ni `BacktestConfig`, ni `run_id`, ni le fingerprint business, ni le chemin de décision.
+
+## Utilisation attendue
+
+La pile 23A est maintenant suffisante pour lancer des campagnes longues multi-régimes et examiner quantitativement :
+
+- où les opportunités sont filtrées ;
+- ce que deviennent les candidats acceptés/refusés ;
+- ce que deviennent les triggers sous seuil ;
+- comment les distributions varient par score, trigger et régime.
+
+Toute hypothèse de tuning issue de cette analyse doit être formulée comme une expérience distincte et validée sur VALIDATION/OOS avant d'être envisagée pour PAPER/SHADOW, puis éventuellement LIVE.

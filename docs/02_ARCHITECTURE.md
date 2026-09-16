@@ -1,8 +1,8 @@
 # Money Heist — Architecture Technique
 
 **Document :** Architecture technique  
-**Version :** 0.3
-**Statut :** Architecture active — alignée post-Batch 23A.1
+**Version :** 0.4
+**Statut :** Architecture active — alignée post-Batch 23A.4
 **Référence :** `01_PROJECT_MASTER.md`
 
 ---
@@ -714,3 +714,65 @@ Règles d'architecture :
 - l'agrégation est compatible avec une extension future PAPER/SHADOW/LIVE mais Batch 23A.1 est branché d'abord sur Historical Replay.
 
 Cette couche augmente l'observabilité sans déplacer l'autorité métier. Le Risk Engine reste l'autorité finale d'autorisation.
+
+<!-- BATCH23A2_4_ARCHITECTURE -->
+## Addendum Batch 23A.2–23A.4 — Causal Measurement Stack
+
+La couche de mesure Historical Replay est désormais composée de quatre vues complémentaires :
+
+```text
+HistoricalReplayResult + Evaluation
+├─ Decision Funnel (23A.1)
+├─ Candidate Forward Outcomes (23A.2)
+│    └─ Funnel Outcome Attribution (23A.3)
+└─ Scanner Forward Outcomes (23A.4)
+```
+
+### Forward Outcomes 23A.2
+
+`app.evaluation.forward_outcomes` calcule les mouvements futurs uniquement **après** le replay. Les références proviennent du close du `FeatureSnapshot` au temps de l'observation. Les horizons H1/H3/H5/H10/H20 sont exprimés dans le timeframe de décision.
+
+La couche :
+- n'appelle ni Scanner, ni agent, ni Risk Engine, ni broker ;
+- ne modifie aucun `DecisionContext` ;
+- ne traverse jamais `period_end` d'un split DESIGN / VALIDATION / OOS ;
+- ne publie aucune métrique de prix partielle pour un horizon incomplet ;
+- distingue gap de données et frontière de période.
+
+### Funnel Outcome Attribution 23A.3
+
+`app.evaluation.funnel_outcome_attribution` croise les Forward Outcomes candidats avec les métadonnées déjà produites par le pipeline : statut terminal, régime, triggers, Compute Gate, Professor PLAN/FINAL, agents sélectionnés, Risk et échecs.
+
+Cette couche est descriptive. Elle n'est ni un optimizer, ni un tuner, ni une autorité de promotion de configuration. Les dimensions multi-valuées restent explicitement non exclusives.
+
+### Scanner Forward Outcomes 23A.4
+
+`app.evaluation.scanner_forward_outcomes` étend la couverture aux évaluations Scanner qui ne deviennent pas `CandidateOpportunity`.
+
+```text
+scanner_evaluations
+=
+NO_TRIGGER
++ TRIGGER_BELOW_CANDIDATE_THRESHOLD
++ CANDIDATE_OPPORTUNITY
+```
+
+23A.4 lit le `ScanResult` réellement émis pendant le replay, conserve score exact, seuil candidat réellement utilisé, marge au seuil, triggers et régime, puis réutilise le même moteur de Forward Outcomes que 23A.2. Le Scanner n'est jamais réexécuté pour produire l'analyse post-hoc.
+
+### Frontières communes
+
+Les quatre couches 23A restent hors du chemin d'autorité :
+
+```text
+mesure / observation
+≠
+décision de trading
+≠
+autorisation Risk
+≠
+exécution LIVE
+```
+
+`BacktestConfig`, `run_id`, prompts, seuils, sizing et fingerprint business historique ne sont pas modifiés par cette pile.
+
+**Références fonctionnelles :** `b78266e` (23A.2), `42903cc` (23A.3), `611bef3` (23A.4).

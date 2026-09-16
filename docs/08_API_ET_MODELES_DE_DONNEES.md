@@ -1,7 +1,7 @@
 # Money Heist — API et Modèles de Données
 
 **Document :** Contrats, schémas et API internes  
-**Version :** 0.3
+**Version :** 0.4
 **Statut :** Référence active — contrats et API intégrés
 
 ---
@@ -623,3 +623,67 @@ Le rapport expose notamment :
 `PeriodSummary.decision_funnel` est optionnel afin que les anciens `summary.json` restent lisibles. Les nouveaux exports sont `design-decision-funnel.json`, `validation-decision-funnel.json` et `oos-decision-funnel.json`.
 
 Le schéma du Decision Funnel est observationnel : il n'est pas une entrée de `BacktestConfig`, ne change pas `run_id` et n'est jamais une entrée de décision.
+
+<!-- BATCH23A2_4_API_MODELS -->
+## Addendum Batch 23A.2–23A.4 — contrats de mesure causale
+
+### Forward Outcomes
+
+Contrats sous `app.evaluation.forward_outcomes` :
+
+- `ForwardOutcomeReference` ;
+- `ForwardOutcomeHorizon` ;
+- `ForwardOutcomeRecord` ;
+- `ForwardOutcomeStatusCount` ;
+- `ForwardOutcomeHorizonSummary` ;
+- `ForwardOutcomeSummary` ;
+- `ForwardOutcomeReport`.
+
+`ForwardOutcomeReport` conserve provenance dataset/run, timeframe source, timeframe de décision, bornes de période, horizons et records déterministes. Un horizon incomplet contient uniquement ses métadonnées d'incomplétude ; aucune métrique de prix partielle n'est publiée.
+
+### Funnel Outcome Attribution
+
+Contrats sous `app.evaluation.funnel_outcome_attribution` :
+
+- `FunnelOutcomeSubject` ;
+- `FunnelOutcomeHorizonStats` ;
+- `FunnelOutcomeGroup` ;
+- `FunnelOutcomeDimensionCoverage` ;
+- `FunnelOutcomeAttributionCoverage` ;
+- `FunnelOutcomeAttributionReport`.
+
+Dimensions disponibles : statut terminal, régime, trigger Scanner, reason Compute Gate, Professor PLAN, agent sélectionné, échec orchestration, direction Professor FINAL, side de proposition, statut/reason Risk et échec Paper Pipeline.
+
+Les dimensions `SCANNER_TRIGGER`, `SELECTED_AGENT` et `RISK_REASON` sont multi-valuées et ne doivent pas être sommées comme des partitions exclusives.
+
+### Scanner Forward Outcomes
+
+Contrats sous `app.evaluation.scanner_forward_outcomes` :
+
+- `ScannerOutcomeClassification` ;
+- `ScannerOutcomeGroupDimension` ;
+- `ScannerForwardOutcomeReference` ;
+- `ScannerForwardOutcomeRecord` ;
+- `ScannerOutcomeHorizonStats` ;
+- `ScannerOutcomeGroup` ;
+- `ScannerOutcomeDimensionCoverage` ;
+- `ScannerForwardOutcomeSummary` ;
+- `ScannerForwardOutcomeReport`.
+
+Classes exclusives :
+- `NO_TRIGGER` ;
+- `TRIGGER_BELOW_CANDIDATE_THRESHOLD` ;
+- `CANDIDATE_OPPORTUNITY`.
+
+Chaque record conserve le score Scanner exact, `min_priority_score`, `score_margin_to_threshold`, triggers, régime et éventuel `candidate_opportunity_id`.
+
+### Exports de campagne
+
+Par split :
+
+- `*-decision-funnel.json` ;
+- `*-forward-outcomes.json` ;
+- `*-funnel-outcome-attribution.json` ;
+- `*-scanner-forward-outcomes.json`.
+
+Ces contrats sont additifs et observationnels. Ils ne sont pas des entrées de `BacktestConfig`, ne changent pas `run_id`, n'entrent jamais dans le `DecisionContext` de la décision évaluée et ne déplacent aucune autorité Risk/LIVE.

@@ -1,10 +1,10 @@
-# Money Heist — État actuel post-Batch 23A.1
+# Money Heist — État actuel post-Batch 23A.4
 
 **Statut :** référence d’alignement active  
 **Date :** 2026-09-16
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour continuité des références existantes
-**Baseline documentaire :** `fbec1d3fadaf811c6e84d33741aa08166cc472cd` (`main`)
-**Baseline fonctionnelle récente :** `fbec1d3` — Batch 23A.1 Decision Funnel Baseline
+**Baseline fonctionnelle consolidée :** `611bef38f9e056ea7d7964a0f10191bac58551e4` (`main`)
+**Clôture documentaire précédente :** `096f5e5f4c16b47f5e9926065c3c4206dfc19c17` — Batch 23A.1
 
 ---
 
@@ -182,6 +182,48 @@ Exports de campagne :
 
 ---
 
-## 12. Prochain chantier
+<!-- BATCH23A2_4_STATE_CLOSURE -->
+## 12. Batch 23A.2 à 23A.4 — clôture consolidée
 
-Le prochain sous-lot est **Batch 23A.2 — Forward Outcomes** : mesurer post-hoc le devenir de chaque `CandidateOpportunity` sans réinjecter ces résultats dans la décision courante. Ensuite viennent les campagnes longues multi-régimes, la parité LIVE ↔ Historical Replay et les gates nécessaires à une promotion LIVE contrôlée.
+La pile de mesure causale 23A est désormais livrée sur `main` :
+
+- `b78266efe5c0bf203d75348907cac5000472e9c6` — Batch 23A.2 Forward Outcomes ;
+- `42903cce9e694fdf1f23923fdba0708176e7775a` — Batch 23A.3 Funnel Outcome Attribution ;
+- `611bef38f9e056ea7d7964a0f10191bac58551e4` — Batch 23A.4 Scanner Forward Outcomes.
+
+Elle couvre maintenant :
+
+```text
+bougies évaluables
+→ Scanner evaluation
+   ├─ NO_TRIGGER
+   ├─ TRIGGER_BELOW_CANDIDATE_THRESHOLD
+   └─ CANDIDATE_OPPORTUNITY
+        → Compute Gate
+        → Professor / spécialistes / Palermo
+        → TradeProposal éventuel
+        → Risk
+        → PAPER execution
+```
+
+et mesure post-hoc les horizons H1/H3/H5/H10/H20 sans rendre ces données visibles au pipeline décisionnel de l'opportunité évaluée.
+
+Garanties consolidées :
+- aucun changement de seuil Scanner, prompt Professor, règle Risk ou règle d'exécution ;
+- Forward Outcomes calculés dans le timeframe de décision ;
+- frontières DESIGN / VALIDATION / OOS strictes ;
+- horizons incomplets sans publication de métriques de prix partielles ;
+- attribution 23A.3 descriptive uniquement, sans classement automatique ni autorité de tuning ;
+- 23A.4 réutilise les `ScanResult` déjà émis et ne rappelle jamais le Scanner ;
+- `BacktestConfig`, `run_id` et fingerprint business historique restent inchangés.
+
+Exports additionnels par période :
+- `*-forward-outcomes.json` ;
+- `*-funnel-outcome-attribution.json` ;
+- `*-scanner-forward-outcomes.json`.
+
+## 13. Prochaine phase
+
+La prochaine phase utile est une **campagne historique longue multi-régimes** exploitant ensemble Decision Funnel, Candidate Forward Outcomes, Funnel Outcome Attribution et Scanner Forward Outcomes. Les résultats doivent être analysés sur DESIGN / VALIDATION / OOS avant toute proposition de modification de seuil.
+
+La parité LIVE ↔ Historical Replay, PAPER/SHADOW prolongé et les gates opérateur restent ensuite nécessaires avant toute promotion LIVE.
