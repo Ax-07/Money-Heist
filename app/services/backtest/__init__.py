@@ -10,6 +10,7 @@ from .ai_modes import BacktestAIClient
 from .cache import BacktestAIContext, BacktestCacheMissError, BacktestResponseCache
 from .clock import ReplayClock, as_utc
 from .dataset import DatasetRef, canonical_candle_rows
+from .decision_funnel import DecisionFunnelReport, build_decision_funnel_report
 from .evaluation import (
     BacktestEvaluationBundle,
     equity_points_from_replay,
@@ -20,6 +21,7 @@ from .exports import (
     BacktestRunManifest,
     build_run_manifest,
     closed_trades_to_csv,
+    decision_funnel_to_json,
     equity_curve_to_csv,
     manifest_to_json,
     split_report_to_json,
@@ -53,7 +55,12 @@ from .reproducibility import (
     business_payload,
     fingerprint_backtest,
 )
-from .runner import HistoricalReplayPoint, HistoricalReplayResult, HistoricalReplayRunner
+from .runner import (
+    HistoricalReplayObservationCounts,
+    HistoricalReplayPoint,
+    HistoricalReplayResult,
+    HistoricalReplayRunner,
+)
 from .setup_stats import (
     CATALOG_SCHEMA,
     SETUP_DEFINITION_VERSION,
@@ -133,11 +140,13 @@ __all__ = [
     "BacktestSplitReport",
     "CATALOG_SCHEMA",
     "DatasetRef",
+    "DecisionFunnelReport",
     "DeterministicAdvancedSpecialistMockProvider",
     "DenverSetupStatsContextProvider",
     "HistoricalExitEvent",
     "HistoricalExitReason",
     "HistoricalPositionLifecycle",
+    "HistoricalReplayObservationCounts",
     "HistoricalReplayPoint",
     "HistoricalReplayResult",
     "HistoricalReplayRunner",
@@ -163,6 +172,7 @@ __all__ = [
     "as_utc",
     "assert_reproducible",
     "build_paper_ablation_executor",
+    "build_decision_funnel_report",
     "build_run_manifest",
     "build_walk_forward_plan",
     "business_payload",
@@ -170,6 +180,7 @@ __all__ = [
     "canonical_json",
     "catalog_from_historical_runs",
     "closed_trades_to_csv",
+    "decision_funnel_to_json",
     "equity_curve_to_csv",
     "equity_points_from_replay",
     "evaluate_historical_replay",

@@ -179,6 +179,11 @@ async def test_runner_replays_chronologically_and_forwards_only_visible_history(
     assert result.backtest_result.processed_candles == 4
     assert result.backtest_result.opportunity_count == 3
     assert result.backtest_result.executed_order_count == 3
+    assert result.observation_counts.pre_scanner_warmup_skipped == 1
+    assert (
+        result.observation_counts.pre_scanner_not_decision_close_skipped
+        == 0
+    )
 
 
 @sync_test

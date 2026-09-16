@@ -128,6 +128,21 @@ def test_business_fingerprint_ignores_volatile_fill_identity() -> None:
     assert_reproducible(first, second)
 
 
+def test_business_fingerprint_ignores_decision_funnel_observation_metadata() -> None:
+    first_replay = replay(fill_id="stable-fill")
+    second_replay = replay(fill_id="stable-fill")
+    second_replay.observation_counts = SimpleNamespace(
+        pre_scanner_warmup_skipped=17,
+        pre_scanner_not_decision_close_skipped=42,
+    )
+
+    first = fingerprint_backtest(first_replay, report())
+    second = fingerprint_backtest(second_replay, report())
+
+    assert first == second
+    assert_reproducible(first, second)
+
+
 def test_assert_reproducible_detects_business_change() -> None:
     first = BacktestBusinessFingerprint("run-1", "dataset-1", "MOCK", "a" * 64)
     second = BacktestBusinessFingerprint("run-1", "dataset-1", "MOCK", "b" * 64)

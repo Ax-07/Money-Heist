@@ -202,6 +202,11 @@ async def test_mtf_runner_scans_only_on_closed_1h_decision_candles():
         point.decision_visible_candle_count for point in result.points
     ] == [1, 2]
     assert result.backtest_result.processed_candles == 120
+    assert result.observation_counts.pre_scanner_warmup_skipped == 0
+    assert (
+        result.observation_counts.pre_scanner_not_decision_close_skipped
+        == 118
+    )
     assert dict(result.points[-1].mtf_candle_counts) == {
         "15m": 8,
         "1h": 2,

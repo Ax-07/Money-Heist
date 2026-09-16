@@ -35,16 +35,19 @@ from app.services.backtest import (
     BacktestSplitPlan,
     BacktestSplitReport,
     DatasetRef,
+    DecisionFunnelReport,
     HistoricalPositionLifecycle,
     HistoricalReplayRunner,
     HistoricalSetupAttributionError,
     ReplayClock,
     ReplayIdFactory,
     WalkForwardReport,
+    build_decision_funnel_report,
     build_run_manifest,
     build_walk_forward_plan,
     catalog_from_historical_runs,
     closed_trades_to_csv,
+    decision_funnel_to_json,
     equity_curve_to_csv,
     evaluate_historical_replay,
     execute_walk_forward,
@@ -403,6 +406,7 @@ class PeriodSummary(FrozenModel):
     self_funding_ratio: str | None
     self_funding_status: str
     business_sha256: str
+    decision_funnel: DecisionFunnelReport | None = None
 
 
 class EquityView(FrozenModel):
@@ -493,6 +497,7 @@ class _RunExecution:
     period_report: BacktestPeriodReport
     replay: Any
     evaluation: Any
+    decision_funnel: DecisionFunnelReport
 
 
 @dataclass(slots=True)
@@ -1466,6 +1471,10 @@ class BacktestDashboardService:
                 "text/csv",
                 closed_trades_to_csv(execution.evaluation.report),
             )
+            exports[f"{prefix}-decision-funnel.json"] = (
+                "application/json",
+                decision_funnel_to_json(execution.decision_funnel),
+            )
 
         denver_sources = tuple(
             (
@@ -1683,13 +1692,17 @@ class BacktestDashboardService:
             ai_usage_records=tuple(usage.records),
             paper_events=journal.events(),
         )
+        decision_funnel = build_decision_funnel_report(replay, evaluation)
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
-        period = self._period_summary(role, replay, evaluation, period_report)
+        period = self._period_summary(
+            role, replay, evaluation, period_report, decision_funnel
+        )
         return _RunExecution(
             period=period,
             period_report=period_report,
             replay=replay,
             evaluation=evaluation,
+            decision_funnel=decision_funnel,
         )
 
     @staticmethod
@@ -1813,6 +1826,7 @@ class BacktestDashboardService:
         replay: Any,
         evaluation: Any,
         period_report: BacktestPeriodReport,
+        decision_funnel: DecisionFunnelReport,
     ) -> PeriodSummary:
         report = evaluation.report
         ratio = report.self_funding_ratio
@@ -1835,6 +1849,7 @@ class BacktestDashboardService:
             self_funding_ratio=None if ratio_value is None else str(ratio_value),
             self_funding_status=str(ratio_status),
             business_sha256=period_report.business_sha256,
+            decision_funnel=decision_funnel,
         )
 
 

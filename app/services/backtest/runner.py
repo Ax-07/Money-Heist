@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Protocol
@@ -132,6 +132,18 @@ class PositionLifecyclePort(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalReplayObservationCounts:
+    pre_scanner_warmup_skipped: int = 0
+    pre_scanner_not_decision_close_skipped: int = 0
+
+    def __post_init__(self) -> None:
+        if self.pre_scanner_warmup_skipped < 0:
+            raise ValueError("pre_scanner_warmup_skipped must be >= 0")
+        if self.pre_scanner_not_decision_close_skipped < 0:
+            raise ValueError("pre_scanner_not_decision_close_skipped must be >= 0")
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalReplayPoint:
     observed_at: datetime
     visible_candle_count: int
@@ -163,6 +175,9 @@ class HistoricalReplayPoint:
 class HistoricalReplayResult:
     backtest_result: BacktestResult
     points: tuple[HistoricalReplayPoint, ...]
+    observation_counts: HistoricalReplayObservationCounts = field(
+        default_factory=HistoricalReplayObservationCounts
+    )
 
     @property
     def opportunities(self) -> tuple[Any, ...]:
@@ -318,6 +333,8 @@ class HistoricalReplayRunner:
         processed_candles = 0
         opportunity_count = 0
         executed_order_count = 0
+        pre_scanner_warmup_skipped = 0
+        pre_scanner_not_decision_close_skipped = 0
         work_total = sum(
             1
             for item in rows
@@ -385,18 +402,24 @@ class HistoricalReplayRunner:
                     self._row_to_candle(row, run)
                 )
                 if self.decision_timeframe not in emitted:
+                    if observed_at >= run.period_start:
+                        pre_scanner_not_decision_close_skipped += 1
                     continue
                 decision_series = mtf_cursor.series(
                     self.decision_timeframe
                 )
                 decision_visible_count = len(decision_series)
                 if decision_visible_count < min_history:
+                    if observed_at >= run.period_start:
+                        pre_scanner_warmup_skipped += 1
                     continue
                 feature_input = decision_series
                 feature_timeframe = self.decision_timeframe
                 mtf_state = mtf_cursor.state()
             else:
                 if len(visible) < min_history:
+                    if observed_at >= run.period_start:
+                        pre_scanner_warmup_skipped += 1
                     continue
                 feature_input = tuple(visible)
                 feature_timeframe = run.dataset.timeframe
@@ -647,6 +670,12 @@ class HistoricalReplayRunner:
                 executed_order_count=executed_order_count,
             ),
             points=tuple(points),
+            observation_counts=HistoricalReplayObservationCounts(
+                pre_scanner_warmup_skipped=pre_scanner_warmup_skipped,
+                pre_scanner_not_decision_close_skipped=(
+                    pre_scanner_not_decision_close_skipped
+                ),
+            ),
         )
 
     async def _refresh_dynamic_portfolio(self, observed_at: datetime) -> Any | None:

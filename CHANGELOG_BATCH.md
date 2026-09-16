@@ -209,3 +209,12 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - tests Recruitment/Task Force réalignés sur les chemins canoniques ;
 - ajout d’ADR-032 pour figer la règle de layout ;
 - aucun changement de runtime, Risk Engine, broker ou autorité LIVE.
+
+<!-- BATCH23A1_DECISION_FUNNEL -->
+## Batch 23A.1 — Decision Funnel Baseline
+
+- instrumentation Historical Replay strictement observationnelle ;
+- agrégation post-hoc Scanner → Compute Gate → IA → Professor → Risk → ordre/fill ;
+- reason codes existants normalisés sans changement de prompts ni de seuils ;
+- exports `*-decision-funnel.json` et exposition additive dans `PeriodSummary` ;
+- garanties de conservation des bougies/scans et non-régression du fingerprint business.
