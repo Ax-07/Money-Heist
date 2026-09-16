@@ -74,7 +74,7 @@ def test_batch20_documentation_closure_is_present() -> None:
     decisions = (ROOT / "10_DECISIONS_ET_CHANGELOG.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG_BATCH.md").read_text(encoding="utf-8")
 
-    assert state.startswith("# Money Heist — État actuel post-Batch 20")
+    assert state.startswith("# Money Heist — État actuel post-Batch 22.1")
     assert "## 23. Batch 20 — Task Force dynamique" in roadmap
     assert "**État : livré et validé.**" in roadmap
     assert "Batch 21 — Master Portfolio Layer" in roadmap

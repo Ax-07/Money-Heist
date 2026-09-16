@@ -186,3 +186,16 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - persistance V2 des configurations, traces, résumés et exports de replay ;
 - aucun changement des frontières PAPER/LIVE ou du Risk Engine.
 
+<!-- DOC_REALIGN_POST_BATCH22_CHANGELOG_START -->
+
+## Alignement documentaire post-Batch 22.1 — 2026-09-15
+
+- état courant réaligné sur `main @ 9f42d3e` ;
+- Master Portfolio Layer reflété dans la roadmap/document maître ;
+- Frontend V2 / Backtest Cockpit 22.1 et validation pnpm documentés ;
+- Prompt Cache OpenAI intégré au corpus permanent et renuméroté ADR-031 pour éviter le conflit avec ADR-026 Recruitment ;
+- Market Data utilities `scripts/market_data/` documentés ;
+- miroirs racine/`docs/` resynchronisés, notamment `05_MARKET_DATA_ET_EXECUTION.md` ;
+- nettoyage des artefacts historiques référencé (`c4ffda0`, `9f42d3e`).
+
+<!-- DOC_REALIGN_POST_BATCH22_CHANGELOG_END -->

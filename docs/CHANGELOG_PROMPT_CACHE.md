@@ -1,6 +1,6 @@
 # OpenAI Prompt Cache & AI Cost Optimization — Changelog
 
-Baseline ciblée : `4c59ba8f6f2a4808ce388267977c61ccf978473d` (`main`, 2026-09-13).
+Baseline d’intégration : `8373fe1` ; état documentaire courant : `9f42d3e` (`main`, 2026-09-15).
 
 ## AI Gateway
 - ajout d'une policy `DISABLED | OPENAI_EXPLICIT` déclarée par route ;
@@ -29,3 +29,13 @@ Baseline ciblée : `4c59ba8f6f2a4808ce388267977c61ccf978473d` (`main`, 2026-09-1
 - aucune modification du Risk Engine, du broker, du LIVE, du kill switch ou des autorisations ;
 - aucun test automatisé ne nécessite de clé OpenAI ;
 - smoke payant séparé et manuel uniquement.
+
+<!-- DOC_REALIGN_PROMPT_CACHE_VALIDATION_START -->
+
+## Validation consolidée
+
+- backend : suite complète `pytest -q` verte, 3 tests skipped ;
+- frontend : lint, typecheck, 26 tests Vitest et build Next.js verts ;
+- Prompt Cache conservé après nettoyage documentaire/historique du dépôt.
+
+<!-- DOC_REALIGN_PROMPT_CACHE_VALIDATION_END -->

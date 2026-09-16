@@ -37,8 +37,8 @@ API par défaut : `http://127.0.0.1:8000`.
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Puis ouvrir `http://127.0.0.1:3000`.
@@ -48,10 +48,10 @@ Le Backtest Cockpit V2.1 persiste ses datasets/campagnes/replays sous `.money-he
 Validation :
 
 ```bash
-npm run lint
-npm run typecheck
-npm run test
-npm run build
+pnpm run lint
+pnpm run typecheck
+pnpm run test
+pnpm run build
 ```
 
 Le Frontend V2 utilise Next.js, React, TypeScript strict, Tailwind, TanStack Query, Zod, Zustand pour le seul état UI global et Lightweight Charts derrière `TradingChartAdapter`.
@@ -67,4 +67,18 @@ Le Frontend V2 utilise Next.js, React, TypeScript strict, Tailwind, TanStack Que
 
 ## Documentation
 
-Références principales : `01_PROJECT_MASTER.md` à `11_BACKTESTING_ET_REPLAY_HISTORIQUE.md`, puis `12_FRONTEND_ET_INTERFACE.md` pour le cockpit V2. Le code intégré sur GitHub `main` prévaut lorsqu’une ancienne formulation documentaire est dépassée.
+Références principales : `00_ETAT_ACTUEL_POST_BATCH_15.md`, les documents permanents sous `docs/`, leurs miroirs historiques à la racine lorsqu’ils existent, puis `12_FRONTEND_ET_INTERFACE.md` et `docs/ADR_031_OPENAI_PROMPT_CACHE_ET_COUTS.md`. Le code intégré sur GitHub `main` prévaut lorsqu’une ancienne formulation documentaire est dépassée.
+
+<!-- DOC_REALIGN_README_20260915_START -->
+
+## Prompt Cache et coûts IA
+
+Le AI Gateway peut activer explicitement le Prompt Cache OpenAI sur les routes qui déclarent cette capability. Le transport courant est `money-heist.prompt-transport.v2`. Les métriques distinguent input normal, cache read, cache write et output, ainsi qu’une estimation du coût sans cache.
+
+Le cache fournisseur est distinct du cache de réponses Historical Replay `money-heist.backtest-ai-cache.v2`.
+
+## Utilitaires Market Data
+
+Les scripts opérateur de préparation/audit historique sont regroupés sous `scripts/market_data/`. Utiliser `--help` sur chaque script avant exécution.
+
+<!-- DOC_REALIGN_README_20260915_END -->

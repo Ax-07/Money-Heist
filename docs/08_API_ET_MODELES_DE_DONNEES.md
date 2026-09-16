@@ -1,8 +1,8 @@
 # Money Heist — API et Modèles de Données
 
 **Document :** Contrats, schémas et API internes  
-**Version :** 0.1  
-**Statut :** Spécification conceptuelle
+**Version :** 0.2
+**Statut :** Référence active — contrats et API intégrés
 
 ---
 
@@ -578,3 +578,22 @@ Le premier endpoint ne retourne aucune valeur secrète et indique explicitement 
 
 L'API V2 ajoute une bibliothèque de datasets, le lancement par `dataset_id`, le listing/détail/progress/configuration persistants et le replay durable. Le CSV reste côté backend et n'est pas renvoyé au navigateur pour réutilisation.
 
+<!-- DOC_REALIGN_PROMPT_CACHE_API_START -->
+
+## Addendum 2026-09-15 — contrats Prompt Cache AI Gateway
+
+Le AI Gateway expose une policy explicite :
+
+```text
+PromptCacheMode = DISABLED | OPENAI_EXPLICIT
+PromptCacheCapability = NONE | OPENAI_EXPLICIT
+PromptCachePolicy(mode, ttl=30m, prompt_cache_key?)
+```
+
+Une route ne peut activer `OPENAI_EXPLICIT` que si elle déclare la capability correspondante et utilise le provider OpenAI. Le mode n’est jamais inféré depuis le nom du modèle.
+
+`AIGatewayRequest`/`ProviderRequest` transportent la version de rendu, le préfixe cacheable/fingerprint de schéma et la policy. `ProviderResponse` peut retourner les diagnostics de cache. `TokenUsage` sépare input normal, read, write et output.
+
+Le transport courant est `money-heist.prompt-transport.v2`.
+
+<!-- DOC_REALIGN_PROMPT_CACHE_API_END -->

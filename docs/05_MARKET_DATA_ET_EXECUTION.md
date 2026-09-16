@@ -1,8 +1,8 @@
 # Money Heist — Market Data et Exécution
 
 **Document :** Données de marché et exécution  
-**Version :** 0.2  
-**Statut :** Spécification initiale
+**Version :** 0.3
+**Statut :** Référence active — Market Data / Exécution
 
 ---
 
@@ -383,3 +383,60 @@ La politique d’exécution historique V1 est déterministe et conservatrice :
 - frais maker/taker et slippage proviennent de la configuration PaperBroker/backtest.
 
 Le modèle d’exécution possède une version explicite dans `BacktestConfig`. Une modification matérielle des hypothèses d’exécution doit changer cette version ou les `execution_assumptions` afin de modifier le `run_id`.
+
+
+## 27. Addendum Batch 17a — contexte dérivés Rio
+
+Le contrat `RioContext` est disponible pour une future source dérivés, mais Batch 17a n’ajoute aucun
+connecteur funding/open interest/liquidations. Les données Kraken Spot/EUR restent la source marché
+réelle existante et ne sont pas requalifiées artificiellement en données dérivées.
+
+Une future activation Rio devra fournir provenance, fraîcheur, mapping d’instrument et qualité de
+données explicites. Sans ce contexte, Rio n’est pas présenté au Professor comme spécialiste
+disponible.
+
+## 28. Addendum Batch 17b — Kraken Futures Analytics public
+
+Le Batch 17b ajoute un second adaptateur Market Data, strictement read-only :
+`KrakenFuturesAnalyticsProvider`.
+
+Source : analytics publics Kraken Futures, sans authentification. Univers initial :
+`BTC/EUR → PF_XBTUSD`, `ETH/EUR → PF_ETHUSD`, `SOL/EUR → PF_SOLUSD`.
+
+Les métriques normalisées sont :
+- funding rate ;
+- open interest ;
+- variation d'open interest sur les points disponibles ;
+- long/short ratio.
+
+Le volume de liquidation agrégé n'est pas converti en liquidations longues/courtes lorsque la source
+ne fournit pas cette séparation de manière fiable. Les deux champs restent alors absents et sont
+listés dans `missing_fields`.
+
+Intégration PAPER/SHADOW :
+```text
+Kraken Spot public → MarketSnapshot → Feature Engine → Scanner
+                                           ↓ opportunité
+                         Kraken Futures Analytics sidecar refresh
+                                           ↓ cache typé
+                          RioContextProvider → Orchestration
+```
+
+Le sidecar dérivés est non critique : erreur réseau, rate limit ou payload inutilisable n'invalide pas
+un snapshot spot autrement sain. En revanche Rio n'est pas annoncé au Professor sans cache utilisable.
+Aucun chemin ajouté n'importe le broker LIVE ou les credentials Kraken privés.
+
+<!-- DOC_REALIGN_MARKET_DATA_UTILS_START -->
+
+## Addendum 2026-09-15 — utilitaires Market Data historiques
+
+Les utilitaires opérateur sont regroupés sous `scripts/market_data/` :
+
+- `audit_kraken_derivatives_coverage.py` : audit de couverture Kraken Futures Analytics ;
+- `probe_kraken_derivatives_history.py` : sondage de disponibilité historique dérivés ;
+- `download_binance_history.py` : téléchargement/normalisation des archives officielles Binance Spot ;
+- `sync_binance_btc_usdc_h1.py` et `sync_binance_btc_usdc_h1_v2.py` : synchronisation/préparation des datasets BTC/USDC 1h Money Heist.
+
+Les chemins de sortie par défaut restent sous `data/` et sont résolus depuis la racine du projet. Ces scripts préparent/auditent des données ; ils n’appellent aucune autorité de trading LIVE.
+
+<!-- DOC_REALIGN_MARKET_DATA_UTILS_END -->

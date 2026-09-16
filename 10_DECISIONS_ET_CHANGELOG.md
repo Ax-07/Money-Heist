@@ -1,7 +1,7 @@
 # Money Heist — Décisions et Changelog
 
 **Document :** Journal des décisions d’architecture et évolutions de documentation  
-**Version :** 0.9
+**Version :** 1.0
 **Statut :** Actif
 
 ---
@@ -704,3 +704,36 @@ La baseline ne fournit pas de WebSocket/SSE opérateur ni d'API HTTP sécurisée
 
 Les entrées immuables et sorties déjà produites du Backtest Cockpit sont persistées sous `.money-heist/frontend-v2/`, surchargeable par `MONEY_HEIST_FRONTEND_V2_STORAGE_DIR`. Ce sidecar ne devient jamais un second moteur de backtest et ne recalcule ni Scanner, agents, Risk, fills ni métriques.
 
+<!-- DOC_REALIGN_ADR31_PROMPT_CACHE_START -->
+
+### ADR-031 — OpenAI Prompt Cache explicite et comptabilité des coûts IA
+
+**Date :** 2026-09-15
+**Statut :** ACCEPTED
+
+**Décision :**
+Le AI Gateway peut utiliser le Prompt Cache explicite OpenAI uniquement lorsqu’une route déclare `PromptCacheCapability.OPENAI_EXPLICIT` et une `PromptCachePolicy` correspondante. Le rendu `money-heist.prompt-transport.v2` sépare un préfixe `developer` stable d’un suffixe `user` dynamique.
+
+La comptabilité distingue input normal, cache read, cache write et output. Evaluation/Lisbon conservent le coût réel et un coût contrefactuel sans cache. Le hard budget réserve le tarif d’entrée le plus défavorable.
+
+Le Prompt Cache fournisseur reste distinct du cache de réponses `money-heist.backtest-ai-cache.v2`. Aucune autorité Risk/LIVE, règle de grounding ou frontière PAPER/SHADOW/LIVE n’est modifiée.
+
+**Document détaillé :** `docs/ADR_031_OPENAI_PROMPT_CACHE_ET_COUTS.md`.
+
+<!-- DOC_REALIGN_ADR31_PROMPT_CACHE_END -->
+
+<!-- DOC_REALIGN_CHANGELOG_20260915_START -->
+
+## Changelog documentation — 2026-09-15
+
+## Alignement documentaire post-Batch 22.1 — 2026-09-15
+
+- état courant réaligné sur `main @ 9f42d3e` ;
+- Master Portfolio Layer reflété dans la roadmap/document maître ;
+- Frontend V2 / Backtest Cockpit 22.1 et validation pnpm documentés ;
+- Prompt Cache OpenAI intégré au corpus permanent et renuméroté ADR-031 pour éviter le conflit avec ADR-026 Recruitment ;
+- Market Data utilities `scripts/market_data/` documentés ;
+- miroirs racine/`docs/` resynchronisés, notamment `05_MARKET_DATA_ET_EXECUTION.md` ;
+- nettoyage des artefacts historiques référencé (`c4ffda0`, `9f42d3e`).
+
+<!-- DOC_REALIGN_CHANGELOG_20260915_END -->

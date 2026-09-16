@@ -1,8 +1,8 @@
 # Money Heist — Spécification Maître du Projet
 
 **Document :** Spécification Maître du Projet  
-**Statut :** Document vivant  
-**Version :** 0.2  
+**Statut :** Document vivant — aligné post-Batch 22.1
+**Version :** 0.3
 **Objectif :** Source de vérité pour la conception, le développement, les tests et l’évolution de l’application Money Heist.
 
 ---
@@ -620,7 +620,7 @@ Cela permet de comparer les stratégies et profils de risque sans diviser les 10
 
 Une version future pourra ajouter :
 
-### Master Professor / Allocator
+### Master Professor / Allocator — implémenté en SHADOW/advisory
 Responsabilités :
 - comparer les systèmes ;
 - analyser les performances selon les régimes ;
@@ -871,7 +871,11 @@ Stack provisoire :
 - PostgreSQL ou base locale légère pour la toute première version.
 
 ### Frontend
-- dashboard web ; technologie à confirmer lorsque le développement frontend commencera.
+- Next.js / React / TypeScript strict ;
+- API centralisée et validation Zod ;
+- TanStack Query pour le server state ;
+- Zustand limité aux préférences UI ;
+- Lightweight Charts derrière un adapter.
 
 ### IA
 - API OpenAI ;
@@ -1370,3 +1374,25 @@ une étape distincte de l’orchestration et le Risk Engine déterministe conser
 constitutionnelle.
 
 <!-- BATCH20_MASTER_END -->
+
+<!-- DOC_REALIGN_POST_BATCH22_PROJECT_MASTER_START -->
+
+## Alignement état intégré — 2026-09-15
+
+Cette section prévaut sur les formulations historiques de type « futur », « à confirmer » ou « sera décidé » qui décrivaient l’état pré-implémentation.
+
+État intégré :
+
+- Backend Python/FastAPI et dépendances gérées avec `uv` ;
+- Market Data réel initial : Kraken Spot public / EUR ;
+- Historical Replay PAPER-only avec DESIGN / VALIDATION / OOS et walk-forward ;
+- Recruitment et Task Force advisory-only, opérateur-gatés ;
+- couche Master Portfolio présente sous `app/portfolio` avec advisory Master Professor en SHADOW et revues opérateur ;
+- Frontend V2 : Next.js + React + TypeScript strict, TanStack Query, Zod, Zustand limité aux préférences UI et Lightweight Charts via adapter ;
+- Backtest Cockpit Batch 22.1 avec persistance locale durable ;
+- Prompt Cache OpenAI explicite versionné `money-heist.prompt-transport.v2`, distinct du cache de réponses de backtest ;
+- Risk Engine déterministe et séparation PAPER / SHADOW / LIVE inchangés.
+
+Les secrets restent hors frontend/prompts et le LIVE reste soumis aux gates explicites de sécurité, risque et validation empirique.
+
+<!-- DOC_REALIGN_POST_BATCH22_PROJECT_MASTER_END -->

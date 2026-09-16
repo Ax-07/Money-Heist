@@ -1,8 +1,8 @@
-# ADR-026 — OpenAI Prompt Cache explicite et comptabilité des coûts IA
+# ADR-031 — OpenAI Prompt Cache explicite et comptabilité des coûts IA
 
 **Date :** 2026-09-15  
 **Statut :** ACCEPTED  
-**Baseline d'implémentation :** `main` @ `4c59ba8f6f2a4808ce388267977c61ccf978473d`  
+**Baseline d'implémentation :** `8373fe1` — intégration Frontend cockpit + OpenAI Prompt Cache  
 **Prompt transport :** `money-heist.prompt-transport.v2`
 
 ## Décision
@@ -91,3 +91,11 @@ Les deux mécanismes restent indépendants. La policy cache et `prompt_render_ve
 Cette ADR ne modifie aucune autorité de trading. Risk Engine, kill switch, hard AI budget, grounding, indépendance du premier tour, Palermo, séparation PAPER/SHADOW/LIVE, cache-only `CACHED` et isolation historique anti-LIVE restent inchangés.
 
 Le smoke OpenAI fourni n'importe aucun broker LIVE et ne soumet aucun ordre. Il sert uniquement à observer `cache_write_tokens` puis `cached_input_tokens` sur deux appels IA proches lorsque le préfixe naturel est éligible. Aucun padding artificiel n'est ajouté.
+
+<!-- DOC_REALIGN_ADR31_START -->
+
+## Statut d’intégration
+
+Intégré sur `main` par `8373fe1`, puis conservé à travers les commits de rangement/nettoyage jusqu’à `9f42d3e`. La suite backend complète et la validation Frontend ont été repassées avec succès avant le réalignement documentaire du 2026-09-15.
+
+<!-- DOC_REALIGN_ADR31_END -->

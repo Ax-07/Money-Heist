@@ -1,8 +1,8 @@
 # Money Heist — Market Data et Exécution
 
 **Document :** Données de marché et exécution  
-**Version :** 0.2  
-**Statut :** Spécification initiale
+**Version :** 0.3
+**Statut :** Référence active — Market Data / Exécution
 
 ---
 
@@ -425,3 +425,18 @@ Kraken Spot public → MarketSnapshot → Feature Engine → Scanner
 Le sidecar dérivés est non critique : erreur réseau, rate limit ou payload inutilisable n'invalide pas
 un snapshot spot autrement sain. En revanche Rio n'est pas annoncé au Professor sans cache utilisable.
 Aucun chemin ajouté n'importe le broker LIVE ou les credentials Kraken privés.
+
+<!-- DOC_REALIGN_MARKET_DATA_UTILS_START -->
+
+## Addendum 2026-09-15 — utilitaires Market Data historiques
+
+Les utilitaires opérateur sont regroupés sous `scripts/market_data/` :
+
+- `audit_kraken_derivatives_coverage.py` : audit de couverture Kraken Futures Analytics ;
+- `probe_kraken_derivatives_history.py` : sondage de disponibilité historique dérivés ;
+- `download_binance_history.py` : téléchargement/normalisation des archives officielles Binance Spot ;
+- `sync_binance_btc_usdc_h1.py` et `sync_binance_btc_usdc_h1_v2.py` : synchronisation/préparation des datasets BTC/USDC 1h Money Heist.
+
+Les chemins de sortie par défaut restent sous `data/` et sont résolus depuis la racine du projet. Ces scripts préparent/auditent des données ; ils n’appellent aucune autorité de trading LIVE.
+
+<!-- DOC_REALIGN_MARKET_DATA_UTILS_END -->

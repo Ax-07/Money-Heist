@@ -1,8 +1,8 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots  
-**Version :** 0.4
-**Statut :** Roadmap active — réalignée post-Batch 20
+**Version :** 0.5
+**Statut :** Roadmap active — alignée post-Batch 22.1
 
 ---
 
@@ -420,13 +420,17 @@ Non livré volontairement :
 
 ## 24. Batch 21 — Master Portfolio Layer
 
-Plus tard :
-- plusieurs crews LIVE ;
-- Master Professor ;
-- Master Risk Engine ;
-- allocation.
+**État intégré : couche fonctionnelle présente dans `app/portfolio`.**
 
----
+Fonctions observées dans l’état courant :
+- enveloppes/allocation multi-crews ;
+- analyse de preuves d’allocation ;
+- Master Professor en mode SHADOW/advisory ;
+- revue opérateur et clôture auditable ;
+- candidats de changement/remplacement de policy ;
+- fingerprints, seals et guards de fraîcheur.
+
+Frontières : aucune recommandation Master Professor ne remplace le Master Risk/Risk Engine, n’applique silencieusement une policy ou n’accorde une autorité LIVE.
 
 ## 25. Décisions nécessaires par étape
 
@@ -471,13 +475,15 @@ Si le développement révèle qu’un batch est trop gros :
 
 ## 28. Prochaine action
 
-1. Clôturer Batch 20 avec tests complets, consolidation documentaire et commit dédié.
-2. Conserver les campagnes historiques/PAPER/SHADOW comme preuves et maintenir le LIVE non armé
-   tant que ses gates propres ne sont pas satisfaites.
-3. Démarrer **Batch 21 — Master Portfolio Layer** sans réutiliser l’autorisation Task Force comme
-   autorité de portefeuille ou autorité LIVE.
-4. Définir toute future allocation multi-crews comme une couche déterministe/opérateur-gatée avec
-   un Master Risk Engine séparé de la logique analytique des agents.
+État de construction : Batch 22.1 Frontend Backtest Cockpit livré, Prompt Cache OpenAI intégré et dépôt nettoyé des anciens artefacts Batch.
+
+Priorités suivantes :
+
+1. exécuter des campagnes historiques longues et multi-régimes avec DESIGN / VALIDATION / OOS et walk-forward ;
+2. mesurer la fréquence de trade, la qualité des opportunités, les coûts IA et l’apport marginal des agents ;
+3. poursuivre la parité du contexte décisionnel LIVE ↔ Historical Replay ;
+4. valider explicitement timeframes de production et limites numériques Balanced ;
+5. maintenir le LIVE non promu tant que PAPER/SHADOW, sécurité et preflight ne sont pas satisfaits.
 
 <!-- BATCH22_FRONTEND_V2 -->
 ## Batch 22 — Frontend V2 / Trading Cockpit
@@ -495,3 +501,10 @@ Le Dashboard V1 n'est pas supprimé dans ce batch. La migration est volontaireme
 
 Le lanceur suit Dataset → Périodes → Risk → IA → Exécution → Données avancées → Walk-Forward → Revue. Les defaults deviennent visibles/modifiables et les datasets/artefacts de replay V2 sont persistés localement.
 
+<!-- DOC_REALIGN_POST_BATCH22_ROADMAP_START -->
+
+## État documentaire au 2026-09-15
+
+Batch 22 / 22.1 est livré. Le Prompt Cache OpenAI a été intégré ensuite dans le AI Gateway et le dépôt a été nettoyé des anciens artefacts de livraison Batch. La roadmap historique est conservée pour traçabilité ; la section « Prochaine action » ci-dessus porte l’orientation courante.
+
+<!-- DOC_REALIGN_POST_BATCH22_ROADMAP_END -->

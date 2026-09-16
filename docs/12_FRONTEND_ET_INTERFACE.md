@@ -1,10 +1,10 @@
 # Money Heist — Frontend et Interface V2
 
 **Document :** Référence fonctionnelle et technique du Frontend V2  
-**Version :** 1.0  
-**Date :** 2026-09-12  
-**Statut :** Frontend V2 / Trading Cockpit — Batch 22  
-**Baseline auditée :** `34351184f193e658a375667bdf19594d2defb3ec`
+**Version :** 1.1
+**Date :** 2026-09-15
+**Statut :** Frontend V2 / Backtest Cockpit — Batch 22.1 validé
+**Baseline auditée :** `9f42d3ebc52b71feeedf3b58160187d18bab5a62`
 
 ---
 
@@ -254,3 +254,24 @@ Ordre recommandé : migrer le sidecar V2 vers le stockage SQL unifié si nécess
 | Exports | Backend existant | Conservés | Aucun format Batch 16 supprimé |
 | Dashboard HTML/CSS/JS V1 | Routes historiques | Non supprimé dans Batch 22 | Migration non destructive |
 | Armement LIVE | Aucun bouton V2 | Non ajouté | Aucune API opérateur sécurisée auditée |
+
+<!-- DOC_REALIGN_FRONTEND_VALIDATION_START -->
+
+## Addendum 2026-09-15 — état validé après Batch 22.1
+
+Baseline documentaire courante : `main @ 9f42d3ebc52b71feeedf3b58160187d18bab5a62`.
+
+Validation Frontend exécutée avec pnpm :
+
+```text
+pnpm run lint       → OK
+pnpm run typecheck  → OK
+pnpm run test       → 6 fichiers / 26 tests OK
+pnpm run build      → Next.js production build OK
+```
+
+Le cockpit expose également les paramètres liés au coût IA/Prompt Cache fournis par le backend. Ces contrôles configurent une policy du AI Gateway ; ils ne déplacent aucune logique de cache fournisseur dans le navigateur.
+
+Le gestionnaire de paquets recommandé dans les commandes de développement Frontend de cette documentation est `pnpm`.
+
+<!-- DOC_REALIGN_FRONTEND_VALIDATION_END -->

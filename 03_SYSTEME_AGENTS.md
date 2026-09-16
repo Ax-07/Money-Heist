@@ -1,8 +1,8 @@
 # Money Heist — Système d’Agents
 
 **Document :** Architecture fonctionnelle des agents  
-**Version :** 0.1  
-**Statut :** Spécification initiale  
+**Version :** 0.2
+**Statut :** Référence active — agents intégrés
 **Références :** `01_PROJECT_MASTER.md`, `02_ARCHITECTURE.md`
 
 ---
@@ -606,3 +606,23 @@ Economic Net marginal, réduction de drawdown, coût ou latence. L’ordre des d
 la policy de composition ; aucun score composite implicite n’est introduit.
 
 <!-- BATCH20_AGENTS_END -->
+
+<!-- DOC_REALIGN_POST_BATCH22_AGENTS_START -->
+
+## Alignement agents et transport IA — 2026-09-15
+
+État du registre intégré : Professor, Palermo, Lisbon, Berlin, Tokyo, Nairobi, Rio et Denver. Les versions actuelles utilisées par le registre après le chantier Prompt Cache incluent Professor `v6`, Palermo `v3`, spécialistes `v5` et Lisbon `v1`.
+
+Le rendu fournisseur sépare désormais :
+
+```text
+préfixe developer stable
+→ breakpoint Prompt Cache OpenAI explicite
+→ contenu user dynamique du run
+```
+
+Le préfixe stable peut contenir rôle, instructions, version de prompt et fingerprint de schéma. Les opportunity IDs, timestamps, catalogues de preuves, portfolio courant et autres valeurs de run restent dynamiques. Le grounding est toujours revalidé localement et fail-closed après Structured Output.
+
+Cette optimisation ne change ni l’indépendance du premier tour, ni Palermo, ni le Risk Engine, ni les frontières LIVE.
+
+<!-- DOC_REALIGN_POST_BATCH22_AGENTS_END -->

@@ -460,3 +460,25 @@ Limitation V1 : le Dashboard Backtest historique reste en mémoire et `CampaignS
 
 Le cockpit expose explicitement split, Risk, IA, exécution et Walk-Forward. Un dataset validé est persisté une fois puis référencé par `dataset_id`. À la fin d'une campagne, Frontend V2 snapshotte résumé, traces et exports existants afin de restaurer le replay après redémarrage, sans réexécution du moteur historique.
 
+<!-- DOC_REALIGN_REPLAY_CACHE_DISTINCTION_START -->
+
+## Addendum 2026-09-15 — deux caches distincts
+
+Money Heist possède désormais deux mécanismes à ne pas confondre :
+
+```text
+OpenAI Prompt Cache
+→ nouvel appel fournisseur
+→ réutilisation éventuelle du préfixe stable
+→ réponse recalculée
+
+money-heist.backtest-ai-cache.v2
+→ mode CACHED Money Heist
+→ aucune délégation fournisseur
+→ réponse complète rejouée
+→ cache miss fail-closed
+```
+
+La policy Prompt Cache et `prompt_render_version` font partie des hypothèses versionnées d’une campagne lorsque le Dashboard/Frontend les expose. La persistance Batch 22.1 supersède la limitation historique « campagne seulement en mémoire » pour les campagnes V2 : dataset, configuration, progression/traces, résumé et exports nécessaires au replay sont persistés dans le sidecar local.
+
+<!-- DOC_REALIGN_REPLAY_CACHE_DISTINCTION_END -->

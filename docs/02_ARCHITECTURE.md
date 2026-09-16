@@ -1,8 +1,8 @@
 # Money Heist — Architecture Technique
 
 **Document :** Architecture technique  
-**Version :** 0.1  
-**Statut :** Spécification initiale  
+**Version :** 0.2
+**Statut :** Architecture active — alignée post-Batch 22.1
 **Référence :** `01_PROJECT_MASTER.md`
 
 ---
@@ -669,3 +669,27 @@ Aucun WebSocket/SSE opérateur n'existant dans la baseline `34351184f193e658a375
 
 Frontend V2 conserve `BacktestDashboardService` comme autorité d'exécution mais ajoute un sidecar durable sous `.money-heist/frontend-v2/`. Il persiste bibliothèque de datasets, configuration figée, progression/traces, résumé et exports nécessaires au replay. Aucun calcul métier n'est déplacé hors du moteur Batch 16.
 
+<!-- DOC_REALIGN_POST_BATCH22_ARCHITECTURE_START -->
+
+## Alignement architecture post-Batch 22.1 — 2026-09-15
+
+L’architecture est maintenant implémentée au-delà de la spécification initiale. Les éléments suivants font partie de l’état intégré :
+
+```text
+FastAPI backend
+├─ Market Data / Feature Engine / Scanner
+├─ AI Gateway + Prompt Cache OpenAI explicite
+├─ Orchestration Professor / spécialistes / Palermo
+├─ Risk Engine déterministe
+├─ PAPER / SHADOW / LIVE protégés
+├─ Historical Replay / Backtest
+├─ Recruitment / Task Force
+├─ Master Portfolio Layer
+└─ API Frontend V2
+        ↓
+Next.js Frontend V2 / Backtest Cockpit
+```
+
+Le Prompt Cache est une optimisation de transport/coût du AI Gateway. Il n’est ni une mémoire métier ni une source d’autorité. Le Master Professor reste advisory/operator-gated. Le Frontend reste un client du backend et ne recalcule aucune décision critique.
+
+<!-- DOC_REALIGN_POST_BATCH22_ARCHITECTURE_END -->

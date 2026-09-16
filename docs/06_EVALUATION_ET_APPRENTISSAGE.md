@@ -1,8 +1,8 @@
 # Money Heist — Evaluation et Apprentissage
 
 **Document :** Evaluation, validation et évolution  
-**Version :** 0.1  
-**Statut :** Spécification initiale
+**Version :** 0.2
+**Statut :** Référence active — Evaluation / Lisbon
 
 ---
 
@@ -501,3 +501,24 @@ Aucun résultat d’évaluation n’applique automatiquement une transition d’
 registre ou une action de trading.
 
 <!-- BATCH20_EVALUATION_END -->
+
+<!-- DOC_REALIGN_PROMPT_CACHE_ECONOMICS_START -->
+
+## Addendum 2026-09-15 — économie du Prompt Cache OpenAI
+
+`AIUsageRecord` et Evaluation distinguent désormais :
+
+- `input_tokens` ;
+- `cached_input_tokens` ;
+- `cache_write_tokens` ;
+- `normal_input_tokens` ;
+- `output_tokens` ;
+- coût réel ;
+- `estimated_cost_without_cache_eur` ;
+- mode de Prompt Cache, version de transport, fingerprint du préfixe stable et diagnostics éventuels.
+
+Lisbon peut agréger l’économie nette estimée par rapport à un scénario sans cache. Un cache hit ne constitue pas automatiquement une économie positive : un cache write initial peut coûter davantage et doit rester comptabilisé.
+
+La politique de budget réserve le cas d’entrée le plus défavorable entre input normal, cache read et cache write. Une partition de tokens incohérente échoue fail-closed.
+
+<!-- DOC_REALIGN_PROMPT_CACHE_ECONOMICS_END -->
