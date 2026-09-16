@@ -296,3 +296,15 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - intégration `AnalyticsSnapshot` et identité Analytics ;
 - prefix invariance, future malformed isolation, MTF closed-candle semantics et import guards ;
 - aucune modification fonctionnelle Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+## Batch 24A.4 — Causal Structure & ZigZag
+
+- projection read-only du Market Structure Money Heist ;
+- source structure explicite `MONEY_HEIST_STRUCTURE` ;
+- ZigZag causal ATR14 / 2.0 ATR versionné ;
+- `pivot_at` et `confirmed_at` distincts ;
+- ATR et reversal threshold verrouillés au candidat ;
+- policy OHLC conservatrice sans ordre intrabar inventé ;
+- IDs/fingerprints déterministes et prefix invariance ;
+- aucun changement Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.

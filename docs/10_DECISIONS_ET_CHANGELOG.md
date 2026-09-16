@@ -896,3 +896,11 @@ stateless T-1/T, causal, déterministe et isolé du Scanner/Decision/Risk/PAPER/
 seuils canoniques V1 sont versionnés dans le registry (RSI 30/50/70, ADX 25, MFI 20/80,
 volume ratio 1.5). Les changements matériels de registry modifient l'identité Analytics,
 jamais l'identité business du `BacktestRun`.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+### 2026-09-17 — Batch 24A.4 Causal Structure & ZigZag
+
+**ACCEPTED** — coexistence explicite de la structure Money Heist et d'un ZigZag
+Analytics causal. Définition V1 : ATR14 Analytics, reversal 2.0 ATR, seuil inclusif
+verrouillé au candidat, initialisation dual-candidate, ambiguïté OHLC conservatrice,
+timestamps sur close_time des candles closes.

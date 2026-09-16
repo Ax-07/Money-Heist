@@ -716,3 +716,11 @@ Analytics, type/famille/direction descriptive, symbole/timeframe, `event_at`,
 `available_at`, fingerprints source/cursor, evidence T-1/T, version de définition et
 `event_fingerprint`. Les événements sont sérialisables et n'ont aucune sémantique
 `LONG`/`SHORT`.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+## Addendum Batch 24A.4 — Structure / ZigZag
+
+Contrats ajoutés : `StructureSource`, `AnalyticsMarketStructureObservation`,
+`CausalZigZagInputBar`, `CausalZigZagPivot` et registry ZigZag versionné.
+Les pivots portent `pivot_at`, `confirmed_at`, prix, ATR verrouillé, seuil,
+amplitudes, nombre de barres, provenance indicator/cursor, ID et fingerprint.

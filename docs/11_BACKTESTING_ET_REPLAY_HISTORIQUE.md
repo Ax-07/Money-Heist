@@ -670,3 +670,11 @@ Les événements Analytics participent à l'identité/fingerprint Analytics, mai
 `BacktestRun.run_id` ni au business fingerprint. Une candle future malformée ne doit pas
 modifier un événement déjà disponible à T et une candle higher-timeframe non close ne doit
 produire aucun événement de ce timeframe.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+## Batch 24A.4 — causalité structurelle
+
+Le ZigZag consomme exclusivement des candles closes déjà visibles dans le replay et
+l'ATR14 produit par Analytics Indicators. Pour tout `as_of=T`, seuls les pivots avec
+`confirmed_at <= T` sont exposés. Un suffixe futur ne peut modifier les pivots déjà
+confirmés visibles à T.

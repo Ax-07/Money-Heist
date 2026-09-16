@@ -588,3 +588,9 @@ Après 24A.1 (foundation/isolation) et 24A.2 (rich indicators), 24A.3 ajoute le 
 versionné de Technical Events, la détection causale T-1/T, les IDs/fingerprints stables,
 l'evidence et l'intégration `AnalyticsSnapshot`. Le prochain sous-batch Analytics prévu
 reste 24A.4 — Causal Structure & ZigZag; aucun pivot/pattern/context n'est implémenté ici.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+## Batch 24A.4 — Causal Structure & ZigZag
+
+24A.4 installe la projection de structure Money Heist et le ZigZag causal.
+Patterns/lifecycle restent 24A.5 ; calibration 24A.6 ; contexts/sequences 24A.7.

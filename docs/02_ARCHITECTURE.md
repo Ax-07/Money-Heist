@@ -819,3 +819,13 @@ Il ne recalcule aucun indicateur, ne lit pas le Scanner et ne possède aucune au
 trading. Les événements portent `event_at` et `available_at`; pour 24A.3 ils sont égaux au
 close/as-of de la snapshot courante. Les chemins Scanner/Decision/Agents/Risk/PAPER/LIVE
 restent indépendants et ne doivent pas importer `app.analytics.events`.
+
+<!-- BATCH_24A4_CAUSAL_STRUCTURE_ZIGZAG -->
+## Batch 24A.4 — Causal Structure & ZigZag
+
+L'Analytics Lab expose désormais deux sources structurelles distinctes :
+la projection read-only du `MarketStructureContextV1` de production et un ZigZag
+Analytics causal ATR-confirmé. Le ZigZag ne remplace jamais la structure de production.
+`pivot_at` décrit la position géométrique sur une candle close ; `confirmed_at` décrit
+le premier instant où le pivot est connaissable. Aucun pivot dont
+`confirmed_at > as_of` ne peut entrer dans `AnalyticsSnapshot`.
