@@ -263,3 +263,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - progression V2 enrichie avec temps écoulé / appels IA ;
 - endpoint et bouton d'annulation V2 ;
 - aucune modification de logique de décision, seuil, prompt, Risk ou exécution.
+<!-- BATCH24A1_CHANGELOG -->
+## Batch 24A.1 — Analytics Lab Foundation, Contracts & Isolation Guards
+
+- package `app.analytics` observation-only ;
+- identité `AnalyticsLabRun` distincte de `BacktestRun` ;
+- provenance dataset/as-of/MTF et `source_cursor_fingerprint` ;
+- versions Analytics, snapshots vides, manifeste et SHA-256 déterministes ;
+- canonicalisation commune verrouillée par golden test sans changement
+  historique attendu ;
+- guards AST anti-couplage décisionnel, Forward Outcomes et LIVE ;
+- aucune modification fonctionnelle Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.

@@ -561,3 +561,17 @@ Livré :
 ### Phase suivante — exploitation empirique
 
 Exécuter des campagnes longues multi-régimes et comparer DESIGN / VALIDATION / OOS avec les quatre vues 23A avant toute proposition de tuning. Une modification de seuil Scanner, de règle Professor ou de Risk devra être traitée comme une hypothèse distincte et validée hors échantillon, pas comme une conséquence automatique d'un agrégat descriptif.
+<!-- BATCH24A1_ROADMAP -->
+## Batch 24 — Analytics Lab & Decision Intelligence
+
+### 24A.1 — Foundation, Contracts & Isolation Guards
+
+Fondation observation-only : identité `AnalyticsLabRun`, provenance
+dataset/as-of/MTF, versions, snapshots/manifeste/fingerprints déterministes et
+guards AST. Aucun indicateur, event, ZigZag, pattern, attribution ou UI n'est
+inclus.
+
+Sous-batchs suivants explicitement hors scope de 24A.1 : 24A.2 Indicators,
+24A.3 Technical Events, 24A.4 ZigZag, 24A.5 Patterns, 24A.6 Calibration,
+24A.7 Contexts/Sequences, 24B Attribution, 24C Frontend, 24D Decision Quality
+Research.

@@ -776,3 +776,22 @@ exécution LIVE
 `BacktestConfig`, `run_id`, prompts, seuils, sizing et fingerprint business historique ne sont pas modifiés par cette pile.
 
 **Références fonctionnelles :** `b78266e` (23A.2), `42903cc` (23A.3), `611bef3` (23A.4).
+<!-- BATCH24A1_ARCHITECTURE -->
+## Analytics Lab — frontière observation-only (Batch 24A.1)
+
+```text
+Historical Replay / DatasetRef / MTF
+        ├── Decision pipeline canonique
+        └── Analytics Lab (read-only)
+                    ↓
+              artefacts Analytics
+```
+
+`app.analytics` ne possède aucune autorité de trading. Il ne peut ni créer une
+opportunité, ni modifier le `DecisionContextV1`, ni influencer
+Professor/Palermo/Risk/PAPER/LIVE. Le Lab réutilise l'identité dataset et le
+`source_cursor_fingerprint` MTF ; il ne possède pas de seconde source de marché
+ni de resampler indépendant.
+
+`BacktestRun != AnalyticsLabRun`. Les versions Analytics restent hors du business
+fingerprint tant que la couche demeure observation-only.

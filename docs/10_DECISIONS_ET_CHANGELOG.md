@@ -866,3 +866,18 @@ Comparer post-hoc ce qui se trouve de part et d'autre du seuil candidat sans mod
 - pile 23A désormais capable de mesurer du Scanner pré-candidat jusqu'à Risk/exécution avec outcomes post-hoc ;
 - aucun seuil Scanner, prompt Professor, paramètre Risk, règle d'exécution ou autorité LIVE modifié ;
 - prochaine phase : campagnes longues multi-régimes DESIGN / VALIDATION / OOS avant toute hypothèse de tuning.
+<!-- ADR037_ANALYTICS_LAB_OBSERVATION_ONLY -->
+### ADR-037 — Analytics Lab Observation-Only Authority Boundary
+
+**Date :** 2026-09-16
+**Statut :** ACCEPTED
+
+Le futur Analytics Lab est une dérivation read-only du Historical Replay
+canonique. `BacktestRun` et `AnalyticsLabRun` ont des identités distinctes ; les
+versions Analytics ne modifient pas le `BacktestRun.run_id` ni le business
+fingerprint tant qu'Analytics n'influence aucune décision. `DatasetRef`/MTF
+Money Heist restent la seule vérité de marché et Batch 23A reste la vérité
+post-hoc canonique. Toute future injection Analytics dans `DecisionContextV1`
+devra être traitée comme un batch comportemental distinct.
+
+Voir `docs/ADR_037_ANALYTICS_LAB_OBSERVATION_ONLY.md`.

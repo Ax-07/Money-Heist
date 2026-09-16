@@ -638,3 +638,15 @@ La pile 23A est maintenant suffisante pour lancer des campagnes longues multi-r�
 - comment les distributions varient par score, trigger et régime.
 
 Toute hypothèse de tuning issue de cette analyse doit être formulée comme une expérience distincte et validée sur VALIDATION/OOS avant d'être envisagée pour PAPER/SHADOW, puis éventuellement LIVE.
+<!-- BATCH24A1_REPLAY -->
+## Dérivation Analytics Lab (Batch 24A.1)
+
+Un `AnalyticsLabRun` dérive d'un `BacktestRun` existant sans rerun du Scanner ni
+des agents. L'adaptateur conserve `DatasetRef`, bornes de période, rôle
+DESIGN/VALIDATION/OOS, politique MTF et `source_cursor_fingerprint` de l'univers
+visible. Les versions Analytics produisent uniquement une nouvelle identité
+Analytics.
+
+Les Forward Outcomes 23A ne sont pas consommés par `app.analytics`; une future
+jointure décision + Analytics + outcomes appartiendra à une couche d'attribution
+séparée.

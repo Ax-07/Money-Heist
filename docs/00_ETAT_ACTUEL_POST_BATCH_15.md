@@ -227,3 +227,12 @@ Exports additionnels par période :
 La prochaine phase utile est une **campagne historique longue multi-régimes** exploitant ensemble Decision Funnel, Candidate Forward Outcomes, Funnel Outcome Attribution et Scanner Forward Outcomes. Les résultats doivent être analysés sur DESIGN / VALIDATION / OOS avant toute proposition de modification de seuil.
 
 La parité LIVE ↔ Historical Replay, PAPER/SHADOW prolongé et les gates opérateur restent ensuite nécessaires avant toute promotion LIVE.
+<!-- BATCH24A1_STATE -->
+## Batch 24A.1 — Analytics Lab Foundation
+
+L'Analytics Lab possède désormais une fondation observation-only distincte du
+`BacktestRun` : contrats immuables, provenance dataset/as-of/MTF, versions de
+composants, snapshots vides autorisés, manifeste et fingerprints déterministes.
+Aucun élément Analytics n'est injecté dans Scanner, `CandidateOpportunity`,
+`DecisionContextV1`, agents, Risk, PAPER ou LIVE. Les Forward Outcomes Batch 23A
+restent la vérité post-hoc canonique.

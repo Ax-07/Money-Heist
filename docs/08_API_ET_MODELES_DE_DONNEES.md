@@ -687,3 +687,17 @@ Par split :
 - `*-scanner-forward-outcomes.json`.
 
 Ces contrats sont additifs et observationnels. Ils ne sont pas des entrées de `BacktestConfig`, ne changent pas `run_id`, n'entrent jamais dans le `DecisionContext` de la décision évaluée et ne déplacent aucune autorité Risk/LIVE.
+<!-- BATCH24A1_MODELS -->
+## Contrats Analytics Lab — Batch 24A.1
+
+Contrats ajoutés : `AnalyticsComponentVersions`, `AnalyticsAsOfInput`,
+`AnalyticsLabRun`, `AnalyticsSnapshot`, `AnalyticsLabManifest` et
+`AnalyticsObservationProvenance`.
+
+Invariants : timestamps timezone-aware/UTC, SHA-256 validés,
+`source_cursor_fingerprint` conservé, rôle DESIGN/VALIDATION/OOS explicite, IDs
+et digests déterministes. `components={}` est valide tant qu'aucun moteur
+Analytics n'est installé.
+
+Aucun champ Analytics n'est ajouté à `CandidateOpportunity` ni à
+`DecisionContextV1` dans ce batch.
