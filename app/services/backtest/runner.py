@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -144,6 +145,28 @@ class HistoricalReplayObservationCounts:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalReplayTimings:
+    """Wall-clock diagnostics only; never part of trading decisions or fingerprints."""
+
+    total_ms: int = 0
+    lifecycle_ms: int = 0
+    mtf_feature_scanner_ms: int = 0
+    context_build_ms: int = 0
+    pipeline_ms: int = 0
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "total_ms",
+            "lifecycle_ms",
+            "mtf_feature_scanner_ms",
+            "context_build_ms",
+            "pipeline_ms",
+        ):
+            if getattr(self, field_name) < 0:
+                raise ValueError(f"{field_name} must be >= 0")
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalReplayPoint:
     observed_at: datetime
     visible_candle_count: int
@@ -178,6 +201,7 @@ class HistoricalReplayResult:
     observation_counts: HistoricalReplayObservationCounts = field(
         default_factory=HistoricalReplayObservationCounts
     )
+    timings: HistoricalReplayTimings = field(default_factory=HistoricalReplayTimings)
 
     @property
     def opportunities(self) -> tuple[Any, ...]:
@@ -313,6 +337,12 @@ class HistoricalReplayRunner:
         point_callback: Callable[[HistoricalReplayPoint], None] | None = None,
         cancel_check: Callable[[], bool] | None = None,
     ) -> HistoricalReplayResult:
+        replay_started = time.perf_counter()
+        lifecycle_seconds = 0.0
+        mtf_feature_scanner_seconds = 0.0
+        context_build_seconds = 0.0
+        pipeline_seconds = 0.0
+
         rows = self._validated_rows(candles, run)
         self._validate_component_versions(run)
         self._validate_dynamic_stack(run)
@@ -368,6 +398,7 @@ class HistoricalReplayRunner:
             if observed_at >= run.period_start:
                 processed_candles += 1
 
+            lifecycle_started = time.perf_counter()
             if self.position_lifecycle is not None and open_at < clock.now():
                 raise ValueError(
                     "dynamic historical replay requires non-overlapping chronological candles"
@@ -394,7 +425,9 @@ class HistoricalReplayRunner:
                     )
                 )
                 await self._refresh_dynamic_portfolio(clock.now())
+            lifecycle_seconds += time.perf_counter() - lifecycle_started
 
+            market_started = time.perf_counter()
             mtf_state = None
             decision_visible_count: int | None = None
             if mtf_cursor is not None:
@@ -404,6 +437,7 @@ class HistoricalReplayRunner:
                 if self.decision_timeframe not in emitted:
                     if observed_at >= run.period_start:
                         pre_scanner_not_decision_close_skipped += 1
+                    mtf_feature_scanner_seconds += time.perf_counter() - market_started
                     continue
                 decision_series = mtf_cursor.series(
                     self.decision_timeframe
@@ -412,6 +446,7 @@ class HistoricalReplayRunner:
                 if decision_visible_count < min_history:
                     if observed_at >= run.period_start:
                         pre_scanner_warmup_skipped += 1
+                    mtf_feature_scanner_seconds += time.perf_counter() - market_started
                     continue
                 feature_input = decision_series
                 feature_timeframe = self.decision_timeframe
@@ -420,6 +455,7 @@ class HistoricalReplayRunner:
                 if len(visible) < min_history:
                     if observed_at >= run.period_start:
                         pre_scanner_warmup_skipped += 1
+                    mtf_feature_scanner_seconds += time.perf_counter() - market_started
                     continue
                 feature_input = tuple(visible)
                 feature_timeframe = run.dataset.timeframe
@@ -436,6 +472,7 @@ class HistoricalReplayRunner:
                 previous=previous_feature,
             )
             previous_feature = feature
+            mtf_feature_scanner_seconds += time.perf_counter() - market_started
 
             if observed_at < run.period_start:
                 continue
@@ -452,6 +489,7 @@ class HistoricalReplayRunner:
             pipeline_result = None
             if opportunity is not None:
                 opportunity_count += 1
+                context_started = time.perf_counter()
                 if mtf_cursor is not None:
                     mtf_feature_context = (
                         build_multi_timeframe_feature_context(
@@ -612,6 +650,8 @@ class HistoricalReplayRunner:
                     specialist_contexts["denver"] = denver_context
                 if specialist_contexts:
                     pipeline_kwargs["specialist_contexts"] = specialist_contexts
+                context_build_seconds += time.perf_counter() - context_started
+                pipeline_started = time.perf_counter()
                 pipeline_result = await self.paper_pipeline.run(
                     **pipeline_kwargs
                 )
@@ -623,6 +663,7 @@ class HistoricalReplayRunner:
                             observed_at=clock.now(),
                         )
                         await self._refresh_dynamic_portfolio(clock.now())
+                pipeline_seconds += time.perf_counter() - pipeline_started
 
             point = HistoricalReplayPoint(
                 observed_at=clock.now(),
@@ -675,6 +716,15 @@ class HistoricalReplayRunner:
                 pre_scanner_not_decision_close_skipped=(
                     pre_scanner_not_decision_close_skipped
                 ),
+            ),
+            timings=HistoricalReplayTimings(
+                total_ms=max(int(round((time.perf_counter() - replay_started) * 1000)), 0),
+                lifecycle_ms=max(int(round(lifecycle_seconds * 1000)), 0),
+                mtf_feature_scanner_ms=max(
+                    int(round(mtf_feature_scanner_seconds * 1000)), 0
+                ),
+                context_build_ms=max(int(round(context_build_seconds * 1000)), 0),
+                pipeline_ms=max(int(round(pipeline_seconds * 1000)), 0),
             ),
         )
 

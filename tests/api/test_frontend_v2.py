@@ -11,7 +11,12 @@ from app.api.routes.frontend_v2 import (
     _dataset_upload_max_bytes,
     router,
 )
-from app.dashboard.backtest import BacktestDashboardService, DatasetInput, DatasetPreview
+from app.dashboard.backtest import (
+    BacktestDashboardService,
+    CampaignProgressView,
+    DatasetInput,
+    DatasetPreview,
+)
 from app.domain.enums import SystemMode
 
 
@@ -202,3 +207,35 @@ def test_raw_dataset_upload_persists_without_json_wrapping(tmp_path: Path) -> No
     restored = store.load_dataset(dataset_id)
     assert restored is not None
     assert restored.csv_text == csv_text
+
+def test_frontend_v2_cancel_route_delegates_to_running_service(tmp_path: Path) -> None:
+    campaign_id = "campaign-cancel-test"
+    progress = CampaignProgressView(
+        campaign_id=campaign_id,
+        created_at=datetime(2026, 9, 16, tzinfo=UTC),
+        status="CANCEL_REQUESTED",
+        phase="CANCEL_REQUESTED",
+        percent=12.5,
+        work_done=125,
+        total_work=1000,
+        opportunity_count=3,
+        executed_order_count=0,
+        message="Arrêt demandé; attente du prochain checkpoint de replay.",
+        can_cancel=False,
+        result_available=False,
+        elapsed_ms=1234,
+        ai_call_count=7,
+        ai_wall_time_ms=456,
+    )
+    with _client(tmp_path) as client:
+        service = client.app.state.backtest_dashboard_service
+        service.cancel_campaign = lambda value: progress if value == campaign_id else None
+        response = client.post(f"/api/frontend/v2/backtests/runs/{campaign_id}/cancel")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "CANCEL_REQUESTED"
+    assert payload["elapsed_ms"] == 1234
+    persisted = FrontendV2Store(storage_dir=tmp_path).persisted_progress(campaign_id)
+    assert persisted is not None
+    assert persisted.status == "CANCEL_REQUESTED"

@@ -252,3 +252,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - réutilisation du moteur Forward Outcomes 23A.2 et des mêmes frontières temporelles ;
 - exports `*-scanner-forward-outcomes.json` ;
 - aucun changement Scanner/Professor/Risk/exécution/DecisionContext.
+
+<!-- BATCH23B1_REPLAY_PERFORMANCE_BASELINE -->
+## Batch 23B.1 — Historical Replay Performance Baseline
+
+- baseline : `4368a99944eb04ba3b53cc31f6b379041aa3cbf3` ;
+- pool HTTP OpenAI persistant par run + fermeture explicite ;
+- instrumentation wall-clock additive du replay et de la couche 23A ;
+- exports `*-performance.json` ;
+- progression V2 enrichie avec temps écoulé / appels IA ;
+- endpoint et bouton d'annulation V2 ;
+- aucune modification de logique de décision, seuil, prompt, Risk ou exécution.

@@ -1,11 +1,12 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { EquityChart } from "@/components/chart/equity-chart";
 import { TradingChart } from "@/components/chart/trading-chart";
 import { StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { campaignConfigurationQuery, campaignProgressQuery, campaignQuery, replayQuery } from "@/lib/api/queries";
+import { cancelBacktest, campaignConfigurationQuery, campaignProgressQuery, campaignQuery, replayQuery } from "@/lib/api/queries";
 import type { BacktestReplay, CampaignConfiguration, CampaignProgress, CampaignSummary } from "@/lib/api/schemas";
 import { formatDateTime } from "@/lib/utils";
 import { ReplayControls } from "./replay-controls";
@@ -14,7 +15,10 @@ import type { ReplaySpeed } from "./replay-state";
 import { isTerminalCampaignStatus, shouldPollCampaignProgress } from "./campaign-progress";
 
 const roles=["DESIGN","VALIDATION","OOS"] as const;
+const formatDuration=(ms:number)=>ms<1000?`${ms} ms`:`${(ms/1000).toFixed(ms<10000?1:0)} s`;
 export function BacktestDetail({campaignId}:{campaignId:string}){
+ const queryClient=useQueryClient();
+ const cancel=useMutation({mutationFn:()=>cancelBacktest(campaignId),onSuccess:data=>queryClient.setQueryData(["campaign-progress",campaignId],data)});
  const progress=useQuery({queryKey:["campaign-progress",campaignId],queryFn:()=>campaignProgressQuery(campaignId),refetchInterval:q=>shouldPollCampaignProgress(q.state.data)?1000:false,retry:false});
  const campaign=useQuery({queryKey:["campaign",campaignId],queryFn:()=>campaignQuery(campaignId),enabled:progress.data?.result_available===true||progress.isError,retry:false});
  const configuration=useQuery({queryKey:["campaign-configuration",campaignId],queryFn:()=>campaignConfigurationQuery(campaignId),enabled:campaign.isSuccess,retry:false});
@@ -24,10 +28,11 @@ export function BacktestDetail({campaignId}:{campaignId:string}){
  const traces=useMemo(()=>{const candle=replay.data?.candles[index];if(!candle)return [];const time=candle.time;return replay.data?.traces.filter(trace=>Math.floor(new Date(trace.observed_at).getTime()/1000)<=time).slice(-12)??[]},[replay.data,index]);
  const cursorTime=replay.data?.candles[index]?.time??null;
  const summary=campaign.data;
- if(progress.data && !progress.data.result_available && !campaign.data)return <ProgressView progress={progress.data}/>;
+ if(progress.data && !progress.data.result_available && !campaign.data)return <ProgressView progress={progress.data} cancelling={cancel.isPending} onCancel={()=>cancel.mutate()}/>;
  return <div className="space-y-4">
   <div className="panel flex flex-wrap items-center gap-3 p-4"><div><p className="panel-title">Backtest campaign</p><h1 className="mt-1 font-mono text-lg">{campaignId}</h1></div><StatusBadge value={summary?.ai_mode??progress.data?.status??"UNKNOWN"}/><span className="ml-auto text-xs text-slate-500">{summary?formatDateTime(summary.created_at):""}</span></div>
   {summary&&<CampaignHeader campaign={summary}/>}
+  {summary&&<PerformancePanel campaign={summary}/>}
   {configuration.data&&<ConfigurationPanel configuration={configuration.data}/>} 
   <Tabs value={role} onValueChange={value=>{setRole(value as typeof role);setIndex(0);setPlaying(false)}}><TabsList className="w-fit">{roles.map(value=><TabsTrigger key={value} value={value}>{value}{value==="OOS"?" · OUT-OF-SAMPLE":""}</TabsTrigger>)}</TabsList></Tabs>
   {replay.isError?<div className="panel p-6"><p className="text-sm text-amber-200">Replay détaillé indisponible pour cette campagne.</p><p className="mt-2 text-xs leading-5 text-slate-500">Cette campagne ne possède pas les artefacts V2 nécessaires au replay détaillé. Les nouvelles campagnes V2 persistent désormais dataset, configuration, traces et exports côté backend.</p></div>:replay.isLoading?<div className="panel p-8 text-sm text-slate-500">Chargement du replay…</div>:replay.data&&<>
@@ -37,14 +42,15 @@ export function BacktestDetail({campaignId}:{campaignId:string}){
   </>}
  </div>
 }
-function ProgressView({progress}:{progress:CampaignProgress}){
+function ProgressView({progress,cancelling,onCancel}:{progress:CampaignProgress;cancelling:boolean;onCancel:()=>void}){
  const terminal=isTerminalCampaignStatus(progress.status);
  const failed=progress.status.toUpperCase()==="FAILED";
  const cancelled=progress.status.toUpperCase()==="CANCELLED";
  const title=failed?"Historical Replay échoué":cancelled?"Historical Replay annulé":terminal?"Historical Replay terminé":"Historical Replay en cours";
- return <div className="space-y-4"><div className="panel p-6"><div className="flex items-center gap-2"><StatusBadge value={progress.status}/><StatusBadge value={progress.phase}/></div><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm text-slate-400">{progress.message}</p>{progress.error&&<div role="alert" className="mt-4 rounded-lg border border-rose-900/60 bg-rose-950/30 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-300">Cause backend</p><pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-rose-100">{progress.error}</pre></div>}<div className="mt-5 h-2 overflow-hidden rounded bg-slate-900"><div className="h-full bg-violet-500" style={{width:`${progress.percent}%`}}/></div><div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500"><span>{progress.percent.toFixed(1)}%</span><span>{progress.opportunity_count} opportunités</span><span>{progress.executed_order_count} ordres PAPER</span><span>Agents: {progress.active_agents.join(", ")||"aucun actif"}</span>{terminal&&<span>Polling arrêté</span>}</div></div></div>
+ return <div className="space-y-4"><div className="panel p-6"><div className="flex items-center gap-2"><StatusBadge value={progress.status}/><StatusBadge value={progress.phase}/></div><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm text-slate-400">{progress.message}</p>{progress.error&&<div role="alert" className="mt-4 rounded-lg border border-rose-900/60 bg-rose-950/30 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-300">Cause backend</p><pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-rose-100">{progress.error}</pre></div>}<div className="mt-5 h-2 overflow-hidden rounded bg-slate-900"><div className="h-full bg-violet-500" style={{width:`${progress.percent}%`}}/></div><div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500"><span>{progress.percent.toFixed(1)}%</span><span>{progress.opportunity_count} opportunités</span><span>{progress.executed_order_count} ordres PAPER</span><span>Temps: {formatDuration(progress.elapsed_ms)}</span><span>Appels IA: {progress.ai_call_count} · cumulé {formatDuration(progress.ai_wall_time_ms)}</span><span>Agents: {progress.active_agents.join(", ")||"aucun actif"}</span>{terminal&&<span>Polling arrêté</span>}</div>{progress.can_cancel&&<div className="mt-4"><Button variant="danger" disabled={cancelling} onClick={onCancel}>{cancelling?"Annulation…":"Annuler le backtest"}</Button></div>}</div></div>
 }
 function CampaignHeader({campaign}:{campaign:CampaignSummary}){return <div className="grid gap-3 lg:grid-cols-4"><Card label="Dataset" value={`${campaign.dataset.dataset_id} · ${campaign.dataset.candle_count} bars`}/><Card label="DESIGN" value={`${campaign.design.trading_net.value??"—"} · DD ${campaign.design.max_drawdown_pct.value??"—"}`}/><Card label="VALIDATION" value={`${campaign.validation.trading_net.value??"—"} · ${campaign.validation.closed_trades} trades`}/><Card label="OOS · OUT-OF-SAMPLE" value={`${campaign.oos.trading_net.value??"—"} · ${campaign.oos.closed_trades} trades`}/></div>}
+function PerformancePanel({campaign}:{campaign:CampaignSummary}){const periods=[campaign.design,campaign.validation,campaign.oos];return <details className="panel p-4"><summary className="cursor-pointer text-sm font-semibold text-slate-200">Performance du replay</summary><div className="mt-4 grid gap-3 lg:grid-cols-3">{periods.map(period=>{const p=period.performance;return <div key={period.role} className="rounded-lg border border-slate-800 p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">{period.role}</p>{!p?<p className="mt-2 text-xs text-slate-500">Profil indisponible.</p>:<div className="mt-2 space-y-1 font-mono text-xs text-slate-300"><p>Total {formatDuration(p.wall_clock_ms)}</p><p>Replay {formatDuration(p.replay_total_ms)} · pipeline {formatDuration(p.replay_pipeline_ms)}</p><p>MTF/features/scanner {formatDuration(p.replay_mtf_feature_scanner_ms)} · lifecycle {formatDuration(p.replay_lifecycle_ms)}</p><p>Contextes {formatDuration(p.replay_context_build_ms)} · mesure 23A {formatDuration(p.measurement_23a_ms)}</p><p>IA {p.ai_request_count} requêtes · latence cumulée {formatDuration(p.ai_provider_latency_ms)}</p></div>}</div>})}</div><p className="mt-3 text-[10px] leading-4 text-slate-500">La latence IA est cumulative par requête et peut dépasser le temps mur lorsque plusieurs spécialistes sont appelés en parallèle. Ces mesures sont observationnelles et n’entrent dans aucun fingerprint métier.</p></details>}
 function Card({label,value}:{label:string;value:string}){return <div className="panel p-4"><p className="text-[10px] uppercase tracking-wider text-slate-600">{label}</p><p className="mt-2 text-sm font-medium text-slate-200">{value}</p></div>}
 function TradeAndEvents({replay,setIndex}:{replay:BacktestReplay;setIndex:(time:number)=>void}){return <section className="panel overflow-hidden"><div className="grid gap-0 lg:grid-cols-2"><div className="max-h-[300px] overflow-auto border-b border-slate-800 lg:border-b-0 lg:border-r"><p className="panel-title sticky top-0 bg-slate-950 px-4 py-3">Trades</p>{replay.trades.length===0?<p className="p-4 text-xs text-slate-500">Aucun trade fermé sur cette période.</p>:replay.trades.map(trade=><button key={trade.trade_id} className="grid w-full grid-cols-[1fr_80px_90px] border-t border-slate-900 px-4 py-3 text-left text-xs hover:bg-slate-900/60" onClick={()=>setIndex(Math.floor(new Date(trade.opened_at).getTime()/1000))}><span><span className="font-mono">{trade.trade_id.slice(0,10)}</span><br/><span className="text-slate-500">{trade.side} · {trade.entry_price} → {trade.exit_price}</span></span><span>{trade.quantity}</span><span className={Number(trade.net_pnl)>=0?"text-emerald-300":"text-rose-300"}>{trade.net_pnl}</span></button>)}</div><div className="max-h-[300px] overflow-auto"><p className="panel-title sticky top-0 bg-slate-950 px-4 py-3">Events / Decision Trace</p>{replay.events.map(event=><button key={event.event_id} className="flex w-full items-center gap-3 border-t border-slate-900 px-4 py-2 text-left text-xs hover:bg-slate-900/60" onClick={()=>setIndex(Math.floor(new Date(event.observed_at).getTime()/1000))}><StatusBadge value={event.event_type}/><span className="truncate text-slate-400">{event.label}</span><span className="ml-auto font-mono text-[10px] text-slate-600">{new Date(event.observed_at).toISOString().slice(11,19)}</span></button>)}</div></div></section>}
 

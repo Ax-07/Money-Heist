@@ -149,10 +149,16 @@ export const datasetCatalogSchema = z.object({
 });
 
 const backtestMetricSchema = z.object({value: z.string().nullable(), status: z.string(), reason: z.string().nullable().optional()});
+export const performanceProfileSchema = z.object({
+  wall_clock_ms: z.number().nonnegative(), replay_total_ms: z.number().nonnegative(), replay_lifecycle_ms: z.number().nonnegative(),
+  replay_mtf_feature_scanner_ms: z.number().nonnegative(), replay_context_build_ms: z.number().nonnegative(), replay_pipeline_ms: z.number().nonnegative(),
+  evaluation_ms: z.number().nonnegative(), measurement_23a_ms: z.number().nonnegative(), ai_request_count: z.number().nonnegative(), ai_provider_latency_ms: z.number().nonnegative()
+});
 export const periodSummarySchema = z.object({
   role: periodRole, run_id: z.string(), processed_candles: z.number(), opportunities: z.number(), executed_orders: z.number(), closed_trades: z.number(),
   trading_net: backtestMetricSchema, economic_net: backtestMetricSchema, max_drawdown_pct: backtestMetricSchema, win_rate: backtestMetricSchema,
-  profit_factor: backtestMetricSchema, expectancy: backtestMetricSchema, ai_cost_eur: z.string(), self_funding_ratio: z.string().nullable(), self_funding_status: z.string(), business_sha256: z.string()
+  profit_factor: backtestMetricSchema, expectancy: backtestMetricSchema, ai_cost_eur: z.string(), self_funding_ratio: z.string().nullable(), self_funding_status: z.string(), business_sha256: z.string(),
+  performance: performanceProfileSchema.nullable().optional()
 });
 export const campaignSummarySchema = z.object({
   campaign_id: z.string(), created_at: z.string(), status: z.string(), ai_mode: z.string(), dataset: datasetPreviewSchema,
@@ -165,7 +171,7 @@ export const campaignProgressSchema = z.object({
   campaign_id: z.string(), created_at: z.string(), status: z.string(), phase: z.string(), current_role: periodRole.nullable().optional(), percent: z.number(),
   work_done: z.number(), total_work: z.number(), current_observed_at: z.string().nullable().optional(), opportunity_count: z.number(), executed_order_count: z.number(),
   agent_traces: z.array(agentTraceSchema).default([]), active_agents: z.array(z.string()).default([]), error: z.string().nullable().optional(), message: z.string(),
-  can_cancel: z.boolean(), result_available: z.boolean()
+  can_cancel: z.boolean(), result_available: z.boolean(), elapsed_ms: z.number().nonnegative().default(0), ai_call_count: z.number().nonnegative().default(0), ai_wall_time_ms: z.number().nonnegative().default(0)
 });
 
 export const agentDescriptorSchema = z.object({agent: z.string(), role: z.string(), state: z.string(), core: z.boolean()});

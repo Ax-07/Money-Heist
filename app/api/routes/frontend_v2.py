@@ -1081,6 +1081,22 @@ def get_backtest_run_progress(
     return progress
 
 
+@router.post(
+    "/backtests/runs/{campaign_id}/cancel",
+    response_model=CampaignProgressView,
+)
+def cancel_backtest_run(
+    campaign_id: str,
+    service: BacktestService,
+    store: FrontendStore,
+) -> CampaignProgressView:
+    progress = service.cancel_campaign(campaign_id)
+    if progress is None:
+        raise HTTPException(status_code=404, detail="Unknown backtest campaign_id")
+    store.persist_progress(progress)
+    return progress
+
+
 @router.get(
     "/backtests/runs/{campaign_id}/configuration",
     response_model=CampaignConfigurationView,

@@ -147,6 +147,15 @@ def test_mock_campaign_executes_real_batch16_stack_without_live_trading() -> Non
     assert result.dataset.is_valid is True
     assert result.design.run_id != result.validation.run_id != result.oos.run_id
     assert result.oos.processed_candles > 0
+    assert result.design.performance is not None
+    assert result.validation.performance is not None
+    assert result.oos.performance is not None
+    assert result.design.performance.wall_clock_ms >= 0
+    assert result.validation.performance.wall_clock_ms >= 0
+    assert result.oos.performance.wall_clock_ms >= 0
+    assert "design-performance.json" in result.exports
+    assert "validation-performance.json" in result.exports
+    assert "oos-performance.json" in result.exports
     assert "oos-equity.csv" in result.exports
     assert "split-report.json" in result.exports
     assert svc.capabilities().live_trading is False

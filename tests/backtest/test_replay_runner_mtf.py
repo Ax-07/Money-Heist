@@ -214,6 +214,11 @@ async def test_mtf_runner_scans_only_on_closed_1h_decision_candles():
         "1d": 0,
     }
     assert result.points[-1].mtf_cursor_fingerprint
+    assert result.timings.total_ms >= 0
+    assert result.timings.lifecycle_ms >= 0
+    assert result.timings.mtf_feature_scanner_ms >= 0
+    assert result.timings.context_build_ms >= 0
+    assert result.timings.pipeline_ms >= 0
 
 
 @_sync_test

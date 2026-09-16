@@ -8,8 +8,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Literal
 from uuid import uuid4
+
+import httpx
 
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -398,6 +401,19 @@ class BacktestMetricView(FrozenModel):
         )
 
 
+class PerformanceProfileView(FrozenModel):
+    wall_clock_ms: int = Field(ge=0)
+    replay_total_ms: int = Field(ge=0)
+    replay_lifecycle_ms: int = Field(ge=0)
+    replay_mtf_feature_scanner_ms: int = Field(ge=0)
+    replay_context_build_ms: int = Field(ge=0)
+    replay_pipeline_ms: int = Field(ge=0)
+    evaluation_ms: int = Field(ge=0)
+    measurement_23a_ms: int = Field(ge=0)
+    ai_request_count: int = Field(ge=0)
+    ai_provider_latency_ms: int = Field(ge=0)
+
+
 class PeriodSummary(FrozenModel):
     role: BacktestPeriodRole
     run_id: str
@@ -416,6 +432,7 @@ class PeriodSummary(FrozenModel):
     self_funding_status: str
     business_sha256: str
     decision_funnel: DecisionFunnelReport | None = None
+    performance: PerformanceProfileView | None = None
 
 
 class EquityView(FrozenModel):
@@ -453,6 +470,9 @@ class CampaignProgressView(FrozenModel):
     message: str = ""
     can_cancel: bool = False
     result_available: bool = False
+    elapsed_ms: int = Field(default=0, ge=0)
+    ai_call_count: int = Field(default=0, ge=0)
+    ai_wall_time_ms: int = Field(default=0, ge=0)
 
 
 class WalkForwardOOSView(FrozenModel):
@@ -538,6 +558,10 @@ class _CampaignRuntime:
     error: str | None = None
     message: str = ""
     result_available: bool = False
+    started_monotonic: float = field(default_factory=perf_counter)
+    finished_monotonic: float | None = None
+    ai_call_count: int = 0
+    ai_wall_time_ms: int = 0
 
 
 class BacktestDashboardError(RuntimeError):
@@ -564,11 +588,16 @@ class ObservableBacktestAIClient:
 
     async def complete(self, request: ProviderRequest) -> ProviderResponse:
         agent = _SCHEMA_AGENT.get(request.schema_name)
+        started = perf_counter()
         if agent is not None:
             self._runtime.active_agents.add(agent)
         try:
             return await self._delegate.complete(request)
         finally:
+            self._runtime.ai_call_count += 1
+            self._runtime.ai_wall_time_ms += max(
+                int(round((perf_counter() - started) * 1000)), 0
+            )
             if agent is not None:
                 self._runtime.active_agents.discard(agent)
 
@@ -895,6 +924,7 @@ class BacktestDashboardService:
             runtime.message = "Campagne terminée."
         finally:
             runtime.current_role = None
+            runtime.finished_monotonic = perf_counter()
             if self._active_campaign_id == campaign_id:
                 self._active_campaign_id = None
                 self._active_task = None
@@ -915,6 +945,8 @@ class BacktestDashboardService:
         return self._progress_view(runtime)
 
     def _progress_view(self, runtime: _CampaignRuntime) -> CampaignProgressView:
+        finished = runtime.finished_monotonic or perf_counter()
+        elapsed_ms = max(int(round((finished - runtime.started_monotonic) * 1000)), 0)
         return CampaignProgressView(
             campaign_id=runtime.campaign_id,
             created_at=runtime.created_at,
@@ -933,6 +965,9 @@ class BacktestDashboardService:
             message=runtime.message,
             can_cancel=runtime.status in {"QUEUED", "RUNNING"},
             result_available=runtime.result_available,
+            elapsed_ms=elapsed_ms,
+            ai_call_count=runtime.ai_call_count,
+            ai_wall_time_ms=runtime.ai_wall_time_ms,
         )
 
     def capabilities(self) -> BacktestCapabilities:
@@ -1503,6 +1538,15 @@ class BacktestDashboardService:
                     execution.scanner_forward_outcomes
                 ),
             )
+            if execution.period.performance is not None:
+                exports[f"{prefix}-performance.json"] = (
+                    "application/json",
+                    json.dumps(
+                        execution.period.performance.model_dump(mode="json"),
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ),
+                )
 
         denver_sources = tuple(
             (
@@ -1567,6 +1611,7 @@ class BacktestDashboardService:
         historical_denver_prior: FrozenDenverPriorCatalog | None = None,
         runtime: _CampaignRuntime | None = None,
     ) -> _RunExecution:
+        run_started = perf_counter()
         clock = ReplayClock.start(run.dataset.start_at)
         broker = PaperBroker(
             PaperBrokerConfig(
@@ -1617,11 +1662,20 @@ class BacktestDashboardService:
             mock_client = DeterministicAgentCoverageMockProvider(
                 DeterministicAdvancedSpecialistMockProvider(mock_client)
             )
+        live_http_client = None
         live_client = None
         if run.config.ai_mode is BacktestAIMode.LIVE_EVAL:
+            live_http_client = httpx.AsyncClient(
+                limits=httpx.Limits(
+                    max_connections=32,
+                    max_keepalive_connections=16,
+                    keepalive_expiry=30.0,
+                )
+            )
             live_client = OpenAIResponsesClient(
                 api_key=os.environ["OPENAI_API_KEY"],
                 base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+                http_client=live_http_client,
             )
         backtest_client = BacktestAIClient.from_run(
             run,
@@ -1706,20 +1760,29 @@ class BacktestDashboardService:
             if pipeline_result is not None:
                 self._append_agent_traces(runtime, role, point)
 
-        replay = await runner.run(
-            candles=candles,
-            run=run,
-            progress_callback=on_progress if runtime is not None else None,
-            point_callback=on_point if runtime is not None else None,
-            cancel_check=((lambda: runtime.cancel_event.is_set()) if runtime is not None else None),
-        )
+        try:
+            replay = await runner.run(
+                candles=candles,
+                run=run,
+                progress_callback=on_progress if runtime is not None else None,
+                point_callback=on_point if runtime is not None else None,
+                cancel_check=((lambda: runtime.cancel_event.is_set()) if runtime is not None else None),
+            )
+        finally:
+            if live_http_client is not None:
+                await live_http_client.aclose()
         self._raise_cached_miss(replay, run.config.ai_mode)
+
+        evaluation_started = perf_counter()
         evaluation = await evaluate_historical_replay(
             replay,
             broker=broker,
             ai_usage_records=tuple(usage.records),
             paper_events=journal.events(),
         )
+        evaluation_ms = max(int(round((perf_counter() - evaluation_started) * 1000)), 0)
+
+        measurement_started = perf_counter()
         decision_funnel = build_decision_funnel_report(replay, evaluation)
         forward_outcomes = build_forward_outcomes_report(replay, candles)
         funnel_outcome_attribution = build_funnel_outcome_attribution_report(
@@ -1735,9 +1798,31 @@ class BacktestDashboardService:
             scanner_version=str(scanner_config.scanner_version),
             min_priority_score=int(scanner_config.min_priority_score),
         )
+        measurement_23a_ms = max(
+            int(round((perf_counter() - measurement_started) * 1000)), 0
+        )
+        performance = PerformanceProfileView(
+            wall_clock_ms=max(int(round((perf_counter() - run_started) * 1000)), 0),
+            replay_total_ms=replay.timings.total_ms,
+            replay_lifecycle_ms=replay.timings.lifecycle_ms,
+            replay_mtf_feature_scanner_ms=replay.timings.mtf_feature_scanner_ms,
+            replay_context_build_ms=replay.timings.context_build_ms,
+            replay_pipeline_ms=replay.timings.pipeline_ms,
+            evaluation_ms=evaluation_ms,
+            measurement_23a_ms=measurement_23a_ms,
+            ai_request_count=len(usage.records),
+            ai_provider_latency_ms=sum(
+                max(int(record.latency_ms), 0) for record in usage.records
+            ),
+        )
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
         period = self._period_summary(
-            role, replay, evaluation, period_report, decision_funnel
+            role,
+            replay,
+            evaluation,
+            period_report,
+            decision_funnel,
+            performance=performance,
         )
         return _RunExecution(
             period=period,
@@ -1872,6 +1957,8 @@ class BacktestDashboardService:
         evaluation: Any,
         period_report: BacktestPeriodReport,
         decision_funnel: DecisionFunnelReport,
+        *,
+        performance: PerformanceProfileView | None = None,
     ) -> PeriodSummary:
         report = evaluation.report
         ratio = report.self_funding_ratio
@@ -1895,6 +1982,7 @@ class BacktestDashboardService:
             self_funding_status=str(ratio_status),
             business_sha256=period_report.business_sha256,
             decision_funnel=decision_funnel,
+            performance=performance,
         )
 
 

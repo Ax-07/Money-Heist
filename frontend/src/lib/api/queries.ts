@@ -27,6 +27,7 @@ export const backtestCapabilitiesQuery = () => api.get("/api/dashboard/backtest/
 export const campaignsQuery = () => api.get("/api/frontend/v2/backtests/runs", z.array(campaignSummarySchema));
 export const campaignQuery = (id: string) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}`, campaignSummarySchema);
 export const campaignProgressQuery = (id: string) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/progress`, campaignProgressSchema);
+export const cancelBacktest = (id: string) => api.post(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/cancel`, campaignProgressSchema, {});
 export const campaignConfigurationQuery = (id: string) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/configuration`, campaignConfigurationSchema);
 export const replayQuery = (id: string, role: "DESIGN" | "VALIDATION" | "OOS") => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/replay?role=${role}`, replaySchema);
 export const marketCandlesQuery = (symbol: string, timeframe: string) => api.get(`/api/frontend/v2/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=500`, marketCandlesSchema);
