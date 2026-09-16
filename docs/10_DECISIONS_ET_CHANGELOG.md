@@ -886,3 +886,13 @@ Voir `docs/ADR_037_ANALYTICS_LAB_OBSERVATION_ONLY.md`.
 ### Décision Batch 24A.2 — séparation Feature Engine / Analytics Indicators
 
 Le Feature Engine de production reste inchangé. Analytics possède un registre indépendant, versionné et fingerprinté. Les divergences ADX (initialisation) et Volume Ratio (inclusion/exclusion de la bougie courante) sont intentionnelles, testées et documentées. Une évolution du registre change l'identité Analytics mais pas l'identité business du backtest.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+### 2026-09-16 — Batch 24A.3 Technical Events
+
+**ACCEPTED** — Les Technical Events sont des observations Analytics descriptives et non
+des signaux de trading. Leur source unique est `AnalyticsIndicatorSnapshot`; le moteur est
+stateless T-1/T, causal, déterministe et isolé du Scanner/Decision/Risk/PAPER/LIVE. Les
+seuils canoniques V1 sont versionnés dans le registry (RSI 30/50/70, ADX 25, MFI 20/80,
+volume ratio 1.5). Les changements matériels de registry modifient l'identité Analytics,
+jamais l'identité business du `BacktestRun`.

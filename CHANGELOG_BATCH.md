@@ -285,3 +285,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - divergences ADX et Volume Ratio explicites ;
 - MFI/CMF/OBV/VWAP/StochRSI/Donchian et rolling ranges ;
 - aucune modification du Feature Engine ni du pipeline de décision/trading.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Batch 24A.3 — Technical Events
+
+- registry Analytics Technical Events versionné/fingerprinté ;
+- 35 événements descriptifs trend/momentum/volatility/trend-strength/volume/structure ;
+- détection causale stateless T-1/T avec warmup et égalités explicites ;
+- IDs/fingerprints/evidence déterministes ;
+- intégration `AnalyticsSnapshot` et identité Analytics ;
+- prefix invariance, future malformed isolation, MTF closed-candle semantics et import guards ;
+- aucune modification fonctionnelle Scanner/DecisionContext/Agents/Risk/PAPER/LIVE.

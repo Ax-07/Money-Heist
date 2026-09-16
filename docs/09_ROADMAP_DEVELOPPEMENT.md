@@ -580,3 +580,11 @@ Research.
 ### Batch 24A.2 — Rich Indicators & Parity Catalogue
 
 24A.2 installs the observation-only rich indicator catalogue and explicit semantic parity catalogue. Technical Events (24A.3), causal structure/ZigZag (24A.4), patterns and forward-outcome research remain out of scope.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Batch 24A.3 — Technical Events — livré dans l'Analytics Lab
+
+Après 24A.1 (foundation/isolation) et 24A.2 (rich indicators), 24A.3 ajoute le registry
+versionné de Technical Events, la détection causale T-1/T, les IDs/fingerprints stables,
+l'evidence et l'intégration `AnalyticsSnapshot`. Le prochain sous-batch Analytics prévu
+reste 24A.4 — Causal Structure & ZigZag; aucun pivot/pattern/context n'est implémenté ici.

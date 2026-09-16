@@ -800,3 +800,22 @@ fingerprint tant que la couche demeure observation-only.
 ### Batch 24A.2 — Rich Indicators (observation-only)
 
 `app/analytics/indicators` adds a versioned, deterministic, causal indicator registry beside — not inside — the production Feature Engine. It consumes only canonical closed candles already exposed by Money Heist historical MTF contracts. No decision path imports this package. Analytics indicator identities affect Analytics fingerprints only.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Batch 24A.3 — Technical Events
+
+L'Analytics Lab possède désormais une couche `app.analytics.events` strictement
+observation-only :
+
+```text
+Canonical closed candles
+→ Analytics Indicators
+→ Technical Events
+→ AnalyticsSnapshot / Decision Intelligence future
+```
+
+`TechnicalEventEngine` consomme uniquement deux `AnalyticsIndicatorSnapshot` consécutifs.
+Il ne recalcule aucun indicateur, ne lit pas le Scanner et ne possède aucune autorité de
+trading. Les événements portent `event_at` et `available_at`; pour 24A.3 ils sont égaux au
+close/as-of de la snapshot courante. Les chemins Scanner/Decision/Agents/Risk/PAPER/LIVE
+restent indépendants et ne doivent pas importer `app.analytics.events`.

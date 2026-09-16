@@ -706,3 +706,13 @@ Aucun champ Analytics n'est ajouté à `CandidateOpportunity` ni à
 ### Batch 24A.2 — Analytics Indicator contracts
 
 24A.2 adds typed `IndicatorValue` and `AnalyticsIndicatorSnapshot` contracts. The snapshot preserves symbol, timeframe, `as_of`, `source_cursor_fingerprint`, registry version/fingerprint, warmup/availability states and a deterministic snapshot fingerprint. It is embedded in the 24A.1 `AnalyticsSnapshot` under the typed `indicators` component.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Addendum Batch 24A.3 — TechnicalEventObservation
+
+Contrats Analytics ajoutés : `TechnicalEventDefinition`, `TechnicalEventEvidence` et
+`TechnicalEventObservation`. Une observation contient une identité déterministe, le run
+Analytics, type/famille/direction descriptive, symbole/timeframe, `event_at`,
+`available_at`, fingerprints source/cursor, evidence T-1/T, version de définition et
+`event_fingerprint`. Les événements sont sérialisables et n'ont aucune sémantique
+`LONG`/`SHORT`.

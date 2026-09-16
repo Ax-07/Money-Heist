@@ -655,3 +655,18 @@ séparée.
 ### Batch 24A.2 — projection indicateurs au replay
 
 Le moteur Analytics Indicators consomme les bougies closes du `HistoricalMultiTimeframeCursor` / `HistoricalMultiTimeframeSlice`; il ne resample pas et n'ingère aucune donnée lui-même. À T, seules les bougies dont `close_time <= as_of` peuvent contribuer. Le `source_cursor_fingerprint` est conservé dans le snapshot Indicators.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Addendum Batch 24A.3 — événements Analytics pendant le replay
+
+Les Technical Events peuvent être reconstruits causalement à partir des snapshots
+Indicators visibles à T-1/T. La propriété attendue reste :
+
+```text
+Events(full_dataset, as_of=T) == Events(dataset_truncated_at_T, as_of=T)
+```
+
+Les événements Analytics participent à l'identité/fingerprint Analytics, mais ni au
+`BacktestRun.run_id` ni au business fingerprint. Une candle future malformée ne doit pas
+modifier un événement déjà disponible à T et une candle higher-timeframe non close ne doit
+produire aucun événement de ce timeframe.

@@ -80,3 +80,19 @@ Analytics Donchian 20 and rolling high/low 20 inspect the **previous** 20 fully 
 ## 6. Numeric determinism
 
 Indicator calculations use Python `float` internally, matching the existing deterministic indicator style. Snapshot fingerprints use Money Heist canonical hashing: floats are canonicalized through `Decimal(str(value))`, mappings are sorted, datetimes are normalized to UTC, and non-finite values are rejected. No silent zero-fill is used for unavailable indicators.
+
+<!-- BATCH_24A3_TECHNICAL_EVENTS -->
+## Extension 24A.3 — Indicators vers Technical Events
+
+Les Technical Events réutilisent exclusivement les sorties du registry Indicators 24A.2.
+`PRICE_CROSS_*_EMA_200` utilise `ema_200_distance_pct`, Bollinger utilise
+`bb_position_20_2`, Donchian utilise `distance_to_high_20_pct` /
+`distance_to_low_20_pct`, et `VOLUME_SPIKE_20` utilise `volume_ratio_20`.
+
+Cette taxonomie est indépendante des Scanner Triggers. Une proximité conceptuelle
+(`VOLUME_SPIKE_20` vs `VOLUME_EXPANSION`, ADX vs `TREND_STRENGTH`, Donchian vs
+`RANGE_BREAK`) n'implique ni identité d'objet, ni seuil, ni timing, ni parité métier.
+
+Par rapport à `btc_analytics_v1` p4.v1, la parité est conceptuelle : Money Heist ajoute les
+retours Bollinger, transforme Donchian en transition de clôture non répétée et ne donne
+aucun accès aux candles brutes à l'Event Engine.
