@@ -36,6 +36,7 @@ from app.services.backtest import (
     BacktestSplitReport,
     DatasetRef,
     DecisionFunnelReport,
+    ForwardOutcomeReport,
     HistoricalPositionLifecycle,
     HistoricalReplayRunner,
     HistoricalSetupAttributionError,
@@ -43,11 +44,13 @@ from app.services.backtest import (
     ReplayIdFactory,
     WalkForwardReport,
     build_decision_funnel_report,
+    build_forward_outcomes_report,
     build_run_manifest,
     build_walk_forward_plan,
     catalog_from_historical_runs,
     closed_trades_to_csv,
     decision_funnel_to_json,
+    forward_outcomes_to_json,
     equity_curve_to_csv,
     evaluate_historical_replay,
     execute_walk_forward,
@@ -498,6 +501,7 @@ class _RunExecution:
     replay: Any
     evaluation: Any
     decision_funnel: DecisionFunnelReport
+    forward_outcomes: ForwardOutcomeReport
 
 
 @dataclass(slots=True)
@@ -1475,6 +1479,10 @@ class BacktestDashboardService:
                 "application/json",
                 decision_funnel_to_json(execution.decision_funnel),
             )
+            exports[f"{prefix}-forward-outcomes.json"] = (
+                "application/json",
+                forward_outcomes_to_json(execution.forward_outcomes),
+            )
 
         denver_sources = tuple(
             (
@@ -1693,6 +1701,7 @@ class BacktestDashboardService:
             paper_events=journal.events(),
         )
         decision_funnel = build_decision_funnel_report(replay, evaluation)
+        forward_outcomes = build_forward_outcomes_report(replay, candles)
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
         period = self._period_summary(
             role, replay, evaluation, period_report, decision_funnel
@@ -1703,6 +1712,7 @@ class BacktestDashboardService:
             replay=replay,
             evaluation=evaluation,
             decision_funnel=decision_funnel,
+            forward_outcomes=forward_outcomes,
         )
 
     @staticmethod

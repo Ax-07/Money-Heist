@@ -218,3 +218,14 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - reason codes existants normalisés sans changement de prompts ni de seuils ;
 - exports `*-decision-funnel.json` et exposition additive dans `PeriodSummary` ;
 - garanties de conservation des bougies/scans et non-régression du fingerprint business.
+
+<!-- BATCH23A2_FORWARD_OUTCOMES -->
+## Batch 23A.2 — Forward Outcomes
+
+- outcomes post-hoc H1/H3/H5/H10/H20 pour chaque `CandidateOpportunity` ;
+- horizons exprimés dans le timeframe de décision, y compris replay MTF ;
+- rendement close-to-close, maximum high, minimum low et ordre des extrêmes ;
+- gaps et fin de période distingués ; aucune métrique partielle publiée sur horizon incomplet ;
+- provenance dataset/run et statut terminal conservés ;
+- exports `*-forward-outcomes.json` ;
+- aucune donnée Forward Outcomes injectée dans `DecisionContext`, aucun changement Scanner/Professor/Risk/exécution.

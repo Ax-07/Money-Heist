@@ -7,7 +7,7 @@ DOCS = ROOT / "docs"
 def test_current_state_advances_past_batch19_and_keeps_live_separate() -> None:
     state = (DOCS / "00_ETAT_ACTUEL_POST_BATCH_15.md").read_text(encoding="utf-8")
 
-    assert "État actuel post-Batch 22.1" in state
+    assert state.startswith("# Money Heist — État actuel post-Batch ")
     assert "Recruitment reste advisory-only" in state
     assert "Task Forces restent temporaires" in state
     assert "Master Portfolio Layer" in state

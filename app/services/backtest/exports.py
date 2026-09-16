@@ -68,6 +68,15 @@ def decision_funnel_to_json(report: Any) -> str:
     return canonical_json(payload)
 
 
+def forward_outcomes_to_json(report: Any) -> str:
+    payload = (
+        report.model_dump(mode="python")
+        if hasattr(report, "model_dump")
+        else report
+    )
+    return canonical_json(payload)
+
+
 def equity_curve_to_csv(equity_points: Any) -> str:
     stream = StringIO()
     writer = csv.writer(stream, lineterminator="\n")
@@ -137,6 +146,7 @@ __all__ = [
     "build_run_manifest",
     "closed_trades_to_csv",
     "decision_funnel_to_json",
+    "forward_outcomes_to_json",
     "equity_curve_to_csv",
     "manifest_to_json",
     "split_report_to_json",

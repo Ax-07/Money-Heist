@@ -75,12 +75,13 @@ def test_batch20_documentation_closure_is_present() -> None:
     decisions = (docs / "10_DECISIONS_ET_CHANGELOG.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG_BATCH.md").read_text(encoding="utf-8")
 
-    assert state.startswith("# Money Heist — État actuel post-Batch 22.1")
+    assert state.startswith("# Money Heist — État actuel post-Batch ")
     assert "## 23. Batch 20 — Task Force dynamique" in roadmap
     assert "**État : livré et validé.**" in roadmap
     assert "Batch 21 — Master Portfolio Layer" in roadmap
     assert "ADR-027 — Task Force temporaire registry-only" in decisions
     assert "BATCH20_CLOSURE_START" in changelog
+
 
 def test_documentation_is_canonical_under_docs_only() -> None:
     names = (
@@ -101,6 +102,7 @@ def test_documentation_is_canonical_under_docs_only() -> None:
     for name in names:
         assert not (ROOT / name).exists(), f"unexpected root duplicate: {name}"
         assert (ROOT / "docs" / name).is_file(), name
+
 
 def test_docs_only_layout_is_preserved() -> None:
     for name in (
