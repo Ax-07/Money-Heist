@@ -741,3 +741,11 @@ Après un replay terminé et la construction des links 24B.1, 24B.2 peut produir
 purement dérivée : elle ne relance ni Scanner, ni orchestration, ni Risk, ni broker et ne modifie
 pas `BacktestRun.run_id` ou le fingerprint business. Les résultats futurs et `exit_events` ne
 font pas partie du core record causal.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.3 — attribution Scanner après replay
+
+Après un Historical Replay terminé, 24B.3 projette les `FeatureSnapshot` et `ScanResult` déjà
+présents en `ScannerObservation`, puis résout le `AnalyticsSnapshot` exact au même `as_of` avec
+le même `source_cursor_fingerprint`. Le Scanner n'est jamais relancé et aucune donnée future
+n'est utilisée pour sélectionner un snapshot Analytics.

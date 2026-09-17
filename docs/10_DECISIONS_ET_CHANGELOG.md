@@ -1043,3 +1043,19 @@ Risk, PAPER ou LIVE.
 les étapes non atteintes ne reçoivent aucun statut métier fabriqué et l'identité du BacktestRun
 ainsi que son fingerprint business restent indépendants du record. Le contrat français
 `money-heist.agent-dialogue.fr.v1` / `money-heist.prompt-transport.v4` est inchangé.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+### ADR-041 — Scanner Analytics Attribution read-only et exact
+
+**Date :** 2026-09-17
+**Statut :** ACCEPTED (candidate pending local validation)
+
+**Décision :** `FeatureSnapshot.snapshot_id` est l'identité canonique d'une ScannerEvaluation.
+Les trois classes Scanner de 23A.4 sont déplacées vers une primitive neutre partagée. 24B.1 et
+24B.3 utilisent le même `AnalyticsSnapshotResolver` et la même policy
+`opportunity-analytics-exact-v1`. Aucun fallback précédent/futur n'est autorisé.
+
+**Conséquences :** chaque ScannerEvaluation possède un record d'attribution même sans candidate ;
+les candidates peuvent référencer 24B.1/24B.2 ; la provenance MTF/cursor reste causale ; aucune
+autorité Analytics ne remonte vers Scanner, Agents, Risk, PAPER ou LIVE ; l'identité du
+BacktestRun et le fingerprint business restent inchangés.

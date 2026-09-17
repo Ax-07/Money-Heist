@@ -389,3 +389,15 @@ inchangés et `prompt_render_version` passe à `money-heist.prompt-transport.v4`
 - séparation stricte des Forward Outcomes ;
 - guards d'architecture anti-retour vers le pipeline de trading ;
 - préservation explicite du contrat agents français v1 / prompt transport v4.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## Batch 24B.3 — Scanner ↔ Analytics Attribution Layer
+
+- attribution post-hoc d'un record par ScannerEvaluation ;
+- identité canonique `FeatureSnapshot.snapshot_id` ;
+- trois classes Scanner State@T partagées avec 23A.4 ;
+- extraction du resolver exact 24B.1 sans changement de policy ;
+- absence de fallback précédent/futur ;
+- conservation stricte du `source_cursor_fingerprint` et de la provenance MTF ;
+- références optionnelles cohérentes vers 24B.1 et 24B.2 pour les candidates ;
+- IDs/fingerprints/ordre déterministes et guards d'architecture read-only.

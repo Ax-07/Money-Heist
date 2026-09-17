@@ -650,3 +650,9 @@ ni UI.
 
 24B.2 introduit la projection read-only d'une opportunité complète avec son link Analytics 24B.1.
 Le batch prépare 24B.3/24B.4/24C sans commencer leurs analyses, statistiques ou API/UI.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## État Batch 24B.3 — Scanner ↔ Analytics Attribution
+
+24B.3 étend le lien causal Analytics à 100 % des évaluations Scanner du replay, sans commencer
+les analyses de performance, le tuning, les Forward Outcomes enrichis ou l'activation LIVE.

@@ -10,16 +10,11 @@ from app.evaluation.forward_outcomes import (
     ForwardOutcomeHorizon,
     ForwardOutcomeHorizonSummary,
 )
+from app.evaluation.scanner_observations import ScannerOutcomeClassification
 
 
 class FrozenModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class ScannerOutcomeClassification(StrEnum):
-    NO_TRIGGER = "NO_TRIGGER"
-    TRIGGER_BELOW_CANDIDATE_THRESHOLD = "TRIGGER_BELOW_CANDIDATE_THRESHOLD"
-    CANDIDATE_OPPORTUNITY = "CANDIDATE_OPPORTUNITY"
 
 
 class ScannerOutcomeGroupDimension(StrEnum):
@@ -238,7 +233,10 @@ class ScannerForwardOutcomeReport(FrozenModel):
         )
         if self.records != ordered_records:
             raise ValueError("records must be sorted deterministically")
-        if any(item.min_priority_score != self.min_priority_score for item in self.records):
+        if any(
+            item.min_priority_score != self.min_priority_score
+            for item in self.records
+        ):
             raise ValueError("all records must use report min_priority_score")
         for record in self.records:
             if tuple(item.horizon_bars for item in record.horizons) != self.horizons:

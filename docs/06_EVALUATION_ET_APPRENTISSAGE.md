@@ -567,3 +567,11 @@ observé et produit pour une `CandidateOpportunity`, avec l'identité Analytics 
 résolue par 24B.1. Le record est indépendant des Forward Outcomes : H1/H3/H5/H10/H20, MFE/MAE,
 PnL futur et jugements de qualité restent des informations postérieures à la décision et seront
 rejoints extérieurement pour les analyses futures.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.3 — attribution Analytics de toutes les évaluations Scanner
+
+`ScannerAnalyticsAttributionRecord` relie chaque état Scanner déjà émis à un
+`AnalyticsSnapshot` exact quand la provenance le permet. Les trois classes Scanner sont
+conservées sans recalcul et les comptes doivent conserver exactement le nombre d'évaluations
+Scanner. Aucun Forward Outcome, rendement futur ou jugement de qualité n'entre dans le record.

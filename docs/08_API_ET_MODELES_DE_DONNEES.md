@@ -806,3 +806,18 @@ Contrats publics ajoutés sous `app.evaluation.decision_intelligence` :
 Schema : `money-heist.decision-intelligence-record.v1`. Policy :
 `decision-intelligence-projection-v1`. `record_id`, `record_fingerprint` et `set_fingerprint`
 sont déterministes via les helpers canoniques communs.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.3 — contrats Scanner Analytics Attribution
+
+Contrats publics ajoutés :
+- `ScannerObservation` et `ScannerOutcomeClassification` sous
+  `app.evaluation.scanner_observations` ;
+- `AnalyticsSnapshotResolver` partagé par 24B.1 et 24B.3 ;
+- `ScannerAnalyticsAttributionRecord` ;
+- `ScannerAnalyticsAttributionSet` ;
+- `build_scanner_analytics_attribution`.
+
+Schema record : `money-heist.scanner-analytics-attribution.v1`. Projection :
+`scanner-analytics-attribution-v1`. La policy de matching reste
+`opportunity-analytics-exact-v1` afin de conserver une seule vérité d'attribution Analytics.

@@ -894,3 +894,14 @@ opportunité provient du `HistoricalReplayPoint` et de son `PaperPipelineResult`
 
 La direction des dépendances reste strictement post-hoc : Scanner/Agents/Risk/PAPER/LIVE et
 `app.analytics` n'importent pas Decision Intelligence.
+
+<!-- BATCH_24B3_SCANNER_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.3 — Scanner ↔ Analytics Attribution
+
+La couche `app.evaluation.analytics_attribution` couvre désormais chaque évaluation Scanner du
+Historical Replay, y compris `NO_TRIGGER` et `TRIGGER_BELOW_CANDIDATE_THRESHOLD`. L'identité
+canonique reste `FeatureSnapshot.snapshot_id`. La résolution Analytics est factorisée dans
+`AnalyticsSnapshotResolver` et reste strictement post-hoc, same-as-of et read-only.
+
+`app.evaluation.scanner_observations` porte la primitive State@T neutre réutilisée par 23A.4 et
+24B.3. Scanner/Agents/Risk/PAPER/LIVE et `app.analytics` ne dépendent pas de cette attribution.
