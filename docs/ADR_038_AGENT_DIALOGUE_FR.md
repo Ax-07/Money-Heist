@@ -1,8 +1,8 @@
 # ADR-038 — Dialogue IA en français, contrats machine inchangés
 
-**Date :** 2026-09-17  
-**Statut :** ACCEPTED  
-**Chantier :** Batch 24-FR — French Agent Dialogue & Observability  
+**Date :** 2026-09-17
+**Statut :** ACCEPTED
+**Chantier :** Batch 24-FR — French Agent Dialogue & Observability
 **Baseline visée :** `6d67e3f25a6c95f23552a5f4f025bd1b4d29a26c`
 
 ## Décision
