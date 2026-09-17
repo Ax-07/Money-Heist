@@ -9,7 +9,6 @@ from app.evaluation.scanner_forward_outcomes import (
     compute_scanner_forward_outcomes,
 )
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 INTERVAL = timedelta(hours=1)
 
