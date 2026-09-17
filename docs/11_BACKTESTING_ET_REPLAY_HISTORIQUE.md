@@ -749,3 +749,22 @@ Après un Historical Replay terminé, 24B.3 projette les `FeatureSnapshot` et `S
 présents en `ScannerObservation`, puis résout le `AnalyticsSnapshot` exact au même `as_of` avec
 le même `source_cursor_fingerprint`. Le Scanner n'est jamais relancé et aucune donnée future
 n'est utilisée pour sélectionner un snapshot Analytics.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.4 — temporalité du funnel post-replay
+
+Après le replay, 24B.4 consomme les `DecisionIntelligenceRecord` 24B.2 et ne relance ni agents,
+Risk Engine, PaperBroker ni Analytics. Pour une opportunité donnée, PLAN, Specialists, Palermo,
+FINAL, TradeProposal, Risk et PAPER restent attribués au même instant causal de décision.
+
+Exemple :
+
+```text
+Decision / Analytics market as_of : 12:00:00
+TradeProposal created_at          : 12:00:02
+Risk created_at                   : 12:00:06
+Fill filled_at                    : 12:00:07
+```
+
+Les trois timestamps opérationnels ultérieurs restent rattachés à l'`AnalyticsSnapshot @
+12:00:00` lorsque 24B.1 a établi ce match. Aucun nearest-time lookup n'est autorisé.

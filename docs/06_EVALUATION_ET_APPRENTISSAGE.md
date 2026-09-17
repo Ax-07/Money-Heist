@@ -575,3 +575,15 @@ rejoints extérieurement pour les analyses futures.
 `AnalyticsSnapshot` exact quand la provenance le permet. Les trois classes Scanner sont
 conservées sans recalcul et les comptes doivent conserver exactement le nombre d'évaluations
 Scanner. Aucun Forward Outcome, rendement futur ou jugement de qualité n'entre dans le record.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.4 — attribution Analytics par étape du funnel
+
+`FunnelStageAnalyticsAttributionRecord` décrit une étape du funnel à T et sa référence Analytics
+causale au même `market_as_of`. Le record sépare `reached`, résultat métier, failure technique et
+timestamp opérationnel. Il ne contient aucun Forward Outcome, PnL futur, score de qualité ou
+jugement sur la décision.
+
+`FunnelStageAnalyticsAttributionSet` expose uniquement des compteurs de coverage/intégrité. Les
+analyses de qualité et les jointures avec les Outcomes restent réservées aux phases de recherche
+ultérieures.

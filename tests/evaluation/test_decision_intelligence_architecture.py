@@ -76,9 +76,15 @@ def test_analytics_core_remains_decision_intelligence_agnostic() -> None:
     )
 
 
-def test_24b1_attribution_remains_isolated_from_decision_intelligence() -> None:
+def test_24b1_and_24b3_modules_remain_isolated_from_decision_intelligence() -> None:
     _assert_no_import_prefix(
-        (REPO_ROOT / "app/evaluation/analytics_attribution",),
+        (
+            REPO_ROOT / "app/evaluation/analytics_attribution/index.py",
+            REPO_ROOT / "app/evaluation/analytics_attribution/linker.py",
+            REPO_ROOT / "app/evaluation/analytics_attribution/models.py",
+            REPO_ROOT / "app/evaluation/analytics_attribution/resolver.py",
+            REPO_ROOT / "app/evaluation/analytics_attribution/scanner_attribution.py",
+        ),
         ("app.evaluation.decision_intelligence",),
     )
 

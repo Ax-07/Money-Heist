@@ -905,3 +905,20 @@ canonique reste `FeatureSnapshot.snapshot_id`. La résolution Analytics est fact
 
 `app.evaluation.scanner_observations` porte la primitive State@T neutre réutilisée par 23A.4 et
 24B.3. Scanner/Agents/Risk/PAPER/LIVE et `app.analytics` ne dépendent pas de cette attribution.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.4 — Funnel Stage ↔ Analytics Attribution
+
+La couche `app.evaluation.analytics_attribution` projette désormais les étapes du funnel déjà
+présentes dans `DecisionIntelligenceRecord` : Compute Gate, PLAN, spécialistes réellement
+tentés, Palermo, FINAL, TradeProposal, Risk et PAPER. Scanner reste couvert par 24B.3.
+
+24B.4 est strictement post-hoc. Il ne rappelle aucun service actif et ne reçoit aucune collection
+de snapshots Analytics. Chaque stage recopie exclusivement la référence Analytics 24B.1 déjà
+portée par 24B.2. Les stages fixes sont matérialisés `reached` ou `not reached`; les spécialistes
+sont des instances identifiées par leur `agent_id` canonique.
+
+Le temps marché canonique est `DecisionIntelligenceRecord.observed_at`. Un timestamp opérationnel
+ultérieur (`TradeProposal.created_at`, Risk, ordre/fill PAPER) n'entraîne jamais de nouveau lookup
+marché. Scanner, DecisionContext, Agents, Orchestration, Risk, PAPER, LIVE et `app.analytics`
+n'importent pas 24B.4.

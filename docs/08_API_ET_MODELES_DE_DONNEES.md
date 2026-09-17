@@ -821,3 +821,22 @@ Contrats publics ajoutés :
 Schema record : `money-heist.scanner-analytics-attribution.v1`. Projection :
 `scanner-analytics-attribution-v1`. La policy de matching reste
 `opportunity-analytics-exact-v1` afin de conserver une seule vérité d'attribution Analytics.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## Addendum Batch 24B.4 — contrats Funnel Stage Analytics Attribution
+
+Contrats publics ajoutés :
+- `FunnelStage` ;
+- `FunnelStageAnalyticsAttributionRecord` ;
+- `FunnelStageAnalyticsAttributionSet` ;
+- `project_funnel_stage_analytics_records` ;
+- `build_funnel_stage_analytics_attribution`.
+
+Schema record : `money-heist.funnel-stage-analytics-attribution.v1`.
+Schema set : `money-heist.funnel-stage-analytics-attribution-set.v1`.
+Policy : `funnel-stage-analytics-attribution-v1`.
+
+Stages : `COMPUTE_GATE`, `PROFESSOR_PLAN`, `SPECIALIST`, `PALERMO`, `PROFESSOR_FINAL`,
+`TRADE_PROPOSAL`, `RISK`, `PAPER`. Un `SPECIALIST` porte `stage_instance_id == agent_id` et son
+ordre d'orchestration. La référence Analytics est une identité légère issue de 24B.1/24B.2 ; le
+payload Analytics complet n'est jamais dupliqué.

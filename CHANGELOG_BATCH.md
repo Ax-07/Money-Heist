@@ -401,3 +401,20 @@ inchangés et `prompt_render_version` passe à `money-heist.prompt-transport.v4`
 - conservation stricte du `source_cursor_fingerprint` et de la provenance MTF ;
 - références optionnelles cohérentes vers 24B.1 et 24B.2 pour les candidates ;
 - IDs/fingerprints/ordre déterministes et guards d'architecture read-only.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## Batch 24B.4 — Funnel Stage ↔ Analytics Attribution
+
+- projection read-only du funnel depuis `DecisionIntelligenceRecord` 24B.2 ;
+- stages canoniques Compute Gate, PLAN, Specialist, Palermo, FINAL, TradeProposal, Risk et PAPER ;
+- stages fixes `reached`/`not reached` et spécialistes réellement tentés seulement ;
+- séparation failure technique / résultat métier ;
+- `market_as_of` unique par opportunité et timestamps opérationnels descriptifs ;
+- réutilisation stricte du lien Analytics 24B.1, sans second matcher ;
+- propagation des diagnostics Analytics unmatched ;
+- IDs, fingerprints, ordre et set déterministes ;
+- isolation des fingerprints par stage ;
+- cross-run guards et architecture guards ;
+- aucune dépendance Forward Outcomes, aucun changement du business fingerprint ou du run ID ;
+- validation locale complète réussie le 2026-09-17 : Ruff, 24B.1-24B.4, 23A, Decision Funnel / Risk / PAPER, Agents / Orchestration, Analytics et full suite avec exactement 3 skips attendus ;
+- Batch 24B.4 et Batch 24B DONE.

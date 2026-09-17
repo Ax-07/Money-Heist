@@ -656,3 +656,15 @@ Le batch prépare 24B.3/24B.4/24C sans commencer leurs analyses, statistiques ou
 
 24B.3 étend le lien causal Analytics à 100 % des évaluations Scanner du replay, sans commencer
 les analyses de performance, le tuning, les Forward Outcomes enrichis ou l'activation LIVE.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+## État Batch 24B — Decision ↔ Analytics Attribution
+
+```text
+24B.1 — Opportunity ↔ Analytics Linking          DONE
+24B.2 — Decision Intelligence Record             DONE
+24B.3 — Scanner ↔ Analytics Attribution          DONE
+24B.4 — Funnel Stage ↔ Analytics Attribution     DONE
+```
+
+24B.4 a passé la validation locale complète le 2026-09-17 : Ruff, 24B.1-24B.4, suites 23A concernées, Decision Funnel / Risk / PAPER, Agents / Orchestration, Analytics et full suite avec exactement 3 skips attendus. Batch 24B est DONE. La phase suivante reste 24C - Decision Intelligence Backend & UI ; elle ne commence pas dans ce lot.

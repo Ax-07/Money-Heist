@@ -1059,3 +1059,25 @@ Les trois classes Scanner de 23A.4 sont déplacées vers une primitive neutre pa
 les candidates peuvent référencer 24B.1/24B.2 ; la provenance MTF/cursor reste causale ; aucune
 autorité Analytics ne remonte vers Scanner, Agents, Risk, PAPER ou LIVE ; l'identité du
 BacktestRun et le fingerprint business restent inchangés.
+
+<!-- BATCH_24B4_FUNNEL_STAGE_ANALYTICS_ATTRIBUTION -->
+### ADR-042 — Funnel Stage Analytics Attribution réutilise le market as-of de la décision
+
+**Date :** 2026-09-17
+**Statut :** ACCEPTED
+
+**Décision :** 24B.4 projette le funnel depuis `DecisionIntelligenceRecord` et réutilise
+exclusivement la référence Analytics déjà résolue par 24B.1/24B.2. Les stages fixes sont
+matérialisés `reached`/`not reached`; les Specialists existent uniquement pour les instances
+réellement tentées et gardent `agent_id` comme identité. `TradeProposal` est un stage analytique
+distinct et PAPER reste un stage unique contenant les artefacts d'exécution immédiats.
+
+Le `market_as_of` de chaque stage est `DecisionIntelligenceRecord.observed_at`. Les timestamps
+opérationnels ultérieurs sont descriptifs et ne peuvent pas déclencher de rematching Analytics.
+Une failure technique reste distincte d'une décision métier. Aucun Forward Outcome, score de
+qualité ou autorité trading n'entre dans 24B.4.
+
+**Conséquences :** IDs/fingerprints/ordre sont déterministes ; un changement matériel d'un stage
+ne doit pas contaminer le fingerprint des autres stages ; les liens Analytics unmatched sont
+propagés sans fallback ; les frontières Scanner/Agents/Risk/PAPER/LIVE/Analytics Core restent
+inchangées. La validation locale complète du 2026-09-17 autorise la clôture de Batch 24B.
