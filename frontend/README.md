@@ -62,3 +62,17 @@ Le launcher V2 utilise l’import CSV et le moteur historique existants. Le repl
 Le lanceur Backtests expose Dataset, DESIGN/VALIDATION/OOS, Risk, IA, Exécution, Walk-Forward et une revue finale. Les datasets et artefacts V2 sont persistés par le backend ; aucun CSV n'est stocké dans le navigateur.
 
 Le stockage backend par défaut est `.money-heist/frontend-v2/` à la racine du dépôt. Il peut être déplacé avec `MONEY_HEIST_FRONTEND_V2_STORAGE_DIR`.
+
+<!-- BATCH_24C2_FRONTEND_README -->
+## Analytics overlays — Batch 24C.2
+
+Le détail d'un backtest peut afficher les projections Analytics/Decision Intelligence déjà
+persistées par le backend : Scanner/CandidateOpportunity, funnel, Risk, Technical Events,
+structure, ZigZag causal et patterns.
+
+Le frontend reste projection-only : il ne recalcule aucun indicateur, trigger Scanner, décision
+agent, RiskDecision ou pattern depuis les candles. La visibilité au curseur respecte les
+timestamps de disponibilité/confirmation du backend.
+
+Les préférences de couches et filtres sont des préférences UI Zustand. Un ancien run sans
+Analytics reste compatible avec le replay classique.

@@ -1081,3 +1081,50 @@ qualité ou autorité trading n'entre dans 24B.4.
 ne doit pas contaminer le fingerprint des autres stages ; les liens Analytics unmatched sont
 propagés sans fallback ; les frontières Scanner/Agents/Risk/PAPER/LIVE/Analytics Core restent
 inchangées. La validation locale complète du 2026-09-17 autorise la clôture de Batch 24B.
+
+<!-- BATCH_24C2_CHANGELOG -->
+### ADR-043 — Projection Decision Intelligence Frontend read-only
+
+**Date :** 2026-09-17
+**Statut :** ACCEPTED
+
+**Décision :**
+24C.1 expose au Frontend V2 uniquement des projections persistées d'artefacts 24A/24B déjà
+calculés. Les endpoints sont `GET` et n'exécutent ni Historical Replay, ni Scanner, ni agents,
+ni Risk Engine, ni PAPER/LIVE.
+
+Les runs historiques dépourvus de bundle pré-calculé restent consultables et signalent
+explicitement l'indisponibilité Analytics/Decision Intelligence.
+
+**Conséquences :**
+la projection frontend n'est pas une nouvelle source de vérité ; aucune identité
+`BacktestRun`, aucun business fingerprint et aucune autorité de trading ne sont modifiés.
+
+### ADR-044 — Trading Chart Analytics Overlays causaux et sans recomputation
+
+**Date :** 2026-09-18
+**Statut :** ACCEPTED
+
+**Décision :**
+24C.2 projette vers le chart les événements, structures, pivots et patterns déjà produits par
+Analytics ainsi que les artefacts Scanner/Funnel déjà attribués. Le navigateur peut filtrer,
+masquer et sélectionner ces objets mais ne peut pas les recalculer.
+
+La géométrie et la connaissance sont séparées : un événement reste placé à `event_at` mais n'est
+visible qu'à `available_at`; un pivot ZigZag reste placé à `pivot_at` mais n'est visible qu'à
+`confirmed_at`; un pattern n'affiche que le lifecycle connu au curseur ; un funnel conserve
+`market_as_of` avec `operational_at` comme temps de connaissance lorsqu'il existe.
+
+**Conséquences :**
+les toggles Zustand sont de l'état UI uniquement ; les anciens runs dégradent proprement ;
+l'absence de géométrie persistée n'entraîne aucun recalcul ; Scanner, agents, Risk, PAPER, LIVE,
+Forward Outcomes, `BacktestRun.run_id` et business fingerprints restent inchangés.
+
+## Changelog documentation — 2026-09-18 — Clôture Batch 24C.2
+
+- 24C.1 Backend Projection API intégré à la documentation canonique ;
+- 24C.2 Trading Chart Analytics Overlays livré et validé ;
+- causalité `available_at` / `confirmed_at` / `operational_at` préservée dans le replay visuel ;
+- toggles, filtres et sélection préparés pour 24C.3 ;
+- aucune recomputation métier ou autorité LIVE ajoutée ;
+- prochaine étape : Batch 24C.3 — Decision Intelligence Inspector.

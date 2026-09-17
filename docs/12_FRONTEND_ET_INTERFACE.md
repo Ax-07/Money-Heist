@@ -275,3 +275,56 @@ Le cockpit expose également les paramètres liés au coût IA/Prompt Cache four
 Le gestionnaire de paquets recommandé dans les commandes de développement Frontend de cette documentation est `pnpm`.
 
 <!-- DOC_REALIGN_FRONTEND_VALIDATION_END -->
+
+<!-- BATCH_24C2_FRONTEND -->
+## Addendum Batch 24C.1 / 24C.2 — Decision Intelligence & Trading Chart Analytics Overlays
+
+Le Backtest Cockpit consomme désormais les projections read-only 24C :
+
+```text
+/api/frontend/v2/backtests/runs/{campaign_id}/analytics
+/api/frontend/v2/backtests/runs/{campaign_id}/analytics/scanner
+/api/frontend/v2/backtests/runs/{campaign_id}/analytics/overlays
+/api/frontend/v2/backtests/runs/{campaign_id}/opportunities/{opportunity_id}/decision-intelligence
+```
+
+Le chart conserve une instance Lightweight Charts et ajoute des couches indépendantes :
+
+- Trading / replay markers ;
+- Scanner CandidateOpportunity ;
+- décisions et funnel ;
+- Risk ;
+- Technical Events ;
+- structure de marché ;
+- ZigZag causal ;
+- patterns et segments.
+
+Les couches volumineuses sont désactivées par défaut lorsque leur densité nuirait à la lecture.
+`NO_TRIGGER` possède un toggle séparé et n'est jamais massivement rendu par défaut.
+
+Les préférences de visibilité/filtres sont persistées dans Zustand. La sélection d'un objet
+Analytics utilise une forme stable préparatoire à 24C.3 :
+
+```text
+objectType
+objectId
+opportunityId
+timestamp
+label
+details
+```
+
+Le curseur replay masque toute connaissance future. Les géométries utilisent les timestamps
+métier fournis par le backend et ne sont jamais reconstruites depuis les candles.
+
+Compatibilité : une campagne sans Analytics continue d'afficher le replay classique ; la toolbar
+Analytics est indisponible/dégradée proprement au lieu de déclencher un recalcul.
+
+Validation locale 2026-09-18 :
+
+```text
+npm run lint       → OK
+npm run typecheck  → OK
+npm run test       → 9 fichiers / 37 tests OK
+npm run build      → OK
+```

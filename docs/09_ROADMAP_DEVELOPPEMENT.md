@@ -668,3 +668,32 @@ les analyses de performance, le tuning, les Forward Outcomes enrichis ou l'activ
 ```
 
 24B.4 a passé la validation locale complète le 2026-09-17 : Ruff, 24B.1-24B.4, suites 23A concernées, Decision Funnel / Risk / PAPER, Agents / Orchestration, Analytics et full suite avec exactement 3 skips attendus. Batch 24B est DONE. La phase suivante reste 24C - Decision Intelligence Backend & UI ; elle ne commence pas dans ce lot.
+
+<!-- BATCH_24C2_ROADMAP -->
+## État Batch 24C — Decision Intelligence Backend & UI
+
+```text
+24C.1 — Backend Projection API                    DONE
+24C.2 — Trading Chart Analytics Overlays          DONE
+24C.3 — Decision Intelligence Inspector           NEXT
+24C.4 — Filters & Navigation                      PLANNED
+```
+
+24C.1 expose en lecture seule les artefacts 24A/24B pré-calculés au Frontend V2.
+
+24C.2 transforme le Historical Replay chart en outil d'inspection causale avec toggles et
+sélection pour Trading, Scanner/CandidateOpportunity, décisions/funnel, Risk, Technical Events,
+structure, ZigZag et patterns. La visibilité respecte les temps de disponibilité/confirmation ;
+aucun calcul Analytics ou trading n'est déplacé dans le navigateur.
+
+Validation locale 24C.2 du 2026-09-18 :
+
+- Ruff sur le périmètre Python 24C.2 : OK ;
+- frontend lint : OK ;
+- frontend typecheck : OK ;
+- Vitest : 9 fichiers / 37 tests : OK ;
+- Next.js production build : OK ;
+- suite Python complète : OK avec les 3 skips attendus.
+
+La prochaine étape est 24C.3 — Decision Intelligence Inspector complet. 24C.3 doit réutiliser la
+sélection stable préparée par 24C.2 et ne doit pas introduire de nouvelle autorité métier.

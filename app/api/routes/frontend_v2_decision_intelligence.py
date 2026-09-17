@@ -5,6 +5,10 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from app.api.routes.frontend_v2 import FrontendV2Store
+from app.services.frontend_v2.analytics_overlays import (
+    FrontendAnalyticsOverlayProjectionService,
+    FrontendAnalyticsOverlaysProjection,
+)
 from app.services.frontend_v2.decision_intelligence import (
     CampaignNotFoundError,
     FrontendAnalyticsProjection,
@@ -34,9 +38,19 @@ def _projection_service(
     return FrontendDecisionIntelligenceProjectionService(store)
 
 
+def _overlay_service(
+    store: Annotated[FrontendV2Store, Depends(_frontend_store)],
+) -> FrontendAnalyticsOverlayProjectionService:
+    return FrontendAnalyticsOverlayProjectionService(store)
+
+
 ProjectionService = Annotated[
     FrontendDecisionIntelligenceProjectionService,
     Depends(_projection_service),
+]
+OverlayService = Annotated[
+    FrontendAnalyticsOverlayProjectionService,
+    Depends(_overlay_service),
 ]
 
 
@@ -79,6 +93,23 @@ def scanner_analytics_projection(
 ) -> FrontendScannerAnalyticsProjection:
     try:
         return service.scanner(campaign_id, role)
+    except CampaignNotFoundError as exc:
+        raise _not_found(exc) from exc
+    except ValueError as exc:
+        raise _projection_error(exc) from exc
+
+
+@router.get(
+    "/backtests/runs/{campaign_id}/analytics/overlays",
+    response_model=FrontendAnalyticsOverlaysProjection,
+)
+def analytics_overlays_projection(
+    campaign_id: str,
+    service: OverlayService,
+    role: PeriodRoleQuery = "OOS",
+) -> FrontendAnalyticsOverlaysProjection:
+    try:
+        return service.overlays(campaign_id, role)
     except CampaignNotFoundError as exc:
         raise _not_found(exc) from exc
     except ValueError as exc:

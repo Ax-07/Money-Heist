@@ -922,3 +922,40 @@ Le temps marché canonique est `DecisionIntelligenceRecord.observed_at`. Un time
 ultérieur (`TradeProposal.created_at`, Risk, ordre/fill PAPER) n'entraîne jamais de nouveau lookup
 marché. Scanner, DecisionContext, Agents, Orchestration, Risk, PAPER, LIVE et `app.analytics`
 n'importent pas 24B.4.
+
+<!-- BATCH_24C2_ARCHITECTURE -->
+## Addendum Batch 24C.1 / 24C.2 — Decision Intelligence Frontend & Analytics Overlays
+
+La phase 24C conserve une frontière stricte de projection read-only :
+
+```text
+Artefacts 24A / 24B déjà calculés
+        ↓
+projections Frontend V2 persistées
+        ↓
+FastAPI /api/frontend/v2
+        ↓
+Zod + TanStack Query
+        ↓
+TradingChartAdapter / Lightweight Charts
+```
+
+24C.1 expose les projections Decision Intelligence pré-calculées. 24C.2 ajoute une
+projection de géométrie Analytics destinée au chart : Technical Events, structure de marché,
+pivots ZigZag causaux et patterns.
+
+Le navigateur ne recalcule ni indicateur, ni Scanner, ni CandidateOpportunity, ni décision
+Professor/Palermo, ni RiskDecision, ni pattern. Les toggles et filtres frontend ne sont que de
+l'état UI et n'ont aucune autorité métier.
+
+La causalité visuelle distingue explicitement temps géométrique et temps de connaissance :
+
+- Technical Event : géométrie à `event_at`, visible à partir de `available_at` ;
+- ZigZag : pivot dessiné à `pivot_at`, visible à partir de `confirmed_at` ;
+- Pattern : géométrie backend conservée, lifecycle révélé uniquement selon les transitions dont
+  `available_at` est antérieur ou égal au curseur ;
+- Funnel : géométrie à `market_as_of`, connaissance à `operational_at` lorsqu'il existe.
+
+Les anciens runs sans projection Analytics riche restent consultables. L'absence du sidecar
+géométrique ne déclenche aucune recomputation et produit des overlays géométriques vides.
+`BacktestRun.run_id` et le business fingerprint restent inchangés.

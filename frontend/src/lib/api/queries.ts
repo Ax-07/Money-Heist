@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { api } from "./client";
+import { frontendAnalyticsOverlaysSchema } from "./analytics-overlay-schemas";
 import {
   frontendAnalyticsProjectionSchema,
   frontendDecisionIntelligenceDetailSchema,
@@ -38,6 +39,7 @@ export const campaignConfigurationQuery = (id: string) => api.get(`/api/frontend
 export const replayQuery = (id: string, role: "DESIGN" | "VALIDATION" | "OOS") => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/replay?role=${role}`, replaySchema);
 export const analyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics?role=${role}`, frontendAnalyticsProjectionSchema);
 export const scannerAnalyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/scanner?role=${role}`, frontendScannerAnalyticsProjectionSchema);
+export const analyticsOverlaysQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/overlays?role=${role}`, frontendAnalyticsOverlaysSchema);
 export const decisionIntelligenceQuery = (id: string, opportunityId: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/opportunities/${encodeURIComponent(opportunityId)}/decision-intelligence?role=${role}`, frontendDecisionIntelligenceDetailSchema);
 export const marketCandlesQuery = (symbol: string, timeframe: string) => api.get(`/api/frontend/v2/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=500`, marketCandlesSchema);
 export const marketConstraintsQuery = (symbol:string) => api.get(`/api/frontend/v2/market/constraints?symbol=${encodeURIComponent(symbol)}`, marketConstraintsSchema);

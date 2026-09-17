@@ -840,3 +840,38 @@ Stages : `COMPUTE_GATE`, `PROFESSOR_PLAN`, `SPECIALIST`, `PALERMO`, `PROFESSOR_F
 `TRADE_PROPOSAL`, `RISK`, `PAPER`. Un `SPECIALIST` porte `stage_instance_id == agent_id` et son
 ordre d'orchestration. La référence Analytics est une identité légère issue de 24B.1/24B.2 ; le
 payload Analytics complet n'est jamais dupliqué.
+
+<!-- BATCH_24C2_API_MODELS -->
+## Addendum Batch 24C.1 / 24C.2 — API Decision Intelligence & Analytics Overlays
+
+Endpoints Frontend V2 read-only :
+
+```text
+GET /api/frontend/v2/backtests/runs/{campaign_id}/analytics?role=OOS
+GET /api/frontend/v2/backtests/runs/{campaign_id}/analytics/scanner?role=OOS
+GET /api/frontend/v2/backtests/runs/{campaign_id}/analytics/overlays?role=OOS
+GET /api/frontend/v2/backtests/runs/{campaign_id}/opportunities/{opportunity_id}/decision-intelligence?role=OOS
+```
+
+`role` accepte `DESIGN`, `VALIDATION` et `OOS`.
+
+Le contrat overlays est versionné
+`money-heist.frontend-analytics-overlays.v1`. La géométrie persistée utilise
+`money-heist.frontend-analytics-geometry.v1`.
+
+La projection overlays peut contenir :
+
+- évaluations Scanner et CandidateOpportunity issues des artefacts 24B ;
+- funnel Decision Intelligence ;
+- Technical Events ;
+- structure de marché ;
+- pivots ZigZag causaux ;
+- patterns et transitions de lifecycle.
+
+Les timestamps causaux restent distincts : `event_at`/`available_at`,
+`pivot_at`/`confirmed_at`, `market_as_of`/`operational_at`. Aucun endpoint 24C ne relance
+Historical Replay, Feature Engine, Scanner, agents, Risk, PAPER ou LIVE.
+
+Une campagne connue mais dépourvue de projection pré-calculée reste un `200` avec disponibilité
+explicite à `false`. Si le bundle 24C.1 existe mais que la géométrie 24C.2 n'a pas été persistée,
+les projections Scanner/funnel restent disponibles et les collections géométriques sont vides.
