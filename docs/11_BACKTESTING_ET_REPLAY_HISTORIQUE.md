@@ -706,3 +706,8 @@ confirmés visibles à T.
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Addendum Batch 24A.7 — replay causal des recherches
+
+La résolution Context/Sequence respecte l'invariant prefix : à `as_of=T`, le résultat est identique avec le dataset complet ou tronqué à T. Les anchors utilisent leurs timestamps de disponibilité (`available_at` / `confirmed_at`) et une séquence complétée ultérieurement n'est jamais rétro-propagée dans un snapshot antérieur.

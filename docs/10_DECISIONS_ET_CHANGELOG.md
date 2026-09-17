@@ -932,3 +932,8 @@ timestamps sur close_time des candles closes.
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+### 2026-09-17 — Batch 24A.7 Causal Contexts & Sequences
+
+**ACCEPTED (candidate pending local validation)** — Contexts et Sequences deviennent une couche Research séparée de `DecisionContextV1`. Anchors v1 : Technical Event, Pattern Transition, ZigZag Pivot confirmé. Conditions : Indicator/Event/Pattern/Structure/ZigZag. `THEN` est strict (same-bar rejeté), les fenêtres sont en barres avec borne N incluse, le matching choisit le prédécesseur compatible le plus récent, les partials et failed evaluations ne sont pas persistés. Les conditions MTF réutilisent les observations closes/as-of canoniques.

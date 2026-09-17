@@ -622,3 +622,8 @@ Patterns/lifecycle restent 24A.5 ; calibration 24A.6 ; contexts/sequences 24A.7.
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Addendum Batch 24A.7 — Analytics Core
+
+24A.7 complète le noyau Analytics avec des Contexts et Sequences causaux observation-only. La phase suivante reste Batch 24B — Decision ↔ Analytics Attribution ; aucun join Scanner/Opportunity n'est ajouté par 24A.7.

@@ -857,3 +857,8 @@ le premier instant où le pivot est connaissable. Aucun pivot dont
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Addendum Batch 24A.7 — Causal Contexts & Sequences
+
+La couche `app.analytics.research` interroge en lecture seule les artefacts Analytics canoniques via `AnalyticsObservationIndex`. Elle n'est jamais importée par le pipeline décisionnel. `AnalyticsContextDefinition` est une hypothèse de recherche et ne doit pas être confondu avec `DecisionContextV1`. Les recherches possèdent une identité séparée (`AnalyticsResearchRun`) afin de ne pas modifier l'identité de `AnalyticsLabRun`, `BacktestRun.run_id` ou le business fingerprint.

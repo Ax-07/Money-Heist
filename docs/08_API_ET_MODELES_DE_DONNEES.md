@@ -752,3 +752,8 @@ amplitudes, nombre de barres, provenance indicator/cursor, ID et fingerprint.
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Addendum Batch 24A.7 — Research Contexts / Sequences
+
+Contrats principaux : `AnalyticsObservationIndex`, `AnalyticsContextDefinition`, `AnalyticsContextMatch`, `AnalyticsSequenceDefinition`, `AnalyticsSequenceMatch`, `AnalyticsResearchRun`, `ConditionEvaluation`. Les définitions et résultats sont immuables, versionnés et fingerprintés. Les anchors v1 sont Technical Event, Pattern Transition et ZigZag Pivot confirmé.

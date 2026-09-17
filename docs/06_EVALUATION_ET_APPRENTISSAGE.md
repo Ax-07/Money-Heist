@@ -537,3 +537,8 @@ La politique de budget réserve le cas d’entrée le plus défavorable entre in
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Addendum Batch 24A.7 — discipline des hypothèses de recherche
+
+Les Contexts/Sequences sont des hypothèses descriptives versionnées. Leur `origin_period_role` conserve DESIGN/VALIDATION/OOS. Une hypothèse destinée à VALIDATION/OOS doit conserver la même révision/fingerprint figée ; 24A.7 n'effectue ni ranking, ni auto-tuning, ni jointure vers Forward Outcomes.

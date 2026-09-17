@@ -336,3 +336,13 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
   `AnalyticsLabRun` ;
 - DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
 - aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.
+
+<!-- BATCH_24A7_CONTEXTS_SEQUENCES -->
+## Batch 24A.7 — Causal Contexts & Sequences
+
+- Observation Index causal/read-only sur Indicators, Events, Structure, ZigZag et Pattern transitions ;
+- Context DSL v1 immuable/versionné et resolver explicable ;
+- Sequence DSL v1 2..10 étapes, strict THEN, fenêtres inclusives à N ;
+- research identity séparée de `AnalyticsLabRun`/`BacktestRun` ;
+- tests causalité, prefix invariance, ordering, window boundaries et import boundaries ;
+- aucune dépendance Forward Outcomes / trading authority.
