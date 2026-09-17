@@ -792,3 +792,17 @@ Le transport `money-heist.prompt-transport.v3` ajoute le contrat `money-heist.ag
 Le transport actif est `money-heist.prompt-transport.v4`. Les `prompt_version` actives du crew sont
 incrémentées sans modifier les versions historiques. Task Force et Master Professor SHADOW conservent
 leurs contrats structurés existants ; seules leurs instructions en langage naturel passent en français.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## Addendum Batch 24B.2 — modèles Decision Intelligence
+
+Contrats publics ajoutés sous `app.evaluation.decision_intelligence` :
+- `DecisionIntelligenceRecord` ;
+- `DecisionIntelligenceRecordSet` ;
+- projections typées Scanner, Compute Gate, DecisionContext ref, PLAN, spécialistes, Palermo,
+  FINAL, TradeProposal, Risk et exécution PAPER ;
+- `AnalyticsRefProjection`, qui reprend exclusivement le sidecar 24B.1.
+
+Schema : `money-heist.decision-intelligence-record.v1`. Policy :
+`decision-intelligence-projection-v1`. `record_id`, `record_fingerprint` et `set_fingerprint`
+sont déterministes via les helpers canoniques communs.

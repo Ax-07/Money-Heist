@@ -378,3 +378,14 @@ Les prompts actifs des agents sont désormais écrits nativement en français. L
 restent intactes. Versions actives : Professor v7, Palermo v4, Lisbon v2 et spécialistes v6. Task Force
 et Master Professor SHADOW utilisent aussi des instructions françaises. Les contrats machine restent
 inchangés et `prompt_render_version` passe à `money-heist.prompt-transport.v4`.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## Batch 24B.2 — Decision Intelligence Record
+
+- nouvelle couche `app.evaluation.decision_intelligence` read-only ;
+- un record déterministe par `CandidateOpportunity` et couple BacktestRun/AnalyticsRun ;
+- réutilisation stricte des `OpportunityAnalyticsLink` 24B.1, sans second matching ;
+- projections typées du funnel réel et conservation des failures/not-reached ;
+- séparation stricte des Forward Outcomes ;
+- guards d'architecture anti-retour vers le pipeline de trading ;
+- préservation explicite du contrat agents français v1 / prompt transport v4.

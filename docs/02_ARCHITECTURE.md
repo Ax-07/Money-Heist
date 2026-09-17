@@ -882,3 +882,15 @@ Analytics Lab artifacts ──────read-only──┘
 ```
 
 24B.1 ne recalcule ni Analytics ni décision et ne crée aucune autorité de trading.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## Addendum Batch 24B.2 — Decision Intelligence Record
+
+La couche `app.evaluation.decision_intelligence` projette en lecture seule les artefacts déjà
+émis par Historical Replay (`CandidateOpportunity`, `DecisionContextV1`, orchestration, Risk et
+PAPER) avec le `OpportunityAnalyticsLink` 24B.1. Elle ne possède aucune autorité de trading et
+ne rappelle aucun service actif. Le `DecisionFunnelReport` reste un agrégat 23A ; le détail par
+opportunité provient du `HistoricalReplayPoint` et de son `PaperPipelineResult`.
+
+La direction des dépendances reste strictement post-hoc : Scanner/Agents/Risk/PAPER/LIVE et
+`app.analytics` n'importent pas Decision Intelligence.

@@ -732,3 +732,12 @@ Deux snapshots distincts portant la même clé canonique produisent
 Le linker ne lance aucun Indicator/Event/ZigZag/Pattern/Context/Sequence resolver
 et ne rejoue
 aucun Scanner/agent/Risk.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## Addendum Batch 24B.2 — projection Decision Intelligence après replay
+
+Après un replay terminé et la construction des links 24B.1, 24B.2 peut produire un record par
+`CandidateOpportunity` depuis les `HistoricalReplayPoint` déjà présents. Cette opération est
+purement dérivée : elle ne relance ni Scanner, ni orchestration, ni Risk, ni broker et ne modifie
+pas `BacktestRun.run_id` ou le fingerprint business. Les résultats futurs et `exit_events` ne
+font pas partie du core record causal.

@@ -1026,3 +1026,20 @@ le business fingerprint restent inchangés.
 Décision : maintenir les prompts actifs en français sans traduire rétroactivement les versions
 historiques. La reproductibilité repose sur les nouvelles `prompt_version` et sur
 `prompt_render_version=money-heist.prompt-transport.v4`. Les contrats machine restent inchangés.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+### ADR-040 — Decision Intelligence Record read-only
+
+**Date :** 2026-09-17
+**Statut :** ACCEPTED (candidate pending local validation)
+
+**Décision :** `DecisionIntelligenceRecord` est un artefact post-hoc sous
+`app.evaluation.decision_intelligence`. Il projette les artefacts canoniques du replay et consomme
+le `OpportunityAnalyticsLink` 24B.1 sans rematching. Un lien Analytics non résolu n'efface pas la
+décision. Le record n'embarque aucun Forward Outcome et n'a aucune autorité sur Scanner, agents,
+Risk, PAPER ou LIVE.
+
+**Conséquences :** l'ordre réel des spécialistes est conservé, les failures restent techniques,
+les étapes non atteintes ne reçoivent aucun statut métier fabriqué et l'identité du BacktestRun
+ainsi que son fingerprint business restent indépendants du record. Le contrat français
+`money-heist.agent-dialogue.fr.v1` / `money-heist.prompt-transport.v4` est inchangé.

@@ -644,3 +644,9 @@ Roadmap de la phase :
 provenance. Il ne
 construit ni Decision Intelligence Record, ni attribution complète Scanner/Funnel,
 ni UI.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## État Batch 24B.2 — Decision Intelligence Record
+
+24B.2 introduit la projection read-only d'une opportunité complète avec son link Analytics 24B.1.
+Le batch prépare 24B.3/24B.4/24C sans commencer leurs analyses, statistiques ou API/UI.

@@ -558,3 +558,12 @@ du trading.
 
 Le contrat générique `DecisionObservationKey` est préparé pour la future attribution des
 évaluations Scanner de 24B.3, sans implémenter cette attribution dans 24B.1.
+
+<!-- BATCH_24B2_DECISION_INTELLIGENCE_RECORD -->
+## Addendum Batch 24B.2 — projection factuelle de la décision
+
+`DecisionIntelligenceRecord` fournit une représentation déterministe de ce que Money Heist a
+observé et produit pour une `CandidateOpportunity`, avec l'identité Analytics same-as-of déjà
+résolue par 24B.1. Le record est indépendant des Forward Outcomes : H1/H3/H5/H10/H20, MFE/MAE,
+PnL futur et jugements de qualité restent des informations postérieures à la décision et seront
+rejoints extérieurement pour les analyses futures.
