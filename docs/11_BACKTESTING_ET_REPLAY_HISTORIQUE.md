@@ -711,3 +711,24 @@ confirmés visibles à T.
 ## Addendum Batch 24A.7 — replay causal des recherches
 
 La résolution Context/Sequence respecte l'invariant prefix : à `as_of=T`, le résultat est identique avec le dataset complet ou tronqué à T. Les anchors utilisent leurs timestamps de disponibilité (`available_at` / `confirmed_at`) et une séquence complétée ultérieurement n'est jamais rétro-propagée dans un snapshot antérieur.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum Batch 24B.1 — jointure post-hoc après replay
+
+Après un `HistoricalReplayResult` complété et un `AnalyticsLabRun` complété sur le
+même univers,
+24B.1 adapte les points ayant une `CandidateOpportunity` vers un
+`DecisionObservationKey`.
+`HistoricalReplayPoint.mtf_cursor_fingerprint` fournit la preuve de préfixe causal
+même si
+l'opportunité ne possède pas de `DecisionContext`.
+
+Le lookup Analytics est exact sur `(symbol, decision_timeframe, as_of)` à
+l'intérieur d'un
+`analytics_run_id` explicitement fourni. Un snapshot précédent ou futur n'est
+jamais choisi.
+Deux snapshots distincts portant la même clé canonique produisent
+`AMBIGUOUS_ANALYTICS_SNAPSHOT`.
+Le linker ne lance aucun Indicator/Event/ZigZag/Pattern/Context/Sequence resolver
+et ne rejoue
+aucun Scanner/agent/Risk.

@@ -757,3 +757,25 @@ amplitudes, nombre de barres, provenance indicator/cursor, ID et fingerprint.
 ## Addendum Batch 24A.7 — Research Contexts / Sequences
 
 Contrats principaux : `AnalyticsObservationIndex`, `AnalyticsContextDefinition`, `AnalyticsContextMatch`, `AnalyticsSequenceDefinition`, `AnalyticsSequenceMatch`, `AnalyticsResearchRun`, `ConditionEvaluation`. Les définitions et résultats sont immuables, versionnés et fingerprintés. Les anchors v1 sont Technical Event, Pattern Transition et ZigZag Pivot confirmé.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum Batch 24B.1 — contrats Opportunity ↔ Analytics
+
+Nouveaux contrats read-only : `DecisionObservationKey`, `OpportunityObservationRef`,
+`AnalyticsSnapshotRef`, `OpportunityAnalyticsLink`, `OpportunityAnalyticsLinkSet` et
+`OpportunityAnalyticsLinkStatus`. La policy v1 est
+`opportunity-analytics-exact-v1`.
+
+`CandidateOpportunity` et `AnalyticsSnapshot` restent inchangés. Le `created_at`
+actuel de
+`CandidateOpportunity` est utilisé comme `observed_at` uniquement après validation de
+l'invariant Scanner existant (`created_at == FeatureSnapshot.observed_at == replay point
+observed_at`). Le fingerprint de curseur provient du `HistoricalReplayPoint` MTF
+et ne dépend
+pas de l'existence d'un `DecisionContext`.
+
+Le sidecar ne copie aucun Indicator/Event/Pattern/Context/Sequence. Il conserve
+seulement les
+identités et la provenance nécessaires, ainsi qu'une projection minimale de
+l'identité du
+snapshot Analytics.

@@ -542,3 +542,19 @@ La politique de budget réserve le cas d’entrée le plus défavorable entre in
 ## Addendum Batch 24A.7 — discipline des hypothèses de recherche
 
 Les Contexts/Sequences sont des hypothèses descriptives versionnées. Leur `origin_period_role` conserve DESIGN/VALIDATION/OOS. Une hypothèse destinée à VALIDATION/OOS doit conserver la même révision/fingerprint figée ; 24A.7 n'effectue ni ranking, ni auto-tuning, ni jointure vers Forward Outcomes.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum Batch 24B.1 — attribution d'identité décision ↔ Analytics
+
+24B.1 fournit une preuve de provenance, pas une métrique de performance. Une
+`CandidateOpportunity` historique est reliée post-hoc à un `AnalyticsSnapshot`
+uniquement si
+le BacktestRun, le dataset content-addressed, le symbole, le decision timeframe,
+le `as_of`, la
+policy MTF et le `source_cursor_fingerprint` décrivent le même univers causal.
+Le taux de
+couverture mesure l'intégrité des artefacts ; il ne mesure ni l'edge ni la qualité
+du trading.
+
+Le contrat générique `DecisionObservationKey` est préparé pour la future attribution des
+évaluations Scanner de 24B.3, sans implémenter cette attribution dans 24B.1.

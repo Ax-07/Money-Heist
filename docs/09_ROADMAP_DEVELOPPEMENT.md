@@ -627,3 +627,20 @@ Patterns/lifecycle restent 24A.5 ; calibration 24A.6 ; contexts/sequences 24A.7.
 ## Addendum Batch 24A.7 — Analytics Core
 
 24A.7 complète le noyau Analytics avec des Contexts et Sequences causaux observation-only. La phase suivante reste Batch 24B — Decision ↔ Analytics Attribution ; aucun join Scanner/Opportunity n'est ajouté par 24A.7.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum Batch 24B — Decision ↔ Analytics Attribution
+
+Roadmap de la phase :
+
+```text
+24B.1 — Opportunity ↔ Analytics Linking
+24B.2 — Decision Intelligence Record
+24B.3 — Scanner ↔ Analytics Attribution
+24B.4 — Funnel Stage ↔ Analytics Attribution
+```
+
+24B.1 livre uniquement la primitive de jointure exacte et les diagnostics de
+provenance. Il ne
+construit ni Decision Intelligence Record, ni attribution complète Scanner/Funnel,
+ni UI.

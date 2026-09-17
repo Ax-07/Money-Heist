@@ -937,3 +937,20 @@ timestamps sur close_time des candles closes.
 ### 2026-09-17 — Batch 24A.7 Causal Contexts & Sequences
 
 **ACCEPTED (candidate pending local validation)** — Contexts et Sequences deviennent une couche Research séparée de `DecisionContextV1`. Anchors v1 : Technical Event, Pattern Transition, ZigZag Pivot confirmé. Conditions : Indicator/Event/Pattern/Structure/ZigZag. `THEN` est strict (same-bar rejeté), les fenêtres sont en barres avec borne N incluse, le matching choisit le prédécesseur compatible le plus récent, les partials et failed evaluations ne sont pas persistés. Les conditions MTF réutilisent les observations closes/as-of canoniques.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+### 2026-09-17 — Batch 24B.1 Opportunity ↔ Analytics Linking
+
+**ACCEPTED (candidate pending local validation)** — La jointure Decision ↔ Analytics
+devient
+une dérivation post-hoc dans `app.evaluation.analytics_attribution`. Le run Analytics
+est
+sélectionné explicitement ; aucun `latest run` implicite n'est autorisé. La policy
+v1 exige une
+égalité exacte de provenance et interdit tout nearest-neighbor temporel. Les statuts
+distinguent
+notamment snapshot manquant, ambiguïté, mismatch dataset/symbole/timeframe/policy/
+cursor et
+provenance source incomplète. `CandidateOpportunity`, `AnalyticsSnapshot`, le replay
+métier et
+le business fingerprint restent inchangés.

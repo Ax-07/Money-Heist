@@ -346,3 +346,16 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - research identity séparée de `AnalyticsLabRun`/`BacktestRun` ;
 - tests causalité, prefix invariance, ordering, window boundaries et import boundaries ;
 - aucune dépendance Forward Outcomes / trading authority.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Batch 24B.1 — Opportunity ↔ Analytics Linking
+
+- couche post-hoc `app.evaluation.analytics_attribution` ;
+- `DecisionObservationKey` générique réutilisable par 24B.3 ;
+- sidecar `OpportunityAnalyticsLink` déterministe ;
+- lookup exact de `AnalyticsSnapshot`, sans nearest-time fallback ;
+- contrôle BacktestRun/dataset/symbole/timeframe/as_of/MTF policy/cursor ;
+- diagnostics explicites missing/mismatch/ambiguous ;
+- `DecisionContext` optionnel ;
+- business fingerprint et pipelines trading inchangés ;
+- architecture guards Analytics/Decision/Attribution renforcés.

@@ -62,3 +62,15 @@ uv run ruff check app tests
 ```
 
 Le batch ne doit pas être considéré clos avant validation de la suite locale complète.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum 24B.1 — consumer externe du noyau Analytics
+
+24B.1 ne modifie pas l'autorité de `app.analytics`. La nouvelle couche
+`app.evaluation.analytics_attribution` est un consumer post-hoc externe qui peut
+lire les
+contrats Analytics et les artefacts décisionnels. La dépendance inverse reste
+interdite :
+`app.analytics` ne connaît ni `CandidateOpportunity`, ni `DecisionContextV1`, ni
+la couche
+d'attribution.

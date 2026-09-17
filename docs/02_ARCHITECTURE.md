@@ -862,3 +862,23 @@ le premier instant où le pivot est connaissable. Aucun pivot dont
 ## Addendum Batch 24A.7 — Causal Contexts & Sequences
 
 La couche `app.analytics.research` interroge en lecture seule les artefacts Analytics canoniques via `AnalyticsObservationIndex`. Elle n'est jamais importée par le pipeline décisionnel. `AnalyticsContextDefinition` est une hypothèse de recherche et ne doit pas être confondu avec `DecisionContextV1`. Les recherches possèdent une identité séparée (`AnalyticsResearchRun`) afin de ne pas modifier l'identité de `AnalyticsLabRun`, `BacktestRun.run_id` ou le business fingerprint.
+
+<!-- BATCH_24B1_OPPORTUNITY_ANALYTICS_LINKING -->
+## Addendum Batch 24B.1 — Opportunity ↔ Analytics Linking
+
+La phase 24B introduit une couche extérieure `app.evaluation.analytics_attribution`
+qui peut
+lire à la fois les artefacts du replay décisionnel et les artefacts `app.analytics`. La
+direction de dépendance reste strictement post-hoc : Scanner, DecisionContext,
+agents, Risk,
+PAPER/LIVE et le calcul du business fingerprint n'importent jamais cette couche,
+tandis que
+`app.analytics` reste decision-agnostic.
+
+```text
+Historical Replay artifacts ──read-only──┐
+                                         ├─> Analytics Attribution
+Analytics Lab artifacts ──────read-only──┘
+```
+
+24B.1 ne recalcule ni Analytics ni décision et ne crée aucune autorité de trading.
