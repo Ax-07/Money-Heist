@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROMPT_TRANSPORT_VERSION = "money-heist.prompt-transport.v3"
+PROMPT_TRANSPORT_VERSION = "money-heist.prompt-transport.v4"
 AGENT_DIALOGUE_LANGUAGE = "fr-FR"
 AGENT_DIALOGUE_LANGUAGE_VERSION = "money-heist.agent-dialogue.fr.v1"
 

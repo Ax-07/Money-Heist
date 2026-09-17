@@ -59,7 +59,7 @@ def test_language_contract_is_french_and_preserves_machine_tokens():
     rendered = apply_agent_dialogue_language_contract("Return LONG or NO_TRADE.")
     assert AGENT_DIALOGUE_LANGUAGE == "fr-FR"
     assert AGENT_DIALOGUE_LANGUAGE_VERSION == "money-heist.agent-dialogue.fr.v1"
-    assert PROMPT_TRANSPORT_VERSION == "money-heist.prompt-transport.v3"
+    assert PROMPT_TRANSPORT_VERSION == "money-heist.prompt-transport.v4"
     assert "français" in rendered
     assert "LONG" in rendered
     assert "NO_TRADE" in rendered

@@ -369,3 +369,12 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - clés JSON, enums, identifiants, références d'évidence et autres tokens machine restent contractuellement inchangés ;
 - aucun changement d'autorité trading, Risk Engine, broker ou LIVE ;
 - la règle s'applique aussi aux Task Force et autres appels traversant le AI Gateway.
+
+<!-- BATCH24FR2_NATIVE_PROMPTS -->
+
+## Batch 24-FR.2 — French Native Agent Prompts
+
+Les prompts actifs des agents sont désormais écrits nativement en français. Les versions historiques
+restent intactes. Versions actives : Professor v7, Palermo v4, Lisbon v2 et spécialistes v6. Task Force
+et Master Professor SHADOW utilisent aussi des instructions françaises. Les contrats machine restent
+inchangés et `prompt_render_version` passe à `money-heist.prompt-transport.v4`.

@@ -250,7 +250,7 @@ class TheProfessor(CoreAgent):
 
         # Keep historical Professor v4 behavior addressable, while production
         # v5 exposes only atomic leaf paths with explicit index->path mapping.
-        if self.prompt.version in {"v5", "v6"}:
+        if self.prompt.version in {"v5", "v6", "v7"}:
             allowed_source_keys = tuple(
                 sorted(_grounded_json_leaf_paths(payload))
             )
@@ -283,7 +283,7 @@ class TheProfessor(CoreAgent):
         # Lightweight custom gateways used by older tests may return the
         # canonical model directly; the downstream grounding validator remains.
         if (
-            self.prompt.version in {"v5", "v6"}
+            self.prompt.version in {"v5", "v6", "v7"}
             and allowed_source_keys is not None
             and result is not None
             and result.output.__class__ is provider_output_model

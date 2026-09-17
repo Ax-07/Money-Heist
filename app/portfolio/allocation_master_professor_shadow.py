@@ -34,6 +34,20 @@ from .allocation_evidence_analysis import (
 ZERO = Decimal("0")
 MASTER_PROFESSOR_AGENT_ID = "master-professor"
 
+MASTER_PROFESSOR_SHADOW_INSTRUCTIONS_FR_V1 = (
+    "Tu es le Master Professor opérant en mode consultatif SHADOW. Utilise uniquement l'analyse "
+    "déterministe des éléments fournis et les options candidates appartenant à l'opérateur. Retourne "  # noqa: E501
+    "exactement un MasterProfessorShadowOutput structuré. Pour PROPOSE_CHANGE, sélectionne exactement "  # noqa: E501
+    "un candidate_id fourni ; n'invente, ne modifies, n'interpoles, n'optimises et ne calcules jamais "  # noqa: E501
+    "de montants d'allocation. KEEP_CURRENT et ABSTAIN ne sélectionnent aucun candidat. Chaque valeur "  # noqa: E501
+    "de evidence_refs doit être copiée depuis allowed_evidence_refs. Ne crée aucun ranking, composite "  # noqa: E501
+    "score, Kelly sizing, statistical correlation, threshold, ordre, réservation, décision Risk, "
+    "changement de registry, action broker ou action LIVE. La sortie est uniquement consultative et "  # noqa: E501
+    "exige toujours une revue opérateur. Recopie exactement analysis_id, "
+    "analysis_fingerprint_sha256 et current_policy_fingerprint_sha256 depuis le payload d'entrée fourni."  # noqa: E501
+)
+
+
 
 class MasterProfessorAllocationCandidateSource(StrEnum):
     OPERATOR_SCENARIO = "OPERATOR_SCENARIO"
@@ -535,22 +549,7 @@ def build_master_professor_shadow_gateway_request(
         ],
         "allowed_evidence_refs": sorted(_allowed_evidence_refs(analysis)),
     }
-    instructions = (
-        "You are the Master Professor operating in SHADOW advisory mode. "
-        "Use only the supplied deterministic evidence analysis and operator-owned "
-        "candidate options. "
-        "Return exactly one structured MasterProfessorShadowOutput. "
-        "For PROPOSE_CHANGE, select exactly one supplied candidate_id; never invent, "
-        "edit, interpolate, "
-        "optimize, or calculate allocation amounts. KEEP_CURRENT and ABSTAIN select no candidate. "
-        "Every evidence_refs value must be copied from allowed_evidence_refs. "
-        "Do not create rankings, composite scores, Kelly sizing, statistical "
-        "correlations, thresholds, "
-        "orders, reservations, Risk decisions, registry changes, broker actions, or LIVE actions. "
-        "The output is advisory only and always requires operator review. "
-        "Echo analysis_id, analysis_fingerprint_sha256, and "
-        "current_policy_fingerprint_sha256 exactly from the supplied input payload."
-    )
+    instructions = MASTER_PROFESSOR_SHADOW_INSTRUCTIONS_FR_V1
     return AIGatewayRequest(
         request_id=request_id,
         system_id=current_allocation_policy.master_portfolio_id,

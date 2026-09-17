@@ -26,6 +26,15 @@ from .models import (
 )
 
 
+TASK_FORCE_MEMBER_INSTRUCTIONS_FR_V1 = (
+    "Retourne uniquement un TaskForceMemberAnalysis consultatif et fondé sur les données fournies. "
+    "Utilise uniquement le contexte fourni et identifie explicitement les incertitudes. Ne crée "
+    "aucun ordre, objet TradeProposal, décision Risk, permission, mutation du registry, action broker "  # noqa: E501
+    "ou action LIVE. Recopie exactement task_force_id, execution_run_id, member_id et agent_id depuis "  # noqa: E501
+    "le payload d'entrée fourni."
+)
+
+
 class TaskForceMemberFinding(BaseModel):
     """One grounded advisory finding returned by a Task Force member."""
 
@@ -319,14 +328,7 @@ def build_member_ai_gateway_request(
         "context_refs": list(contract.context_refs),
         "context": json.loads(context_json),
     }
-    instructions = (
-        "Return only a grounded advisory TaskForceMemberAnalysis. "
-        "Use only the supplied context and identify uncertainty explicitly. "
-        "Do not create orders, TradeProposal objects, Risk decisions, permissions, "
-        "registry mutations, broker actions, or LIVE actions. "
-        "Echo task_force_id, execution_run_id, member_id, and agent_id exactly from "
-        "the supplied input payload."
-    )
+    instructions = TASK_FORCE_MEMBER_INSTRUCTIONS_FR_V1
     metadata = {
         "phase": "task_force_member_analysis",
         "task_force_id": contract.task_force_id,

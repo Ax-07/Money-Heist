@@ -302,7 +302,7 @@ class SpecialistAgent(CoreAgent):
         provider_output_model: type[SpecialistAnalysis] = self.output_model
         allowed_source_keys: tuple[str, ...] | None = None
 
-        if self.prompt.version in {"v2", "v3", "v4", "v5"}:
+        if self.prompt.version in {"v2", "v3", "v4", "v5", "v6"}:
             grounding_payload: dict[str, Any] = {
                 "opportunity": opportunity,
                 "market_context": market_context,
@@ -310,7 +310,7 @@ class SpecialistAgent(CoreAgent):
             if context_payload is not None:
                 grounding_payload["specialist_context"] = context_payload
 
-            if self.prompt.version in {"v4", "v5"}:
+            if self.prompt.version in {"v4", "v5", "v6"}:
                 allowed_source_keys = tuple(
                     sorted(_grounded_json_leaf_paths(grounding_payload))
                 )
@@ -327,7 +327,7 @@ class SpecialistAgent(CoreAgent):
                 )
                 payload["allowed_evidence_source_keys"] = list(allowed_source_keys)
 
-            if self.prompt.version in {"v3", "v4", "v5"}:
+            if self.prompt.version in {"v3", "v4", "v5", "v6"}:
                 provider_output_model = _indexed_evidence_output_model(
                     self.output_model,
                     allowed_source_keys,
@@ -345,7 +345,7 @@ class SpecialistAgent(CoreAgent):
         # Tests/custom gateways may still return the canonical historical model;
         # in that case the fail-closed post-validator remains active.
         if (
-            self.prompt.version in {"v3", "v4", "v5"}
+            self.prompt.version in {"v3", "v4", "v5", "v6"}
             and allowed_source_keys is not None
             and result.output.__class__ is provider_output_model
         ):
@@ -360,7 +360,7 @@ class SpecialistAgent(CoreAgent):
             opportunity=opportunity,
             market_context=market_context,
             specialist_context=context_payload,
-            leaf_only=self.prompt.version in {"v4", "v5"},
+            leaf_only=self.prompt.version in {"v4", "v5", "v6"},
         )
         self._validate_analysis_against_context(result.output, prepared_context)
         return result

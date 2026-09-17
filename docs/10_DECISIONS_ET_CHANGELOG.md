@@ -1018,3 +1018,11 @@ le business fingerprint restent inchangés.
 **Raisons :** améliorer l'observabilité et la compréhension humaine des échanges de la crew sans fragiliser les schémas structurés, les validateurs, les replays historiques ni les contrats inter-services.
 
 **Conséquences :** légère hausse possible des tokens ; comptabilisation inchangée via `AIUsageRecord`; séparation reproductible des campagnes avant/après grâce à `prompt_render_version`.
+
+<!-- BATCH24FR2_NATIVE_PROMPTS -->
+
+### ADR-039 — French Native Agent Prompts
+
+Décision : maintenir les prompts actifs en français sans traduire rétroactivement les versions
+historiques. La reproductibilité repose sur les nouvelles `prompt_version` et sur
+`prompt_render_version=money-heist.prompt-transport.v4`. Les contrats machine restent inchangés.

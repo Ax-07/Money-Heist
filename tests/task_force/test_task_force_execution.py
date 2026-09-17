@@ -334,7 +334,7 @@ def test_gateway_input_is_canonical_and_contains_grounding_context():
     payload = json.loads(first.input_text)
     assert payload["context"] == {"a": {"b": 1}, "z": 2}
     assert payload["context_refs"] == list(contract.context_refs)
-    assert "Do not create orders" in first.instructions
+    assert "Ne crée aucun ordre" in first.instructions
 
 
 def test_gateway_instructions_are_stable_across_execution_ids():

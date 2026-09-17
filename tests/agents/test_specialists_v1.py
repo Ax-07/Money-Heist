@@ -146,7 +146,7 @@ def test_specialists_use_versioned_gateway_contract(
         request = gateway.requests[0]
         assert result.output == output
         assert request.agent_id == output.agent
-        assert request.prompt_version == "v5"
+        assert request.prompt_version == "v6"
         assert request.opportunity_id == opportunity_id
         assert request.metadata["phase"] == "specialist_independent_round_1"
         assert len(gateway.output_models) == 1
@@ -557,8 +557,8 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
         assert entry.core is False
         assert entry.allowed_tools == ()
         assert entry.model_route == "core_reasoning"
-        assert entry.prompt_version == "v5"
-        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v5"
+        assert entry.prompt_version == "v6"
+        assert SPECIALIST_PROMPTS.get(entry.agent_id, entry.prompt_version).version == "v6"
         # Historical prompt versions remain immutable and addressable.
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v1").version == "v1"
         assert SPECIALIST_PROMPTS.get(entry.agent_id, "v2").version == "v2"
@@ -570,5 +570,5 @@ def test_specialist_registry_and_prompts_extend_core_without_privileges():
         ).instructions
         assert "evidence_source_catalog" in instructions
         assert "source_index" in instructions
-        assert "atomic leaf" in instructions
-        assert "MUST NOT emit source_key" in instructions
+        assert "chemins JSON atomiques" in instructions
+        assert "NE DOIT PAS émettre source_key" in instructions
