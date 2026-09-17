@@ -3,7 +3,33 @@ from __future__ import annotations
 import hashlib
 import json
 
-PROMPT_TRANSPORT_VERSION = "money-heist.prompt-transport.v2"
+PROMPT_TRANSPORT_VERSION = "money-heist.prompt-transport.v3"
+AGENT_DIALOGUE_LANGUAGE = "fr-FR"
+AGENT_DIALOGUE_LANGUAGE_VERSION = "money-heist.agent-dialogue.fr.v1"
+
+_AGENT_DIALOGUE_LANGUAGE_MARKER = f"[{AGENT_DIALOGUE_LANGUAGE_VERSION}]"
+_AGENT_DIALOGUE_LANGUAGE_CONTRACT = (
+    f"{_AGENT_DIALOGUE_LANGUAGE_MARKER} "
+    "Rédige en français (fr-FR) tout contenu explicatif en langage naturel destiné à être lu "
+    "par un humain ou par un autre agent. Conserve exactement les clés JSON, noms de champs de "
+    "schéma, valeurs d'enum, identifiants, source_key/source_index, symboles de marché, nombres, "
+    "hashes, URLs et autres tokens machine imposés par le contrat ou présents dans les entrées. "
+    "Ne traduis jamais les tokens de contrôle tels que LONG, SHORT, NO_TRADE, NO_ANALYSIS, "
+    "NEUTRAL, UNKNOWN, CLEAR, CAUTION, REJECT, APPROVE, APPROVED, REJECTED, RESIZE, RESIZED, "
+    "ACTIVE, ON_DEMAND, SHADOW, PROBATION ou DISABLED. Les termes techniques standards peuvent "
+    "rester en anglais lorsqu'ils améliorent la précision."
+)
+
+
+def apply_agent_dialogue_language_contract(instructions: str | None) -> str:
+    """Append the stable French human-language contract exactly once."""
+
+    base = (instructions or "").strip()
+    if _AGENT_DIALOGUE_LANGUAGE_MARKER in base:
+        return base
+    if not base:
+        return _AGENT_DIALOGUE_LANGUAGE_CONTRACT
+    return f"{base}\n\n{_AGENT_DIALOGUE_LANGUAGE_CONTRACT}"
 
 
 def schema_fingerprint(json_schema: dict) -> str:

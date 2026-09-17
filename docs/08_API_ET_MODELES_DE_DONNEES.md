@@ -779,3 +779,8 @@ seulement les
 identités et la provenance nécessaires, ainsi qu'une projection minimale de
 l'identité du
 snapshot Analytics.
+
+<!-- BATCH24FR_AGENT_DIALOGUE -->
+## Contrat linguistique du AI Gateway
+
+Le transport `money-heist.prompt-transport.v3` ajoute le contrat `money-heist.agent-dialogue.fr.v1`. Ce contrat affecte uniquement le contenu textuel libre généré par les modèles. Les Structured Outputs conservent strictement leurs clés, types, enums, identifiants, `source_key`/`source_index`, valeurs numériques et autres éléments machine.

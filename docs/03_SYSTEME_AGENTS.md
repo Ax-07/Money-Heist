@@ -626,3 +626,10 @@ Le préfixe stable peut contenir rôle, instructions, version de prompt et finge
 Cette optimisation ne change ni l’indépendance du premier tour, ni Palermo, ni le Risk Engine, ni les frontières LIVE.
 
 <!-- DOC_REALIGN_POST_BATCH22_AGENTS_END -->
+
+<!-- BATCH24FR_AGENT_DIALOGUE -->
+## Dialogue agents en français
+
+Money Heist applique au niveau du AI Gateway le contrat stable `money-heist.agent-dialogue.fr.v1`. Tout contenu explicatif en langage naturel destiné à un humain ou à un autre agent doit être rédigé en français (`fr-FR`). Les contrats machine ne sont pas traduits : noms de champs, clés JSON, enums (`LONG`, `SHORT`, `NO_TRADE`, `CAUTION`, `REJECT`, etc.), identifiants et références d'évidence restent inchangés.
+
+Le changement est porté par `prompt_render_version=money-heist.prompt-transport.v3`, ce qui évite de mélanger silencieusement des campagnes/replays produits avant et après l'activation du français. Les versions métier historiques des prompts d'agents restent adressables et ne sont pas réécrites.

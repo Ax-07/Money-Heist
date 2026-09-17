@@ -359,3 +359,13 @@ restent indépendants et doivent toujours être satisfaits avant tout premier or
 - `DecisionContext` optionnel ;
 - business fingerprint et pipelines trading inchangés ;
 - architecture guards Analytics/Decision/Attribution renforcés.
+
+<!-- BATCH24FR_AGENT_DIALOGUE -->
+## Batch 24-FR — Dialogue agents en français
+
+- ajout du contrat transversal `money-heist.agent-dialogue.fr.v1` ;
+- `prompt_render_version` passe à `money-heist.prompt-transport.v3` afin de séparer strictement les replays avant/après changement linguistique ;
+- toutes les explications en langage naturel doivent être produites en français (`fr-FR`) ;
+- clés JSON, enums, identifiants, références d'évidence et autres tokens machine restent contractuellement inchangés ;
+- aucun changement d'autorité trading, Risk Engine, broker ou LIVE ;
+- la règle s'applique aussi aux Task Force et autres appels traversant le AI Gateway.

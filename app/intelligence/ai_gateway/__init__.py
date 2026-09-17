@@ -1,8 +1,8 @@
 from .budget import AIBudgetLedger, BudgetSnapshot
 from .client import AIClient
 from .errors import (
-    AIGatewayError,
     AIConfigurationError,
+    AIGatewayError,
     AIProviderError,
     BudgetExceededError,
     IncompleteAIProviderError,
@@ -28,7 +28,10 @@ from .pricing import (
     estimate_upper_bound_input_tokens,
 )
 from .prompt_cache import (
+    AGENT_DIALOGUE_LANGUAGE,
+    AGENT_DIALOGUE_LANGUAGE_VERSION,
     PROMPT_TRANSPORT_VERSION,
+    apply_agent_dialogue_language_contract,
     build_cacheable_developer_prefix,
     schema_fingerprint,
     stable_prefix_fingerprint,
@@ -68,7 +71,10 @@ __all__ = [
     "calculate_uncached_cost_eur",
     "estimate_max_request_cost_eur",
     "estimate_upper_bound_input_tokens",
+    "AGENT_DIALOGUE_LANGUAGE",
+    "AGENT_DIALOGUE_LANGUAGE_VERSION",
     "PROMPT_TRANSPORT_VERSION",
+    "apply_agent_dialogue_language_contract",
     "build_cacheable_developer_prefix",
     "schema_fingerprint",
     "stable_prefix_fingerprint",

@@ -28,6 +28,7 @@ from .pricing import (
     estimate_max_request_cost_eur,
 )
 from .prompt_cache import (
+    apply_agent_dialogue_language_contract,
     build_cacheable_developer_prefix,
     schema_fingerprint,
     stable_prefix_fingerprint,
@@ -69,6 +70,8 @@ class AIGateway(Generic[StructuredT]):
         schema_name = self._schema_name(output_model)
         json_schema = build_strict_json_schema(output_model)
         schema_sha256 = schema_fingerprint(json_schema)
+        rendered_instructions = apply_agent_dialogue_language_contract(request.instructions)
+        request = request.model_copy(update={"instructions": rendered_instructions})
         last_error: Exception | None = None
 
         for route in self._router.route_chain(request.model_route):
