@@ -522,3 +522,18 @@ Lisbon peut agréger l’économie nette estimée par rapport à un scénario sa
 La politique de budget réserve le cas d’entrée le plus défavorable entre input normal, cache read et cache write. Une partition de tokens incohérente échoue fail-closed.
 
 <!-- DOC_REALIGN_PROMPT_CACHE_ECONOMICS_END -->
+
+<!-- BATCH_24A6_PATTERN_CALIBRATION -->
+## Batch 24A.6 — Pattern Calibration & Pivot-Source Diagnostics
+
+- calibration observation-only, sans Forward Outcomes ni autorité trading ;
+- instrumentation du Pattern Engine canonique : candidats acceptés/rejetés, rule IDs,
+  observed/required et raisons ordonnées ;
+- identité candidat déterministe, indépendante de P&L/futur ;
+- comparaison `CAUSAL_ZIGZAG` vs `MONEY_HEIST_STRUCTURE` avec Pattern Registry constant ;
+- adapter Analytics causal pour les strict pivots Money Heist, sans modifier
+  `app/market/structure.py` ;
+- rapports séparés du `AnalyticsSnapshot`, avec `PatternCalibrationRun` dérivé de
+  `AnalyticsLabRun` ;
+- DESIGN/VALIDATION/OOS conservés ; acceptance ratio != trading win rate ;
+- aucun ranking, auto-tuning, frontend, Contexts/Sequences ou modification des seuils 24A.5.

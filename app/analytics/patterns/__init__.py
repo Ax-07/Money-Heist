@@ -1,4 +1,11 @@
-from .engine import patterns_at
+from .diagnostics import (
+    PatternCandidateEvaluation,
+    PatternCandidateFamily,
+    PatternEvaluationResult,
+    PatternRejectionReason,
+    PatternRuleEvaluation,
+)
+from .engine import pattern_evaluations_at, patterns_at
 from .integration import (
     ANALYTICS_24A5_BUNDLE_VERSION,
     build_analytics_snapshot_with_patterns,
@@ -35,6 +42,11 @@ __all__ = [
     "ANALYTICS_PATTERN_REGISTRY_VERSION",
     "PATTERN_BY_TYPE",
     "PATTERN_DEFINITIONS",
+    "PatternCandidateEvaluation",
+    "PatternCandidateFamily",
+    "PatternEvaluationResult",
+    "PatternRejectionReason",
+    "PatternRuleEvaluation",
     "PatternDirection",
     "PatternFamily",
     "PatternOccurrence",
@@ -49,6 +61,7 @@ __all__ = [
     "compute_patterns_from_causal_zigzag",
     "occurrence_at",
     "pattern_pivots_from_causal_zigzag",
+    "pattern_evaluations_at",
     "patterns_at",
     "transitions_at",
 ]
