@@ -28,6 +28,22 @@ from app.evaluation.analytics_attribution import (
     link_replay_opportunities,
 )
 from app.evaluation.decision_intelligence import build_decision_intelligence_record_set
+from app.evaluation.decision_quality import (
+    DecisionQualityResearchBundle,
+    FunnelDecisionQualityReport,
+    ScannerFilteringQualityReport,
+    build_decision_quality_research_bundle,
+    build_funnel_decision_quality_report,
+    build_scanner_filtering_quality_report,
+)
+from app.evaluation.decision_quality.evidence import (
+    DecisionQualityEvidenceIndex,
+    build_decision_quality_evidence_index,
+    decision_quality_evidence_export_name,
+    decision_quality_research_export_name,
+    funnel_decision_quality_export_name,
+    scanner_filtering_quality_export_name,
+)
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
 from app.market.structure import build_market_structure_context
 from app.services.backtest.analytics_lab import (
@@ -60,6 +76,10 @@ class FrontendPostRunProjection:
     analytics_snapshots: tuple[AnalyticsSnapshot, ...]
     decision_bundle: FrontendDecisionIntelligenceBundle
     geometry: FrontendAnalyticsGeometryProjection
+    decision_quality: DecisionQualityResearchBundle
+    scanner_filtering_quality: ScannerFilteringQualityReport
+    funnel_decision_quality: FunnelDecisionQualityReport
+    evidence_index: DecisionQualityEvidenceIndex
 
     def exports(self) -> dict[str, tuple[str, str]]:
         geometry_json = json.dumps(
@@ -76,6 +96,22 @@ class FrontendPostRunProjection:
             geometry_export_name(self.geometry.role): (
                 "application/json",
                 geometry_json,
+            ),
+            decision_quality_research_export_name(self.decision_bundle.role): (
+                "application/json",
+                self.decision_quality.to_json(),
+            ),
+            scanner_filtering_quality_export_name(self.decision_bundle.role): (
+                "application/json",
+                self.scanner_filtering_quality.to_json(),
+            ),
+            funnel_decision_quality_export_name(self.decision_bundle.role): (
+                "application/json",
+                self.funnel_decision_quality.to_json(),
+            ),
+            decision_quality_evidence_export_name(self.decision_bundle.role): (
+                "application/json",
+                self.evidence_index.to_json(),
             ),
         }
 
@@ -409,6 +445,8 @@ def build_frontend_postrun_projection(
     replay: Any,
     decision_funnel_report: Any,
     min_priority_score: int,
+    forward_outcomes: Any,
+    scanner_forward_outcomes: Any,
 ) -> FrontendPostRunProjection:
     """Automatically materialize 24A -> 24B -> 24C after a completed role replay.
 
@@ -460,12 +498,38 @@ def build_frontend_postrun_projection(
         analytics_run_id=analytics_run.analytics_run_id,
         analytics_snapshots=snapshots,
     )
+
+    decision_quality = build_decision_quality_research_bundle(
+        period_role=role_value,
+        decision_intelligence=decision_records,
+        scanner_attribution=scanner_attribution,
+        forward_outcomes=forward_outcomes,
+        scanner_forward_outcomes=scanner_forward_outcomes,
+        funnel_stage_attribution=funnel_attribution,
+    )
+    scanner_filtering_quality = build_scanner_filtering_quality_report(
+        bundle=decision_quality,
+    )
+    funnel_decision_quality = build_funnel_decision_quality_report(
+        bundle=decision_quality,
+        funnel_stage_attribution=funnel_attribution,
+    )
+    evidence_index = build_decision_quality_evidence_index(
+        bundle=decision_quality,
+        scanner_report=scanner_filtering_quality,
+        funnel_report=funnel_decision_quality,
+        funnel_stage_attribution=funnel_attribution,
+    )
     return FrontendPostRunProjection(
         analytics_run=analytics_run,
         analytics_manifest=manifest,
         analytics_snapshots=snapshots,
         decision_bundle=decision_bundle,
         geometry=geometry,
+        decision_quality=decision_quality,
+        scanner_filtering_quality=scanner_filtering_quality,
+        funnel_decision_quality=funnel_decision_quality,
+        evidence_index=evidence_index,
     )
 
 
@@ -478,6 +542,8 @@ def build_frontend_postrun_exports(
     replay: Any,
     decision_funnel_report: Any,
     min_priority_score: int,
+    forward_outcomes: Any,
+    scanner_forward_outcomes: Any,
 ) -> dict[str, tuple[str, str]]:
     return build_frontend_postrun_projection(
         campaign_id=campaign_id,
@@ -487,6 +553,8 @@ def build_frontend_postrun_exports(
         replay=replay,
         decision_funnel_report=decision_funnel_report,
         min_priority_score=min_priority_score,
+        forward_outcomes=forward_outcomes,
+        scanner_forward_outcomes=scanner_forward_outcomes,
     ).exports()
 
 

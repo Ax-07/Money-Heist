@@ -8,6 +8,10 @@ import {
   type OverlaySelection,
   type OverlayVisibility,
 } from "@/lib/analytics-overlay-state";
+import type {
+  ResearchCohortSelector,
+  ResearchContrastSelection,
+} from "@/lib/research-state";
 
 export const UI_STORE_NAME = "money-heist-ui-v2";
 export const UI_STORE_VERSION = 2;
@@ -21,6 +25,8 @@ type UiState = {
   overlayFilters: OverlayFilters;
   selectedOpportunityId: string | null;
   selectedAnalyticsObject: OverlaySelection | null;
+  selectedResearchCohort: ResearchCohortSelector | null;
+  selectedResearchContrast: ResearchContrastSelection | null;
   setSidebarCollapsed(value: boolean): void;
   setInspectorOpen(value: boolean): void;
   setSettingsOpen(value: boolean): void;
@@ -31,6 +37,9 @@ type UiState = {
   setSelectedOpportunityId(value: string | null): void;
   setSelectedAnalyticsObject(value: OverlaySelection | null): void;
   clearAnalyticsSelection(): void;
+  setSelectedResearchCohort(value: ResearchCohortSelector | null): void;
+  setSelectedResearchContrast(value: ResearchContrastSelection | null): void;
+  clearResearchSelection(): void;
 };
 
 type PersistedUiState = Pick<UiState, "sidebarCollapsed" | "overlayVisibility" | "overlayFilters">;
@@ -57,6 +66,8 @@ export function mergePersistedUiPreferences(
     selectedOpportunityId: current.selectedOpportunityId,
     selectedAnalyticsObject: current.selectedAnalyticsObject,
     inspectorOpen: current.inspectorOpen,
+    selectedResearchCohort: current.selectedResearchCohort,
+    selectedResearchContrast: current.selectedResearchContrast,
   };
 }
 
@@ -69,6 +80,8 @@ export const useUiStore = create<UiState>()(persist((set) => ({
   overlayFilters: DEFAULT_OVERLAY_FILTERS,
   selectedOpportunityId: null,
   selectedAnalyticsObject: null,
+  selectedResearchCohort: null,
+  selectedResearchContrast: null,
   setSidebarCollapsed: value => set({ sidebarCollapsed: value }),
   setInspectorOpen: value => set({ inspectorOpen: value }),
   setSettingsOpen: value => set({ settingsOpen: value }),
@@ -90,6 +103,18 @@ export const useUiStore = create<UiState>()(persist((set) => ({
     inspectorOpen: value !== null,
   }),
   clearAnalyticsSelection: () => set({ selectedAnalyticsObject: null, selectedOpportunityId: null }),
+  setSelectedResearchCohort: value => set({
+    selectedResearchCohort: value,
+    selectedResearchContrast: null,
+  }),
+  setSelectedResearchContrast: value => set({
+    selectedResearchContrast: value,
+    selectedResearchCohort: null,
+  }),
+  clearResearchSelection: () => set({
+    selectedResearchCohort: null,
+    selectedResearchContrast: null,
+  }),
 }), {
   name: UI_STORE_NAME,
   version: UI_STORE_VERSION,

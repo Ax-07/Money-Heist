@@ -17,6 +17,8 @@ describe("Decision Intelligence selection state", () => {
   beforeEach(() => {
     useUiStore.setState({
       inspectorOpen: false,
+      selectedResearchCohort: null,
+      selectedResearchContrast: null,
       overlayFilters: { ...DEFAULT_OVERLAY_FILTERS },
       selectedOpportunityId: null,
       selectedAnalyticsObject: null,
@@ -59,6 +61,12 @@ describe("Decision Intelligence selection state", () => {
       selectedOpportunityId: "stale-opportunity",
       selectedAnalyticsObject: selection,
       inspectorOpen: false,
+      selectedResearchCohort: {
+        reportType: "SCANNER_FILTERING",
+        dimension: "CLASSIFICATION",
+        key: "CANDIDATE_OPPORTUNITY",
+        stage: null,
+      },
     }, current);
 
     expect(merged.sidebarCollapsed).toBe(true);
@@ -67,6 +75,8 @@ describe("Decision Intelligence selection state", () => {
     expect(merged.selectedOpportunityId).toBe(current.selectedOpportunityId);
     expect(merged.selectedAnalyticsObject).toBe(current.selectedAnalyticsObject);
     expect(merged.inspectorOpen).toBe(current.inspectorOpen);
+    expect(merged.selectedResearchCohort).toBe(current.selectedResearchCohort);
+    expect(merged.selectedResearchContrast).toBe(current.selectedResearchContrast);
   });
 
   it("migrates the legacy 24C.2 technical event filter shape and fills new defaults", () => {
@@ -82,5 +92,24 @@ describe("Decision Intelligence selection state", () => {
     expect(merged.overlayFilters.technicalEventTypes).toEqual(["RSI_CROSS_50_UP"]);
     expect(merged.overlayFilters.scannerClassifications).toEqual([]);
     expect(merged.overlayFilters.patternStatuses).toEqual([]);
+  });
+
+  it("keeps research selection UI-only and separate from canonical replay selection", () => {
+    useUiStore.getState().setSelectedAnalyticsObject(selection);
+    useUiStore.getState().setSelectedResearchCohort({
+      reportType: "FUNNEL_DECISION_QUALITY",
+      stage: "PROFESSOR_FINAL",
+      dimension: "STAGE_RESULT",
+      key: "LONG",
+    });
+
+    const state = useUiStore.getState();
+    expect(state.selectedAnalyticsObject?.objectId).toBe("stage-1");
+    expect(state.selectedOpportunityId).toBe("opportunity-1");
+    expect(state.selectedResearchCohort?.key).toBe("LONG");
+
+    useUiStore.getState().clearResearchSelection();
+    expect(useUiStore.getState().selectedAnalyticsObject?.objectId).toBe("stage-1");
+    expect(useUiStore.getState().selectedResearchCohort).toBeNull();
   });
 });

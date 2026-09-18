@@ -7,6 +7,7 @@ import { OverlayToolbar } from "@/components/chart/overlay-toolbar";
 import { TradingChart } from "@/components/chart/trading-chart";
 import { StatusBadge } from "@/components/ui/badge";
 import { DecisionIntelligenceInspector } from "@/components/inspector/decision-intelligence-inspector";
+import { ResearchExplorer } from "@/components/research/research-explorer";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -22,8 +23,10 @@ import type {
   CampaignProgress,
   CampaignSummary,
 } from "@/lib/api/schemas";
+import type { ResearchEvidenceItem } from "@/lib/api/research-schemas";
 import type { FilteredNavigationItem } from "@/lib/decision-intelligence-navigation";
 import { useAnalyticsOverlays } from "@/lib/hooks/use-analytics-overlays";
+import { evidenceToOverlaySelection } from "@/lib/research-navigation";
 import { useUiStore } from "@/lib/ui-store";
 import { formatDateTime } from "@/lib/utils";
 import { isTerminalCampaignStatus, shouldPollCampaignProgress } from "./campaign-progress";
@@ -67,6 +70,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
   const overlays = useAnalyticsOverlays(campaignId, role, campaign.isSuccess);
   const setSelectedAnalyticsObject = useUiStore(state => state.setSelectedAnalyticsObject);
   const clearAnalyticsSelection = useUiStore(state => state.clearAnalyticsSelection);
+  const clearResearchSelection = useUiStore(state => state.clearResearchSelection);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<ReplaySpeed>(1);
@@ -76,8 +80,9 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
 
   useEffect(() => {
     clearAnalyticsSelection();
+    clearResearchSelection();
     setNavigationScopeTime(null);
-  }, [campaignId, clearAnalyticsSelection]);
+  }, [campaignId, clearAnalyticsSelection, clearResearchSelection]);
 
   const setReplayIndex = useCallback((nextIndex: number) => {
     setIndex(nextIndex);
@@ -102,6 +107,12 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
     seekTo(Math.floor(new Date(item.timestamp).getTime() / 1000), true);
   }, [cursorTime, seekTo, setSelectedAnalyticsObject]);
 
+  const navigateToResearchEvidence = useCallback((item: ResearchEvidenceItem) => {
+    const selection = evidenceToOverlaySelection(item);
+    seekTo(Math.floor(new Date(item.navigation_at).getTime() / 1000));
+    setSelectedAnalyticsObject(selection);
+  }, [seekTo, setSelectedAnalyticsObject]);
+
   if (progress.data && !progress.data.result_available && !campaign.data) {
     return <ProgressView progress={progress.data} cancelling={cancel.isPending} onCancel={() => cancel.mutate()} />;
   }
@@ -124,6 +135,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
           setPlaying(false);
           setNavigationScopeTime(null);
           clearAnalyticsSelection();
+          clearResearchSelection();
         }}
       >
         <TabsList className="w-fit">
@@ -184,6 +196,12 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
               overlays={overlays.data}
             />
           </div>
+          <ResearchExplorer
+            campaignId={campaignId}
+            role={role}
+            enabled={campaign.isSuccess}
+            onEvidenceSelect={navigateToResearchEvidence}
+          />
           <TradeAndEvents replay={replay.data} setIndex={time => seekTo(time)} />
           <section className="panel p-4"><p className="panel-title mb-3">Equity · {role}</p><EquityChart points={replay.data.equity} /></section>
         </>

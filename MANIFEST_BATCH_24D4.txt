@@ -1,0 +1,30 @@
+Batch 24D.4 — Research Reports & Evidence Explorer
+
+Backend
+- app/evaluation/decision_quality/evidence.py
+- app/services/frontend_v2/research.py
+- app/api/routes/frontend_v2_research.py
+- app/api/router.py
+- app/dashboard/analytics_postrun.py
+- app/dashboard/backtest.py
+
+Frontend
+- frontend/src/lib/research-state.ts
+- frontend/src/lib/api/research-schemas.ts
+- frontend/src/lib/api/queries.ts
+- frontend/src/lib/hooks/use-research.ts
+- frontend/src/lib/research-navigation.ts
+- frontend/src/lib/ui-store.ts
+- frontend/src/components/research/research-explorer.tsx
+- frontend/src/features/backtests/backtest-detail.tsx
+
+Tests
+- tests/evaluation/test_decision_quality_evidence.py
+- tests/api/test_frontend_v2_research.py
+- tests/services/test_frontend_postrun_architecture.py
+- frontend/src/lib/ui-store.test.ts
+- frontend/src/lib/research-navigation.test.ts
+
+Documentation
+- README_BATCH_24D4.md
+- MANIFEST_BATCH_24D4.txt
