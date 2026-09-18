@@ -23,6 +23,7 @@ type UiState = {
   setMobileSidebarOpen(value: boolean): void;
   setOverlayVisibility(value: Partial<OverlayVisibility>): void;
   setOverlayFilters(value: Partial<OverlayFilters>): void;
+  setSelectedOpportunityId(value: string | null): void;
   setSelectedAnalyticsObject(value: OverlaySelection | null): void;
   clearAnalyticsSelection(): void;
 };
@@ -46,9 +47,14 @@ export const useUiStore = create<UiState>()(persist((set) => ({
   setOverlayFilters: value => set(state => ({
     overlayFilters: { ...state.overlayFilters, ...value },
   })),
+  setSelectedOpportunityId: value => set({
+    selectedOpportunityId: value,
+    inspectorOpen: value !== null,
+  }),
   setSelectedAnalyticsObject: value => set({
     selectedAnalyticsObject: value,
     selectedOpportunityId: value?.opportunityId ?? null,
+    inspectorOpen: value !== null,
   }),
   clearAnalyticsSelection: () => set({ selectedAnalyticsObject: null, selectedOpportunityId: null }),
 }), {

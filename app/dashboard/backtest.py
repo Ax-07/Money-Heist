@@ -13,7 +13,6 @@ from typing import Any, Literal
 from uuid import uuid4
 
 import httpx
-
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -41,29 +40,29 @@ from app.services.backtest import (
     DecisionFunnelReport,
     ForwardOutcomeReport,
     FunnelOutcomeAttributionReport,
-    ScannerForwardOutcomeReport,
     HistoricalPositionLifecycle,
     HistoricalReplayRunner,
     HistoricalSetupAttributionError,
     ReplayClock,
     ReplayIdFactory,
+    ScannerForwardOutcomeReport,
     WalkForwardReport,
     build_decision_funnel_report,
     build_forward_outcomes_report,
     build_funnel_outcome_attribution_report,
-    build_scanner_forward_outcomes_report,
     build_run_manifest,
+    build_scanner_forward_outcomes_report,
     build_walk_forward_plan,
     catalog_from_historical_runs,
     closed_trades_to_csv,
     decision_funnel_to_json,
-    forward_outcomes_to_json,
-    funnel_outcome_attribution_to_json,
-    scanner_forward_outcomes_to_json,
     equity_curve_to_csv,
     evaluate_historical_replay,
     execute_walk_forward,
+    forward_outcomes_to_json,
+    funnel_outcome_attribution_to_json,
     manifest_to_json,
+    scanner_forward_outcomes_to_json,
     split_report_to_json,
     walk_forward_report_to_json,
 )
@@ -1158,10 +1157,30 @@ class BacktestDashboardService:
 
             if runtime is not None:
                 runtime.phase = "FINALIZING"
-                runtime.message = "Génération des rapports et exports."
+                runtime.message = "Génération des rapports, Analytics et exports."
                 runtime.percent = max(runtime.percent, 99.0)
 
+            from app.dashboard.analytics_postrun import (
+                build_frontend_postrun_exports,
+            )
+
             campaign_id = _campaign_id or str(uuid4())
+            for role in BacktestPeriodRole:
+                execution = executions[role]
+                exports.update(
+                    build_frontend_postrun_exports(
+                        campaign_id=campaign_id,
+                        role=role,
+                        run=run_set.by_role(role),
+                        candles=parsed.candles,
+                        replay=execution.replay,
+                        decision_funnel_report=execution.decision_funnel,
+                        min_priority_score=int(
+                            execution.scanner_forward_outcomes.min_priority_score
+                        ),
+                    )
+                )
+
             oos_equity = tuple(
                 EquityView(observed_at=point.observed_at, equity=str(point.equity))
                 for point in executions[BacktestPeriodRole.OOS].evaluation.equity_points

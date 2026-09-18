@@ -328,3 +328,12 @@ npm run typecheck  → OK
 npm run test       → 9 fichiers / 37 tests OK
 npm run build      → OK
 ```
+
+<!-- BATCH_24C3_FRONTEND -->
+## Addendum Batch 24C.3 — Decision Intelligence Inspector
+
+Le Historical Replay utilise désormais un Inspector contextuel unique dans le panneau droit. Une sélection chart synchronise `selectedAnalyticsObject` et, lorsqu'il existe, `selectedOpportunityId`, puis ouvre `inspectorOpen`.
+
+L'Inspector affiche les sections Scanner, Agents, Decision Funnel, Risk & Execution et Analytics causal. Il consomme l'endpoint détail 24C.1 existant et n'ajoute aucun endpoint d'écriture.
+
+Sur écran large, le panneau reste intégré au cockpit et redimensionnable horizontalement ; sur viewport plus étroit, la même vue est rendue sous forme de panneau mobile fixe. Le changement de campagne ou de rôle efface la sélection afin d'éviter tout état incohérent.

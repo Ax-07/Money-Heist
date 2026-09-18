@@ -697,3 +697,15 @@ Validation locale 24C.2 du 2026-09-18 :
 
 La prochaine étape est 24C.3 — Decision Intelligence Inspector complet. 24C.3 doit réutiliser la
 sélection stable préparée par 24C.2 et ne doit pas introduire de nouvelle autorité métier.
+
+<!-- BATCH_24C3_ROADMAP -->
+## État Batch 24C — Decision Intelligence Backend & UI
+
+```text
+24C.1 — Backend Projection API                    DONE
+24C.2 — Trading Chart Analytics Overlays          DONE
+24C.3 — Decision Intelligence Inspector           DONE
+24C.4 — Filters & Navigation                      NEXT
+```
+
+24C.3 raccorde d'abord automatiquement la chaîne 24A → 24B → 24C au chemin normal de fin de backtest, puis ajoute l'Inspector Decision Intelligence au panneau droit du Historical Replay. Les GET restent strictement read-only et aucun lazy-compute n'est introduit.
