@@ -26,10 +26,11 @@ def test_analytics_does_not_import_decision_quality() -> None:
     _assert_no_decision_quality_import(REPO_ROOT / "app/analytics")
 
 
-def test_scanner_agents_risk_paper_and_live_do_not_import_decision_quality() -> None:
+def test_runtime_boundaries_do_not_import_decision_quality() -> None:
     roots = (
         REPO_ROOT / "app/market/scanner",
         REPO_ROOT / "app/agents",
+        REPO_ROOT / "app/services/decision_context",
         REPO_ROOT / "app/trading/risk",
         REPO_ROOT / "app/services/paper_pipeline",
         REPO_ROOT / "app/trading/paper",
@@ -64,6 +65,7 @@ def test_decision_quality_has_no_trading_authority_or_recompute_calls() -> None:
     forbidden = (
         "DeterministicScanner",
         "ScannerConfig",
+        "FeatureEngine",
         "RiskEngine",
         "RiskProfile",
         "PaperBroker",
@@ -73,8 +75,14 @@ def test_decision_quality_has_no_trading_authority_or_recompute_calls() -> None:
         "build_analytics_",
         "compute_forward_outcomes",
         "compute_scanner_forward_outcomes",
-        "app.agents.prompts",
+        "app.analytics",
+        "app.agents",
+        "app.market.scanner",
+        "app.services.decision_context",
+        "app.trading.risk",
+        "app.trading.paper",
         "app.trading.live",
+        "app.agents.prompts",
     )
     violations = []
     for path in _python_files(root):

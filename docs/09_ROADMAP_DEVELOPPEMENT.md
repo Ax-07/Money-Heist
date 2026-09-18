@@ -725,3 +725,22 @@ Batch 24C — Decision Intelligence Backend & UI    DONE
 24C.4 ajoute une couche frontend d'exploration pure : filtres multi-select Scanner/Decision/Analytics, sémantique OR intra-dimension et AND inter-dimensions, compteur, recherche, liste causale et Previous/Next. La navigation distingue timestamp de géométrie et timestamp de connaissance (`observed_at`, `available_at`, `confirmed_at`, `operational_at`) et ne recalcule aucun artefact métier.
 
 La phase suivante est **Batch 24D — Decision Quality Research**. Elle seule pourra joindre Decision Intelligence @ T aux Forward Outcomes postérieurs pour les études de qualité, sans feedback dans le pipeline de décision.
+
+<!-- BATCH_24D2_SCANNER_FILTERING_QUALITY_RESEARCH -->
+## État Batch 24D — Decision Quality Research
+
+```text
+24D.1 — Research Foundation & Outcome Join         DONE
+24D.2 — Scanner Filtering Quality Research         CURRENT
+24D.3 — Funnel Decision Quality Research           NEXT
+24D.4 — Research Reports & Evidence Explorer       PLANNED
+```
+
+24D.2 construit une projection descriptive et déterministe à partir de
+`DecisionQualityResearchBundle.scanner_records`. Le Scanner reste directionless : les Forward
+Outcomes décrivent le mouvement futur du prix et ne constituent ni un P&L hypothétique, ni un
+label de trade raté, ni une recommandation de threshold. Les dimensions v1 sont
+`CLASSIFICATION`, `SCORE`, `SCORE_MARGIN`, `TRIGGER` et `MARKET_REGIME`; les contrasts restent
+strictement descriptifs. Persistance, API de rapports et Evidence Explorer restent réservés à
+24D.4.
+
