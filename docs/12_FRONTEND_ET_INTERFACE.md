@@ -337,3 +337,24 @@ Le Historical Replay utilise désormais un Inspector contextuel unique dans le p
 L'Inspector affiche les sections Scanner, Agents, Decision Funnel, Risk & Execution et Analytics causal. Il consomme l'endpoint détail 24C.1 existant et n'ajoute aucun endpoint d'écriture.
 
 Sur écran large, le panneau reste intégré au cockpit et redimensionnable horizontalement ; sur viewport plus étroit, la même vue est rendue sous forme de panneau mobile fixe. Le changement de campagne ou de rôle efface la sélection afin d'éviter tout état incohérent.
+
+<!-- BATCH_24C4_FRONTEND -->
+## Addendum Batch 24C.4 — Filters & Navigation
+
+Le Historical Replay possède maintenant une couche d'exploration frontend séparée de la visibilité des overlays :
+
+- Scanner : classification, triggers, score min/max ;
+- Decision Funnel : Professor FINAL, Palermo, Risk ;
+- Analytics : Technical Event family/type/direction et Pattern type/statut causal/direction/pivot source ;
+- OR à l'intérieur d'une dimension, AND entre dimensions ;
+- chips de filtres actifs, Clear All, compteur, recherche et liste de résultats ;
+- Previous/Next sans wrap ;
+- sélection hors filtre conservée dans l'Inspector.
+
+La logique de filtering/navigation est centralisée dans `decision-intelligence-navigation.ts`. Le chart, le compteur et le navigator consomment la même liste filtrée.
+
+`OverlaySelection` distingue désormais `timestamp` (géométrie) et `navigationTimestamp` (connaissance causale). Candidate/Scanner utilisent `observed_at`, Technical Events `available_at`, ZigZag `confirmed_at`, Patterns la transition `available_at`, et Funnel `operational_at ?? market_as_of`.
+
+Le store `money-heist-ui-v2` persiste les préférences génériques uniquement. Sa migration v2 accepte les anciens champs 24C.2 `technicalEventFamily` / `technicalEventType`. Les sélections de campagne et la recherche ne sont jamais persistées.
+
+Aucune API n'est ajoutée et aucun calcul Scanner/Analytics/Decision/Risk n'est déplacé dans le navigateur. Voir `BATCH_24C4_FILTERS_AND_NAVIGATION.md`.

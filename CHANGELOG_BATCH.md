@@ -418,3 +418,33 @@ inchangés et `prompt_render_version` passe à `money-heist.prompt-transport.v4`
 - aucune dépendance Forward Outcomes, aucun changement du business fingerprint ou du run ID ;
 - validation locale complète réussie le 2026-09-17 : Ruff, 24B.1-24B.4, 23A, Decision Funnel / Risk / PAPER, Agents / Orchestration, Analytics et full suite avec exactement 3 skips attendus ;
 - Batch 24B.4 et Batch 24B DONE.
+<!-- BATCH_24C4_FILTERS_NAVIGATION_START -->
+
+## Batch 24C.4 â€” Filters & Navigation
+
+**Baseline :** `f32b41f4c1f432b46212721d996d657cffa97c2f` (`main`).
+
+LivrÃ© :
+- FilterState canonique Ã©tendu dans Zustand avec migration des filtres 24C.2 ;
+- multi-selects Scanner / FINAL / Palermo / Risk / Technical Events / Patterns ;
+- score Scanner min/max ;
+- OR dans une dimension et AND entre dimensions ;
+- chips actifs, Clear All, compteur causal et recherche ;
+- liste de rÃ©sultats et navigation Previous / Next sans wrap ;
+- timestamps de navigation causaux distincts des timestamps de gÃ©omÃ©trie ;
+- synchronisation replay / chart / Decision Intelligence Inspector ;
+- sÃ©lection hors filtre conservÃ©e et explicitement identifiable ;
+- reset des sÃ©lections run-specific sur changement de campagne/rÃ´le ;
+- tests frontend de filtering, ordering, timestamps et persistance ;
+- documentation `docs/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
+
+FrontiÃ¨res conservÃ©es : aucun endpoint/backend mÃ©tier ajoutÃ©, aucun recalcul Analytics dans le navigateur, aucun changement Scanner/Agents/Risk/PAPER/LIVE/Forward Outcomes, `run_id` ou business fingerprint.
+
+Validation opÃ©rateur du 2026-09-18 avant ce hotfix documentaire :
+- `pnpm run lint` : OK ;
+- `pnpm run typecheck` : OK ;
+- `pnpm run test` : 11 fichiers / 58 tests OK ;
+- `pnpm run build:clean` : OK ;
+- `uv run pytest -q` : deux Ã©checs documentaires uniquement, causÃ©s par l'Ã©crasement accidentel du changelog central dans le premier ZIP 24C.4 ; ce hotfix restaure l'historique puis ajoute cette section. La suite Python doit Ãªtre relancÃ©e aprÃ¨s application.
+
+<!-- BATCH_24C4_FILTERS_NAVIGATION_END -->

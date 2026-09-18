@@ -76,3 +76,19 @@ timestamps de disponibilité/confirmation du backend.
 
 Les préférences de couches et filtres sont des préférences UI Zustand. Un ancien run sans
 Analytics reste compatible avec le replay classique.
+
+<!-- BATCH_24C4_FRONTEND_README -->
+## Filters & Navigation — Batch 24C.4
+
+Le Historical Replay ajoute des filtres d'exploration Scanner, Decision Funnel et Analytics,
+ainsi qu'un compteur causal, une recherche locale et Previous/Next. Les filtres restent séparés
+de la visibilité des overlays et ne modifient jamais les candles ou les données backend.
+
+Sémantique : OR au sein d'une dimension, AND entre dimensions. La navigation utilise le timestamp
+de connaissance (`observed_at`, `available_at`, `confirmed_at`, `operational_at`) tandis que le
+chart conserve le timestamp de géométrie (`event_at`, `pivot_at`, `market_as_of`).
+
+Les préférences sont persistées sous `money-heist-ui-v2`; les sélections de campagne ne le sont
+pas. L'ancien état 24C.2 des filtres Technical Event est migré vers les nouveaux multi-selects.
+
+Voir `docs/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.

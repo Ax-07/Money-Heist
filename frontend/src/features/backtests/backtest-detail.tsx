@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EquityChart } from "@/components/chart/equity-chart";
 import { OverlayToolbar } from "@/components/chart/overlay-toolbar";
 import { TradingChart } from "@/components/chart/trading-chart";
@@ -22,6 +22,7 @@ import type {
   CampaignProgress,
   CampaignSummary,
 } from "@/lib/api/schemas";
+import type { FilteredNavigationItem } from "@/lib/decision-intelligence-navigation";
 import { useAnalyticsOverlays } from "@/lib/hooks/use-analytics-overlays";
 import { useUiStore } from "@/lib/ui-store";
 import { formatDateTime } from "@/lib/utils";
@@ -69,23 +70,41 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<ReplaySpeed>(1);
+  const [navigationScopeTime, setNavigationScopeTime] = useState<number | null>(null);
   const cursorTime = replay.data?.candles[index]?.time ?? null;
   const summary = campaign.data;
 
   useEffect(() => {
     clearAnalyticsSelection();
+    setNavigationScopeTime(null);
   }, [campaignId, clearAnalyticsSelection]);
+
+  const setReplayIndex = useCallback((nextIndex: number) => {
+    setIndex(nextIndex);
+    const nextTime = replay.data?.candles[nextIndex]?.time ?? null;
+    setNavigationScopeTime(nextTime);
+  }, [replay.data]);
+
+  const seekTo = useCallback((time: number, preserveNavigationScope = false) => {
+    if (!replay.data) return;
+    const target = replay.data.candles.findIndex(candle => candle.time >= time);
+    const nextIndex = target < 0 ? replay.data.candles.length - 1 : target;
+    setIndex(nextIndex);
+    setPlaying(false);
+    if (!preserveNavigationScope) {
+      setNavigationScopeTime(replay.data.candles[nextIndex]?.time ?? null);
+    }
+  }, [replay.data]);
+
+  const navigateToItem = useCallback((item: FilteredNavigationItem) => {
+    setNavigationScopeTime(value => value ?? cursorTime);
+    setSelectedAnalyticsObject(item.selection);
+    seekTo(Math.floor(new Date(item.timestamp).getTime() / 1000), true);
+  }, [cursorTime, seekTo, setSelectedAnalyticsObject]);
 
   if (progress.data && !progress.data.result_available && !campaign.data) {
     return <ProgressView progress={progress.data} cancelling={cancel.isPending} onCancel={() => cancel.mutate()} />;
   }
-
-  const seekTo = (time: number) => {
-    if (!replay.data) return;
-    const target = replay.data.candles.findIndex(candle => candle.time >= time);
-    setIndex(target < 0 ? replay.data.candles.length - 1 : target);
-    setPlaying(false);
-  };
 
   return (
     <div className="space-y-4">
@@ -103,6 +122,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
           setRole(value as typeof role);
           setIndex(0);
           setPlaying(false);
+          setNavigationScopeTime(null);
           clearAnalyticsSelection();
         }}
       >
@@ -126,7 +146,11 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
                 <span className="text-xs text-slate-400">{replay.data.symbol} · {replay.data.timeframe}</span>
                 <span className="ml-auto text-[10px] text-slate-600">Données backend canoniques · replay causal au curseur</span>
               </div>
-              <OverlayToolbar overlays={overlays.data} />
+              <OverlayToolbar
+                overlays={overlays.data}
+                cursorTime={navigationScopeTime ?? cursorTime}
+                onNavigate={navigateToItem}
+              />
               <div className="h-[520px]">
                 <TradingChart
                   mode="BACKTEST"
@@ -137,8 +161,9 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
                   analyticsOverlays={overlays.data}
                   cursorTime={cursorTime}
                   onOverlaySelect={selection => {
+                    setNavigationScopeTime(value => value ?? cursorTime);
                     setSelectedAnalyticsObject(selection);
-                    seekTo(Math.floor(new Date(selection.timestamp).getTime() / 1000));
+                    seekTo(Math.floor(new Date(selection.navigationTimestamp).getTime() / 1000), true);
                   }}
                   onEventSelect={event => seekTo(Math.floor(new Date(event.observed_at).getTime() / 1000))}
                 />
@@ -146,7 +171,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
               <ReplayControls
                 replay={replay.data}
                 index={index}
-                setIndex={setIndex}
+                setIndex={setReplayIndex}
                 playing={playing}
                 setPlaying={setPlaying}
                 speed={speed}
@@ -159,7 +184,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
               overlays={overlays.data}
             />
           </div>
-          <TradeAndEvents replay={replay.data} setIndex={seekTo} />
+          <TradeAndEvents replay={replay.data} setIndex={time => seekTo(time)} />
           <section className="panel p-4"><p className="panel-title mb-3">Equity · {role}</p><EquityChart points={replay.data.equity} /></section>
         </>
       )}

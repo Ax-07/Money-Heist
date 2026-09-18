@@ -3,10 +3,14 @@ import { persist } from "zustand/middleware";
 import {
   DEFAULT_OVERLAY_FILTERS,
   DEFAULT_OVERLAY_VISIBILITY,
+  normalizeOverlayFilters,
   type OverlayFilters,
   type OverlaySelection,
   type OverlayVisibility,
 } from "@/lib/analytics-overlay-state";
+
+export const UI_STORE_NAME = "money-heist-ui-v2";
+export const UI_STORE_VERSION = 2;
 
 type UiState = {
   sidebarCollapsed: boolean;
@@ -23,10 +27,38 @@ type UiState = {
   setMobileSidebarOpen(value: boolean): void;
   setOverlayVisibility(value: Partial<OverlayVisibility>): void;
   setOverlayFilters(value: Partial<OverlayFilters>): void;
+  clearOverlayFilters(): void;
   setSelectedOpportunityId(value: string | null): void;
   setSelectedAnalyticsObject(value: OverlaySelection | null): void;
   clearAnalyticsSelection(): void;
 };
+
+type PersistedUiState = Pick<UiState, "sidebarCollapsed" | "overlayVisibility" | "overlayFilters">;
+
+export function mergePersistedUiPreferences(
+  persisted: unknown,
+  current: UiState,
+): UiState {
+  const record = persisted && typeof persisted === "object" ? persisted as Record<string, unknown> : {};
+  const persistedVisibility = record.overlayVisibility && typeof record.overlayVisibility === "object"
+    ? record.overlayVisibility as Partial<OverlayVisibility>
+    : {};
+  return {
+    ...current,
+    sidebarCollapsed: typeof record.sidebarCollapsed === "boolean"
+      ? record.sidebarCollapsed
+      : current.sidebarCollapsed,
+    overlayVisibility: {
+      ...DEFAULT_OVERLAY_VISIBILITY,
+      ...persistedVisibility,
+    },
+    overlayFilters: normalizeOverlayFilters(record.overlayFilters),
+    // Run-specific selections intentionally always come from the fresh current state.
+    selectedOpportunityId: current.selectedOpportunityId,
+    selectedAnalyticsObject: current.selectedAnalyticsObject,
+    inspectorOpen: current.inspectorOpen,
+  };
+}
 
 export const useUiStore = create<UiState>()(persist((set) => ({
   sidebarCollapsed: false,
@@ -45,8 +77,9 @@ export const useUiStore = create<UiState>()(persist((set) => ({
     overlayVisibility: { ...state.overlayVisibility, ...value },
   })),
   setOverlayFilters: value => set(state => ({
-    overlayFilters: { ...state.overlayFilters, ...value },
+    overlayFilters: normalizeOverlayFilters({ ...state.overlayFilters, ...value }),
   })),
+  clearOverlayFilters: () => set({ overlayFilters: { ...DEFAULT_OVERLAY_FILTERS } }),
   setSelectedOpportunityId: value => set({
     selectedOpportunityId: value,
     inspectorOpen: value !== null,
@@ -58,10 +91,13 @@ export const useUiStore = create<UiState>()(persist((set) => ({
   }),
   clearAnalyticsSelection: () => set({ selectedAnalyticsObject: null, selectedOpportunityId: null }),
 }), {
-  name: "money-heist-ui-v2",
+  name: UI_STORE_NAME,
+  version: UI_STORE_VERSION,
+  migrate: persisted => persisted as PersistedUiState,
   partialize: state => ({
     sidebarCollapsed: state.sidebarCollapsed,
     overlayVisibility: state.overlayVisibility,
     overlayFilters: state.overlayFilters,
-  }),
+  }) as PersistedUiState,
+  merge: (persisted, current) => mergePersistedUiPreferences(persisted, current),
 }));

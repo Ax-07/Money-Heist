@@ -709,3 +709,19 @@ sélection stable préparée par 24C.2 et ne doit pas introduire de nouvelle aut
 ```
 
 24C.3 raccorde d'abord automatiquement la chaîne 24A → 24B → 24C au chemin normal de fin de backtest, puis ajoute l'Inspector Decision Intelligence au panneau droit du Historical Replay. Les GET restent strictement read-only et aucun lazy-compute n'est introduit.
+
+<!-- BATCH_24C4_ROADMAP -->
+## Clôture Batch 24C — Decision Intelligence Backend & UI
+
+```text
+24C.1 — Backend Projection API                    DONE
+24C.2 — Trading Chart Analytics Overlays          DONE
+24C.3 — Decision Intelligence Inspector           DONE
+24C.4 — Filters & Navigation                      DONE
+
+Batch 24C — Decision Intelligence Backend & UI    DONE
+```
+
+24C.4 ajoute une couche frontend d'exploration pure : filtres multi-select Scanner/Decision/Analytics, sémantique OR intra-dimension et AND inter-dimensions, compteur, recherche, liste causale et Previous/Next. La navigation distingue timestamp de géométrie et timestamp de connaissance (`observed_at`, `available_at`, `confirmed_at`, `operational_at`) et ne recalcule aucun artefact métier.
+
+La phase suivante est **Batch 24D — Decision Quality Research**. Elle seule pourra joindre Decision Intelligence @ T aux Forward Outcomes postérieurs pour les études de qualité, sans feedback dans le pipeline de décision.

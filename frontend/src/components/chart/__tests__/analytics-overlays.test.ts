@@ -77,6 +77,9 @@ describe("analytics overlay causal mapping", () => {
 
     const after = buildChartOverlayModel(overlays, DEFAULT_OVERLAY_VISIBILITY, DEFAULT_OVERLAY_FILTERS, Number(isoToChartTime(t(14))));
     expect(after.zigzag).toEqual([{ time: isoToChartTime(t(8)), value: 100 }]);
+    const pivot = after.markers.find(item => item.selection.objectType === "CausalZigZagPivot");
+    expect(pivot?.selection.timestamp).toBe(t(8));
+    expect(pivot?.selection.navigationTimestamp).toBe(t(14));
   });
 
   it("does not back-propagate a future FAILED pattern status", () => {
@@ -86,15 +89,13 @@ describe("analytics overlay causal mapping", () => {
 
     const at19 = buildChartOverlayModel(baseOverlays(), DEFAULT_OVERLAY_VISIBILITY, DEFAULT_OVERLAY_FILTERS, Number(isoToChartTime(t(19))));
     expect(at19.patternSegments[0]?.status).toBe("CONFIRMED");
+    const selected = at19.markers.find(item => item.selection.objectType === "PatternOccurrence")?.selection;
+    expect(selected?.navigationTimestamp).toBe(t(18));
   });
 
   it("keeps NO_TRIGGER hidden by default and selects CandidateOpportunity by stable id", () => {
     const overlays = baseOverlays();
-    const analytics = {
-      status: "MATCHED",
-      analytics_run_id: "analytics-1",
-      diagnostics: [],
-    };
+    const analytics = { status: "MATCHED", analytics_run_id: "analytics-1", diagnostics: [] };
     overlays.scanner = [
       {
         record_id: "scan-record-1",
@@ -135,10 +136,11 @@ describe("analytics overlay causal mapping", () => {
     const selected = selectionAtTime(model.markers, isoToChartTime(t(17)));
     expect(selected?.objectType).toBe("CandidateOpportunity");
     expect(selected?.opportunityId).toBe("opp-1");
+    expect(selected?.navigationTimestamp).toBe(t(17));
   });
 });
 
-describe("overlay visibility and event filters", () => {
+describe("overlay visibility and filters", () => {
   it("removes and restores ZigZag without changing causal geometry", () => {
     const overlays = baseOverlays();
     const hidden = buildChartOverlayModel(
@@ -160,7 +162,7 @@ describe("overlay visibility and event filters", () => {
     expect(visible.markers.some(item => item.selection.objectType === "CausalZigZagPivot")).toBe(true);
   });
 
-  it("filters Technical Events by backend family and type", () => {
+  it("filters Technical Events through the canonical navigation filter semantics", () => {
     const overlays = baseOverlays();
     overlays.technical_events = [
       {
@@ -191,18 +193,23 @@ describe("overlay visibility and event filters", () => {
     const model = buildChartOverlayModel(
       overlays,
       { ...DEFAULT_OVERLAY_VISIBILITY, technicalEvents: true },
-      { technicalEventFamily: "MOMENTUM", technicalEventType: "RSI_CROSS_50_UP" },
+      {
+        ...DEFAULT_OVERLAY_FILTERS,
+        technicalEventFamilies: ["MOMENTUM"],
+        technicalEventTypes: ["RSI_CROSS_50_UP"],
+      },
       Number(isoToChartTime(t(18))),
     );
     const events = model.markers.filter(item => item.selection.objectType === "TechnicalEventObservation");
     expect(events).toHaveLength(1);
     expect(events[0]?.selection.objectId).toBe("event-rsi");
     expect(events[0]?.selection.details.available_at).toBe(t(13));
+    expect(events[0]?.selection.navigationTimestamp).toBe(t(13));
   });
 });
 
 describe("decision timestamp causality", () => {
-  it("uses operational_at for knowledge without moving market geometry", () => {
+  it("uses operational_at for knowledge/navigation without moving market geometry", () => {
     const overlays = baseOverlays();
     overlays.funnel_stages = [{
       record_id: "stage-1",
@@ -251,5 +258,6 @@ describe("decision timestamp causality", () => {
     const final = after.markers.find(item => item.selection.objectType === "ProfessorFinal");
     expect(final?.marker.time).toBe(isoToChartTime(t(18)));
     expect(final?.selection.details.known_at).toBe(t(19));
+    expect(final?.selection.navigationTimestamp).toBe(t(19));
   });
 });
