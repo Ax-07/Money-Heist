@@ -210,7 +210,11 @@ function OpportunityBody({
   );
 }
 
-function ScannerSection({ scanner }: { scanner: FrontendDecisionIntelligenceDetail["record"] extends infer R ? any : never }) {
+function ScannerSection({
+  scanner,
+}: {
+  scanner: NonNullable<FrontendDecisionIntelligenceDetail["record"]>["scanner"];
+}) {
   return (
     <Section title="Scanner">
       <div className="flex flex-wrap items-center gap-2">
