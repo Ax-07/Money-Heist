@@ -325,7 +325,10 @@ def _validate_sources(
         raise DecisionQualityEvidenceError("Scanner report bundle fingerprint mismatch")
     if funnel_report.source_bundle_fingerprint != bundle.bundle_fingerprint:
         raise DecisionQualityEvidenceError("Funnel report bundle fingerprint mismatch")
-    if funnel_report.source_funnel_stage_set_fingerprint != funnel_stage_attribution.set_fingerprint:
+    if (
+        funnel_report.source_funnel_stage_set_fingerprint
+        != funnel_stage_attribution.set_fingerprint
+    ):
         raise DecisionQualityEvidenceError("Funnel report stage-set fingerprint mismatch")
     if funnel_stage_attribution.source_backtest_run_id != source.source_backtest_run_id:
         raise DecisionQualityEvidenceError("Funnel stage-set BacktestRun mismatch")
@@ -401,7 +404,11 @@ def build_decision_quality_evidence_index(
         )
 
     for cohort in funnel_report.cohorts:
-        missing = [record_id for record_id in cohort.member_refs if record_id not in funnel_ref_by_stage_record]
+        missing = [
+            record_id
+            for record_id in cohort.member_refs
+            if record_id not in funnel_ref_by_stage_record
+        ]
         if missing:
             raise DecisionQualityEvidenceError(
                 f"Funnel cohort references unknown stage records: {missing[:3]}"
@@ -414,7 +421,8 @@ def build_decision_quality_evidence_index(
         )
         if len(ordered_refs) != cohort.observation_count:
             raise DecisionQualityEvidenceError(
-                f"Funnel cohort membership count mismatch for {cohort.stage.value}/{cohort.dimension.value}/{cohort.key}"
+                "Funnel cohort membership count mismatch for "
+                f"{cohort.stage.value}/{cohort.dimension.value}/{cohort.key}"
             )
         memberships.append(
             ResearchEvidenceMembership(
