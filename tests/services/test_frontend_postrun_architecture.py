@@ -78,3 +78,10 @@ def test_24d4_uses_existing_23a_outcomes_and_role_scoped_exports() -> None:
         assert token in Path("app/evaluation/decision_quality/evidence.py").read_text(
             encoding="utf-8"
         )
+
+
+def test_24d4_skips_research_when_scanner_attribution_is_empty() -> None:
+    source = POSTRUN.read_text(encoding="utf-8")
+
+    assert "if scanner_attribution.records:" in source
+    assert "partial Decision Quality research material is invalid" in source

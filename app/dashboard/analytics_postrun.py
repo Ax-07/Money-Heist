@@ -76,10 +76,10 @@ class FrontendPostRunProjection:
     analytics_snapshots: tuple[AnalyticsSnapshot, ...]
     decision_bundle: FrontendDecisionIntelligenceBundle
     geometry: FrontendAnalyticsGeometryProjection
-    decision_quality: DecisionQualityResearchBundle
-    scanner_filtering_quality: ScannerFilteringQualityReport
-    funnel_decision_quality: FunnelDecisionQualityReport
-    evidence_index: DecisionQualityEvidenceIndex
+    decision_quality: DecisionQualityResearchBundle | None = None
+    scanner_filtering_quality: ScannerFilteringQualityReport | None = None
+    funnel_decision_quality: FunnelDecisionQualityReport | None = None
+    evidence_index: DecisionQualityEvidenceIndex | None = None
 
     def exports(self) -> dict[str, tuple[str, str]]:
         geometry_json = json.dumps(
@@ -88,7 +88,7 @@ class FrontendPostRunProjection:
             separators=(",", ":"),
             sort_keys=True,
         )
-        return {
+        exports = {
             projection_export_name(self.decision_bundle.role): (
                 "application/json",
                 bundle_to_json(self.decision_bundle),
@@ -97,23 +97,41 @@ class FrontendPostRunProjection:
                 "application/json",
                 geometry_json,
             ),
-            decision_quality_research_export_name(self.decision_bundle.role): (
-                "application/json",
-                self.decision_quality.to_json(),
-            ),
-            scanner_filtering_quality_export_name(self.decision_bundle.role): (
-                "application/json",
-                self.scanner_filtering_quality.to_json(),
-            ),
-            funnel_decision_quality_export_name(self.decision_bundle.role): (
-                "application/json",
-                self.funnel_decision_quality.to_json(),
-            ),
-            decision_quality_evidence_export_name(self.decision_bundle.role): (
-                "application/json",
-                self.evidence_index.to_json(),
-            ),
         }
+        research = (
+            self.decision_quality,
+            self.scanner_filtering_quality,
+            self.funnel_decision_quality,
+            self.evidence_index,
+        )
+        if all(item is not None for item in research):
+            assert self.decision_quality is not None
+            assert self.scanner_filtering_quality is not None
+            assert self.funnel_decision_quality is not None
+            assert self.evidence_index is not None
+            exports.update(
+                {
+                    decision_quality_research_export_name(self.decision_bundle.role): (
+                        "application/json",
+                        self.decision_quality.to_json(),
+                    ),
+                    scanner_filtering_quality_export_name(self.decision_bundle.role): (
+                        "application/json",
+                        self.scanner_filtering_quality.to_json(),
+                    ),
+                    funnel_decision_quality_export_name(self.decision_bundle.role): (
+                        "application/json",
+                        self.funnel_decision_quality.to_json(),
+                    ),
+                    decision_quality_evidence_export_name(self.decision_bundle.role): (
+                        "application/json",
+                        self.evidence_index.to_json(),
+                    ),
+                }
+            )
+        elif any(item is not None for item in research):
+            raise ValueError("partial Decision Quality research material is invalid")
+        return exports
 
 
 def _has_full_mtf_provenance(run: BacktestRun) -> bool:
@@ -499,27 +517,32 @@ def build_frontend_postrun_projection(
         analytics_snapshots=snapshots,
     )
 
-    decision_quality = build_decision_quality_research_bundle(
-        period_role=role_value,
-        decision_intelligence=decision_records,
-        scanner_attribution=scanner_attribution,
-        forward_outcomes=forward_outcomes,
-        scanner_forward_outcomes=scanner_forward_outcomes,
-        funnel_stage_attribution=funnel_attribution,
-    )
-    scanner_filtering_quality = build_scanner_filtering_quality_report(
-        bundle=decision_quality,
-    )
-    funnel_decision_quality = build_funnel_decision_quality_report(
-        bundle=decision_quality,
-        funnel_stage_attribution=funnel_attribution,
-    )
-    evidence_index = build_decision_quality_evidence_index(
-        bundle=decision_quality,
-        scanner_report=scanner_filtering_quality,
-        funnel_report=funnel_decision_quality,
-        funnel_stage_attribution=funnel_attribution,
-    )
+    decision_quality = None
+    scanner_filtering_quality = None
+    funnel_decision_quality = None
+    evidence_index = None
+    if scanner_attribution.records:
+        decision_quality = build_decision_quality_research_bundle(
+            period_role=role_value,
+            decision_intelligence=decision_records,
+            scanner_attribution=scanner_attribution,
+            forward_outcomes=forward_outcomes,
+            scanner_forward_outcomes=scanner_forward_outcomes,
+            funnel_stage_attribution=funnel_attribution,
+        )
+        scanner_filtering_quality = build_scanner_filtering_quality_report(
+            bundle=decision_quality,
+        )
+        funnel_decision_quality = build_funnel_decision_quality_report(
+            bundle=decision_quality,
+            funnel_stage_attribution=funnel_attribution,
+        )
+        evidence_index = build_decision_quality_evidence_index(
+            bundle=decision_quality,
+            scanner_report=scanner_filtering_quality,
+            funnel_report=funnel_decision_quality,
+            funnel_stage_attribution=funnel_attribution,
+        )
     return FrontendPostRunProjection(
         analytics_run=analytics_run,
         analytics_manifest=manifest,
