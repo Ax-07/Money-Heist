@@ -158,6 +158,23 @@ def test_mock_campaign_executes_real_batch16_stack_without_live_trading() -> Non
     assert "oos-performance.json" in result.exports
     assert "oos-equity.csv" in result.exports
     assert "split-report.json" in result.exports
+    for role in ("design", "validation", "oos"):
+        assert f"frontend-decision-intelligence-{role}.json" in result.exports
+        assert f"frontend-analytics-overlays-{role}.json" in result.exports
+        decision_export = svc.get_export(
+            result.campaign_id,
+            f"frontend-decision-intelligence-{role}.json",
+        )
+        geometry_export = svc.get_export(
+            result.campaign_id,
+            f"frontend-analytics-overlays-{role}.json",
+        )
+        assert decision_export is not None
+        assert geometry_export is not None
+        assert decision_export[0] == "application/json"
+        assert geometry_export[0] == "application/json"
+        assert json.loads(decision_export[1])["campaign_id"] == result.campaign_id
+        assert json.loads(geometry_export[1])["campaign_id"] == result.campaign_id
     assert svc.capabilities().live_trading is False
 
 
