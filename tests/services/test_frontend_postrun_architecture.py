@@ -21,6 +21,9 @@ def test_gate0_is_wired_to_completed_campaign_exports_not_get_routes() -> None:
     assert "build_scanner_filtering_quality_report" not in research_routes
     assert "build_funnel_decision_quality_report" not in research_routes
     assert "build_decision_quality_evidence_index" not in research_routes
+    api_router = Path("app/api/router.py").read_text(encoding="utf-8")
+    assert "from app.api.routes.frontend_v2_research import router as frontend_v2_research_router" in api_router
+    assert "api_router.include_router(frontend_v2_research_router)" in api_router
 
 
 def test_postrun_pipeline_lives_outside_decision_services() -> None:
