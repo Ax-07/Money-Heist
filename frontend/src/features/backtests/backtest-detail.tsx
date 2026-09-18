@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EquityChart } from "@/components/chart/equity-chart";
 import { OverlayToolbar } from "@/components/chart/overlay-toolbar";
 import { TradingChart } from "@/components/chart/trading-chart";
 import { StatusBadge } from "@/components/ui/badge";
+import { DecisionIntelligenceInspector } from "@/components/inspector/decision-intelligence-inspector";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -26,7 +27,6 @@ import { useUiStore } from "@/lib/ui-store";
 import { formatDateTime } from "@/lib/utils";
 import { isTerminalCampaignStatus, shouldPollCampaignProgress } from "./campaign-progress";
 import { ReplayControls } from "./replay-controls";
-import { ReplayInspector } from "./replay-inspector";
 import type { ReplaySpeed } from "./replay-state";
 
 const roles = ["DESIGN", "VALIDATION", "OOS"] as const;
@@ -80,6 +80,10 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
   const cursorTime = replay.data?.candles[index]?.time ?? null;
   const summary = campaign.data;
 
+  useEffect(() => {
+    clearAnalyticsSelection();
+  }, [campaignId, clearAnalyticsSelection]);
+
   if (progress.data && !progress.data.result_available && !campaign.data) {
     return <ProgressView progress={progress.data} cancelling={cancel.isPending} onCancel={() => cancel.mutate()} />;
   }
@@ -123,7 +127,7 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
         <div className="panel p-8 text-sm text-slate-500">Chargement du replay…</div>
       ) : replay.data && (
         <>
-          <div className="grid min-h-[600px] gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid min-h-[600px] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
             <section className="panel overflow-hidden">
               <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
                 <StatusBadge value="BACKTEST" />
@@ -157,7 +161,11 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
                 setSpeed={setSpeed}
               />
             </section>
-            <aside className="panel overflow-auto"><ReplayInspector traces={traces} /></aside>
+            <DecisionIntelligenceInspector
+              campaignId={campaignId}
+              role={role}
+              overlays={overlays.data}
+            />
           </div>
           <TradeAndEvents replay={replay.data} setIndex={seekTo} />
           <section className="panel p-4"><p className="panel-title mb-3">Equity · {role}</p><EquityChart points={replay.data.equity} /></section>
