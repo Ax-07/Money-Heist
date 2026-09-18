@@ -2,6 +2,11 @@ import { z } from "zod";
 import { api } from "./client";
 import { frontendAnalyticsOverlaysSchema } from "./analytics-overlay-schemas";
 import {
+  frontendDecisionQualityResearchSchema,
+  researchEvidencePageSchema,
+} from "./research-schemas";
+import type { ResearchCohortSelector } from "../research-state";
+import {
   frontendAnalyticsProjectionSchema,
   frontendDecisionIntelligenceDetailSchema,
   frontendScannerAnalyticsProjectionSchema,
@@ -41,6 +46,28 @@ export const analyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(
 export const scannerAnalyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/scanner?role=${role}`, frontendScannerAnalyticsProjectionSchema);
 export const analyticsOverlaysQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/overlays?role=${role}`, frontendAnalyticsOverlaysSchema);
 export const decisionIntelligenceQuery = (id: string, opportunityId: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/opportunities/${encodeURIComponent(opportunityId)}/decision-intelligence?role=${role}`, frontendDecisionIntelligenceDetailSchema);
+export const decisionQualityResearchQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/research/decision-quality?role=${role}`, frontendDecisionQualityResearchSchema);
+export const researchEvidenceQuery = (
+  id: string,
+  role: BacktestPeriodRole,
+  selector: ResearchCohortSelector,
+  page: number,
+  pageSize = 25,
+) => {
+  const params = new URLSearchParams({
+    role,
+    report_type: selector.reportType,
+    dimension: selector.dimension,
+    key: selector.key,
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  if (selector.stage) params.set("stage", selector.stage);
+  return api.get(
+    `/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/research/evidence?${params.toString()}`,
+    researchEvidencePageSchema,
+  );
+};
 export const marketCandlesQuery = (symbol: string, timeframe: string) => api.get(`/api/frontend/v2/market/candles?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&limit=500`, marketCandlesSchema);
 export const marketConstraintsQuery = (symbol:string) => api.get(`/api/frontend/v2/market/constraints?symbol=${encodeURIComponent(symbol)}`, marketConstraintsSchema);
 export const previewDataset = (payload: z.input<typeof datasetInputSchema>) => api.post("/api/dashboard/backtest/dataset/preview", datasetPreviewSchema, datasetInputSchema.parse(payload));

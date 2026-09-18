@@ -1178,6 +1178,8 @@ class BacktestDashboardService:
                         min_priority_score=int(
                             execution.scanner_forward_outcomes.min_priority_score
                         ),
+                        forward_outcomes=execution.forward_outcomes,
+                        scanner_forward_outcomes=execution.scanner_forward_outcomes,
                     )
                 )
 
