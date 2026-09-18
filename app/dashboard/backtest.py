@@ -92,6 +92,7 @@ from app.services.backtest.mtf_runtime import (
 )
 from app.services.backtest.runner import HistoricalReplayCancelledError
 from app.services.orchestration import OrchestrationPipeline
+from app.services.frontend_v2.postrun import build_frontend_postrun_exports
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
 from app.services.paper_pipeline.pipeline import PaperTradingPipeline
 from app.services.paper_pipeline.providers import (
@@ -1158,10 +1159,26 @@ class BacktestDashboardService:
 
             if runtime is not None:
                 runtime.phase = "FINALIZING"
-                runtime.message = "Génération des rapports et exports."
+                runtime.message = "Génération des rapports, Analytics et exports."
                 runtime.percent = max(runtime.percent, 99.0)
 
             campaign_id = _campaign_id or str(uuid4())
+            for role in BacktestPeriodRole:
+                execution = executions[role]
+                exports.update(
+                    build_frontend_postrun_exports(
+                        campaign_id=campaign_id,
+                        role=role,
+                        run=run_set.by_role(role),
+                        candles=parsed.candles,
+                        replay=execution.replay,
+                        decision_funnel_report=execution.decision_funnel,
+                        min_priority_score=int(
+                            execution.scanner_forward_outcomes.min_priority_score
+                        ),
+                    )
+                )
+
             oos_equity = tuple(
                 EquityView(observed_at=point.observed_at, equity=str(point.equity))
                 for point in executions[BacktestPeriodRole.OOS].evaluation.equity_points
