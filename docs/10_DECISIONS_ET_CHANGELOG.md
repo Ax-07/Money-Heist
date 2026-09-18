@@ -1128,3 +1128,23 @@ Forward Outcomes, `BacktestRun.run_id` et business fingerprints restent inchang�
 - toggles, filtres et sélection préparés pour 24C.3 ;
 - aucune recomputation métier ou autorité LIVE ajoutée ;
 - prochaine étape : Batch 24C.3 — Decision Intelligence Inspector.
+
+
+<!-- BATCH_24C3_CHANGELOG -->
+### ADR-045 — Materialization post-run obligatoire avant lecture frontend
+
+**Date :** 2026-09-18
+**Statut :** ACCEPTED
+
+**Décision :** les artefacts Analytics/Decision Intelligence nécessaires au Frontend V2 sont calculés au terme du replay normal, ajoutés aux exports de campagne puis persistés par le watcher terminal existant. Les endpoints GET ne calculent rien à la demande.
+
+Le post-traitement est observation-only : il ne rejoue ni Scanner, ni agents, ni Risk Engine, ni PAPER/LIVE.
+
+### ADR-046 — Inspector Decision Intelligence unique et contextuel
+
+**Date :** 2026-09-18
+**Statut :** ACCEPTED
+
+**Décision :** 24C.3 réutilise le panneau droit existant, `selectedOpportunityId`, `selectedAnalyticsObject` et `inspectorOpen`. Un clic sur un objet chart ouvre l'Inspector et charge le détail 24C.1 seulement lorsqu'un `opportunity_id` existe. Les objets Analytics sans opportunité restent inspectables sans inventer de chaîne de décision.
+
+**Conséquences :** séparation stricte UI / autorité métier, affichage explicite de la causalité, dégradation contrôlée des anciens runs et absence totale d'impact LIVE.
