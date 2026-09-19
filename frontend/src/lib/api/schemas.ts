@@ -147,6 +147,12 @@ export const datasetCatalogSchema = z.object({
   dataset_id: z.string(), content_sha256: z.string(), symbol: z.string(), timeframe: z.string(), source: z.string(), candle_count: z.number(),
   start_at: z.string(), end_at: z.string(), is_valid: z.boolean(), gap_count: z.number()
 });
+export const localCampaignDatasetSchema = z.object({
+  duration_months: z.number().int().positive(),
+  symbol: z.string(), timeframe: z.string(), rows: z.number().int().positive(), size_bytes: z.number().int().positive(),
+  dataset_start_utc: z.string(), dataset_end_utc_inclusive: z.string(), dataset_end_utc_exclusive: z.string(),
+  sha256: z.string().length(64), storage: z.enum(["generated_prefix", "canonical_source_reference"]), available: z.boolean()
+});
 
 const backtestMetricSchema = z.object({value: z.string().nullable(), status: z.string(), reason: z.string().nullable().optional()});
 export const performanceProfileSchema = z.object({
@@ -230,6 +236,7 @@ export type CampaignSummary = z.infer<typeof campaignSummarySchema>;
 export type CampaignProgress = z.infer<typeof campaignProgressSchema>;
 export type DatasetPreview = z.infer<typeof datasetPreviewSchema>;
 export type DatasetCatalogItem = z.infer<typeof datasetCatalogSchema>;
+export type LocalCampaignDataset = z.infer<typeof localCampaignDatasetSchema>;
 export type SplitIndices = z.infer<typeof splitIndexSchema>;
 export type CampaignConfig = z.infer<typeof campaignConfigSchema>;
 export type CampaignRequest = z.infer<typeof campaignRequestSchema>;

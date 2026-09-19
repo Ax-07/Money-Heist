@@ -1,3 +1,5 @@
+import hashlib
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -180,6 +182,93 @@ def test_dataset_upload_default_limit_allows_large_one_minute_csv(monkeypatch) -
     limit = _dataset_upload_max_bytes()
     assert limit is not None
     assert limit >= 50 * 1024 * 1024
+
+
+
+def _write_local_campaign_manifest(tmp_path: Path) -> tuple[Path, Path]:
+    history_root = tmp_path / "historical" / "binance_spot"
+    campaign_dir = history_root / "campaign_datasets"
+    backtest_dir = history_root / "backtest_ready"
+    campaign_dir.mkdir(parents=True)
+    backtest_dir.mkdir(parents=True)
+    dataset_path = campaign_dir / "binance_btc_usdc_1m_campaign_1m_test.csv"
+    rows = ["timestamp,open,high,low,close,volume"]
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    for index in range(60):
+        observed_at = datetime.fromtimestamp(base.timestamp() + index * 60, tz=UTC)
+        rows.append(f"{int(observed_at.timestamp() * 1000)},100,101,99,100.5,1")
+    raw = ("\n".join(rows) + "\n").encode("utf-8")
+    dataset_path.write_bytes(raw)
+    manifest_path = campaign_dir / "campaign_datasets_manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema": "money-heist.campaign-prefix-datasets.v1",
+                "source": {
+                    "path": str(backtest_dir / "binance_btc_usdc_1m_full.csv"),
+                    "sha256": "0" * 64,
+                    "rows": 60,
+                    "start_utc": "2026-01-01",
+                    "last_candle_date_utc": "2026-01-01",
+                    "end_utc_exclusive": "2026-01-02",
+                    "symbol": "BTC/USDC",
+                    "timeframe": "1m",
+                    "interval_ms": 60_000,
+                },
+                "datasets": [
+                    {
+                        "duration_months": 1,
+                        "dataset_start_utc": "2026-01-01",
+                        "dataset_end_utc_inclusive": "2026-01-01",
+                        "dataset_end_utc_exclusive": "2026-01-01",
+                        "rows": 60,
+                        "size_bytes": len(raw),
+                        "sha256": hashlib.sha256(raw).hexdigest(),
+                        "path": str(dataset_path),
+                        "storage": "generated_prefix",
+                        "exact_source_prefix": True,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return manifest_path, dataset_path
+
+
+def test_local_campaign_dataset_catalog_and_import(tmp_path: Path, monkeypatch) -> None:
+    manifest_path, _ = _write_local_campaign_manifest(tmp_path)
+    monkeypatch.setenv("MONEY_HEIST_CAMPAIGN_DATASETS_MANIFEST", str(manifest_path))
+    storage = tmp_path / "frontend-store"
+    with _client(storage) as client:
+        catalog = client.get("/api/frontend/v2/backtests/local-campaign-datasets")
+        assert catalog.status_code == 200, catalog.text
+        assert catalog.json()[0]["duration_months"] == 1
+        assert catalog.json()[0]["available"] is True
+
+        imported = client.post("/api/frontend/v2/backtests/local-campaign-datasets/1/import")
+        assert imported.status_code == 201, imported.text
+        payload = imported.json()
+        assert payload["symbol"] == "BTC/USDC"
+        assert payload["timeframe"] == "1m"
+        assert payload["candle_count"] == 60
+
+        persisted = client.get("/api/frontend/v2/backtests/datasets")
+        assert persisted.status_code == 200
+        assert any(item["dataset_id"] == payload["dataset_id"] for item in persisted.json())
+
+
+def test_local_campaign_dataset_import_rejects_manifest_sha_mismatch(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    manifest_path, dataset_path = _write_local_campaign_manifest(tmp_path)
+    monkeypatch.setenv("MONEY_HEIST_CAMPAIGN_DATASETS_MANIFEST", str(manifest_path))
+    dataset_path.write_bytes(dataset_path.read_bytes() + b"\n")
+    with _client(tmp_path / "frontend-store") as client:
+        response = client.post("/api/frontend/v2/backtests/local-campaign-datasets/1/import")
+    assert response.status_code == 409
+    assert "manifest" in response.json()["detail"].lower()
 
 
 def test_raw_dataset_upload_persists_without_json_wrapping(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 # Money Heist — Frontend et Interface V2
 
 **Document :** Référence fonctionnelle et technique du Frontend V2  
-**Version :** 1.2
+**Version :** 1.3
 **Date :** 2026-09-19
 **Statut :** Frontend V2 — Backtest Cockpit, Decision Intelligence et Research Explorer 24D.4
 **Baseline auditée :** `cb0c26a0c6e32b975d3739010e74192f5ac95944`
@@ -123,6 +123,14 @@ Le `code_version` reste obligatoire. Les valeurs proposées à l'ouverture sont 
 
 Une bibliothèque de datasets V2 persistés permet de valider/importer un CSV une fois puis de le réutiliser pour plusieurs campagnes sans réupload navigateur.
 
+Le cockpit peut également découvrir la bibliothèque locale de préfixes générée par
+`scripts/market_data/build_campaign_prefix_datasets.py`. Les durées 1 / 3 / 6 / 9 / 12 mois
+sont lues depuis `data/historical/binance_spot/campaign_datasets/campaign_datasets_manifest.json`.
+Le navigateur ne reçoit jamais de chemin filesystem : il ne voit que les métadonnées du manifeste.
+Lorsqu'un opérateur sélectionne une durée, le backend relit le fichier local, vérifie taille et
+SHA-256 contre le manifeste, le revalide avec `BacktestDashboardService`, puis l’enregistre dans la
+bibliothèque V2 canonique avant tout lancement. L'upload CSV manuel reste disponible comme fallback.
+
 ## 12. Historical Replay
 
 Le replay V2 assemble, après exécution :
@@ -176,6 +184,8 @@ GET  /api/frontend/v2/market/constraints
 GET  /api/frontend/v2/backtests/datasets
 GET  /api/frontend/v2/backtests/dataset?dataset_id=...
 POST /api/frontend/v2/backtests/datasets
+GET  /api/frontend/v2/backtests/local-campaign-datasets
+POST /api/frontend/v2/backtests/local-campaign-datasets/{duration_months}/import
 GET  /api/frontend/v2/backtests/runs
 POST /api/frontend/v2/backtests/runs
 POST /api/frontend/v2/backtests/runs/from-dataset

@@ -23,6 +23,7 @@ import {
   datasetInputSchema,
   datasetPreviewSchema,
   frontendCapabilitiesSchema,
+  localCampaignDatasetSchema,
   marketCandlesSchema,
   marketConstraintsSchema,
   openAiModelCatalogSchema,
@@ -78,5 +79,7 @@ export const saveDatasetFile = (file: File, metadata: {symbol:string;timeframe:s
 };
 export const datasetsQuery = () => api.get("/api/frontend/v2/backtests/datasets", z.array(datasetCatalogSchema));
 export const datasetPreviewQuery = (datasetId: string) => api.get(`/api/frontend/v2/backtests/dataset?dataset_id=${encodeURIComponent(datasetId)}`, datasetPreviewSchema);
+export const localCampaignDatasetsQuery = () => api.get("/api/frontend/v2/backtests/local-campaign-datasets", z.array(localCampaignDatasetSchema));
+export const importLocalCampaignDataset = (durationMonths: number) => api.post(`/api/frontend/v2/backtests/local-campaign-datasets/${durationMonths}/import`, datasetPreviewSchema, {});
 export const startBacktest = (payload: CampaignRequest) => api.post("/api/frontend/v2/backtests/runs", campaignProgressSchema, campaignRequestSchema.parse(payload));
 export const startBacktestFromDataset = (payload: StoredCampaignRequest) => api.post("/api/frontend/v2/backtests/runs/from-dataset", campaignProgressSchema, storedCampaignRequestSchema.parse(payload));

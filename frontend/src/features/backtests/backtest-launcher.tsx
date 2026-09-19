@@ -11,12 +11,14 @@ import {
   datasetPreviewQuery,
   datasetsQuery,
   frontendCapabilitiesQuery,
+  importLocalCampaignDataset,
+  localCampaignDatasetsQuery,
   marketConstraintsQuery,
   openAiModelsQuery,
   saveDatasetFile,
   startBacktestFromDataset
 } from "@/lib/api/queries";
-import type { DatasetCatalogItem, DatasetPreview, OpenAiModel, SplitIndices } from "@/lib/api/schemas";
+import type { DatasetCatalogItem, DatasetPreview, LocalCampaignDataset, OpenAiModel, SplitIndices } from "@/lib/api/schemas";
 import {
   buildCampaignConfig,
   canonicalDerivativesIdentity,
@@ -44,6 +46,7 @@ export function BacktestLauncher() {
   const caps = useQuery({queryKey:["backtest-capabilities"],queryFn:backtestCapabilitiesQuery});
   const front = useQuery({queryKey:["frontend-capabilities"],queryFn:frontendCapabilitiesQuery});
   const datasets = useQuery({queryKey:["backtest-datasets"],queryFn:datasetsQuery});
+  const localCampaignDatasets = useQuery({queryKey:["local-campaign-datasets"],queryFn:localCampaignDatasetsQuery,retry:false});
   const openAiCatalog = useQuery({queryKey:["openai-model-catalog"],queryFn:openAiModelsQuery,staleTime:300000});
   const [tab,setTab]=useState<Tab>("dataset");
   const [datasetFile,setDatasetFile]=useState<File|null>(null);
@@ -97,6 +100,10 @@ export function BacktestLauncher() {
     mutationFn:(datasetId:string)=>datasetPreviewQuery(datasetId),
     onSuccess:selectPreview
   });
+  const importLocalDatasetMutation=useMutation({
+    mutationFn:(durationMonths:number)=>importLocalCampaignDataset(durationMonths),
+    onSuccess:async next=>{selectPreview(next);await queryClient.invalidateQueries({queryKey:["backtest-datasets"]});}
+  });
   const runMutation=useMutation({
     mutationFn:()=>{
       if(!preview||!selectedDatasetId)throw new Error("Sélectionnez et validez un dataset.");
@@ -112,7 +119,7 @@ export function BacktestLauncher() {
     const selected=models.find(model=>model.model_id===current.modelId)??models.find(model=>model.recommended)??models[0];
     return {...current,aiMode:mode,modelId:selected?.model_id??"",reasoningEffort:selected?.default_reasoning_effort??current.reasoningEffort,mockAgentCoverage:false};
   });
-  const launchError=saveMutation.error??loadDatasetMutation.error??runMutation.error;
+  const launchError=saveMutation.error??loadDatasetMutation.error??importLocalDatasetMutation.error??runMutation.error;
 
   return <section className="panel overflow-hidden">
     <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 p-5">
@@ -124,7 +131,7 @@ export function BacktestLauncher() {
         <TabsTrigger value="dataset">1 · Dataset</TabsTrigger><TabsTrigger value="periods" disabled={!preview}>2 · Périodes</TabsTrigger><TabsTrigger value="risk" disabled={!preview}>3 · Risk</TabsTrigger><TabsTrigger value="ai" disabled={!preview}>4 · IA</TabsTrigger><TabsTrigger value="execution" disabled={!preview}>5 · Exécution</TabsTrigger><TabsTrigger value="advanced" disabled={!preview}>6 · Contexte historique</TabsTrigger><TabsTrigger value="walk-forward" disabled={!preview}>7 · Walk-Forward</TabsTrigger><TabsTrigger value="review" disabled={!preview}>8 · Revue</TabsTrigger>
       </TabsList></div>
       <div className="p-5">
-        <TabsContent value="dataset"><DatasetStep datasets={datasets.data??[]} selectedDatasetId={selectedDatasetId} onSelectDataset={id=>{setSelectedDatasetId(id);if(id)loadDatasetMutation.mutate(id);}} datasetLoading={loadDatasetMutation.isPending} datasetFile={datasetFile} setDatasetFile={setDatasetFile} fileName={fileName} setFileName={setFileName} symbol={symbol} setSymbol={value=>{setSymbol(value);setPreview(null);setSelectedDatasetId("");}} timeframe={timeframe} setTimeframe={value=>{setTimeframe(value);setPreview(null);setSelectedDatasetId("");}} symbols={Array.from(new Set([...HISTORICAL_DATASET_SYMBOLS,...(front.data?.market_symbols??[])]))} timeframes={[...HISTORICAL_DATASET_TIMEFRAMES]} savePending={saveMutation.isPending} onSave={()=>saveMutation.mutate()} preview={preview}/></TabsContent>
+        <TabsContent value="dataset"><DatasetStep datasets={datasets.data??[]} localDatasets={localCampaignDatasets.data??[]} localLoading={localCampaignDatasets.isLoading} localError={localCampaignDatasets.isError} localImporting={importLocalDatasetMutation.isPending} onSelectLocal={months=>importLocalDatasetMutation.mutate(months)} selectedDatasetId={selectedDatasetId} onSelectDataset={id=>{setSelectedDatasetId(id);if(id)loadDatasetMutation.mutate(id);}} datasetLoading={loadDatasetMutation.isPending} datasetFile={datasetFile} setDatasetFile={setDatasetFile} fileName={fileName} setFileName={setFileName} symbol={symbol} setSymbol={value=>{setSymbol(value);setPreview(null);setSelectedDatasetId("");}} timeframe={timeframe} setTimeframe={value=>{setTimeframe(value);setPreview(null);setSelectedDatasetId("");}} symbols={Array.from(new Set([...HISTORICAL_DATASET_SYMBOLS,...(front.data?.market_symbols??[])]))} timeframes={[...HISTORICAL_DATASET_TIMEFRAMES]} savePending={saveMutation.isPending} onSave={()=>saveMutation.mutate()} preview={preview}/></TabsContent>
         <TabsContent value="periods">{preview&&<PeriodsStep preview={preview} indices={splitIndices} setIndices={setSplitIndices}/>}</TabsContent>
         <TabsContent value="risk">{preview&&<RiskStep form={form} setField={setField} constraintsStatus={historicalPreset?"HISTORICAL PRESET":constraints.data?"KRAKEN PUBLIC":constraints.isError?"MANUEL":"CHARGEMENT"}/>}</TabsContent>
         <TabsContent value="ai"><AiStep form={form} setField={setField} modes={(caps.data?.modes??["MOCK","CACHED","LIVE_EVAL"]) as AiMode[]} liveEvalAvailable={caps.data?.live_eval_available??false} onMode={changeAiMode} models={openAiCatalog.data?.models??[]} catalogLoading={openAiCatalog.isLoading} catalogError={openAiCatalog.isError}/></TabsContent>
@@ -138,8 +145,8 @@ export function BacktestLauncher() {
   </section>;
 }
 
-function DatasetStep({datasets,selectedDatasetId,onSelectDataset,datasetLoading,datasetFile,setDatasetFile,fileName,setFileName,symbol,setSymbol,timeframe,setTimeframe,symbols,timeframes,savePending,onSave,preview}:{datasets:DatasetCatalogItem[];selectedDatasetId:string;onSelectDataset:(id:string)=>void;datasetLoading:boolean;datasetFile:File|null;setDatasetFile:(v:File|null)=>void;fileName:string;setFileName:(v:string)=>void;symbol:string;setSymbol:(v:string)=>void;timeframe:string;setTimeframe:(v:string)=>void;symbols:string[];timeframes:string[];savePending:boolean;onSave:()=>void;preview:DatasetPreview|null}){
- return <div className="space-y-5"><div className="grid gap-4 xl:grid-cols-2"><Block title="Réutiliser un dataset" description="Les datasets validés par Frontend V2 sont persistés côté backend."><label className="text-xs text-slate-400">Dataset enregistré<select className={`${fieldClass} mt-1 w-full`} value={selectedDatasetId} onChange={e=>onSelectDataset(e.target.value)}><option value="">— sélectionner —</option>{datasets.map(item=><option key={item.dataset_id} value={item.dataset_id}>{item.symbol} · {item.timeframe} · {item.candle_count} bars · {item.start_at.slice(0,10)} → {item.end_at.slice(0,10)}</option>)}</select></label>{datasetLoading&&<p className="mt-3 text-xs text-slate-500">Chargement des bornes du dataset…</p>}{datasets.length===0&&<p className="mt-3 text-xs text-slate-600">Aucun dataset V2 enregistré pour le moment.</p>}</Block>
+function DatasetStep({datasets,localDatasets,localLoading,localError,localImporting,onSelectLocal,selectedDatasetId,onSelectDataset,datasetLoading,datasetFile,setDatasetFile,fileName,setFileName,symbol,setSymbol,timeframe,setTimeframe,symbols,timeframes,savePending,onSave,preview}:{datasets:DatasetCatalogItem[];localDatasets:LocalCampaignDataset[];localLoading:boolean;localError:boolean;localImporting:boolean;onSelectLocal:(months:number)=>void;selectedDatasetId:string;onSelectDataset:(id:string)=>void;datasetLoading:boolean;datasetFile:File|null;setDatasetFile:(v:File|null)=>void;fileName:string;setFileName:(v:string)=>void;symbol:string;setSymbol:(v:string)=>void;timeframe:string;setTimeframe:(v:string)=>void;symbols:string[];timeframes:string[];savePending:boolean;onSave:()=>void;preview:DatasetPreview|null}){
+ return <div className="space-y-5"><div className="grid gap-4 xl:grid-cols-3"><Block title="Datasets locaux de campagne" description="Préfixes 1m canoniques générés sous data/. Le backend vérifie le manifeste et le SHA-256 avant de les enregistrer dans la bibliothèque V2.">{localLoading?<p className="text-xs text-slate-500">Lecture du manifeste local…</p>:localError?<p className="text-xs text-rose-300">Manifeste local invalide ou illisible.</p>:localDatasets.length===0?<p className="text-xs leading-5 text-slate-600">Aucun dataset local détecté. Exécute build_campaign_prefix_datasets.py depuis la racine du projet.</p>:<div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-2">{localDatasets.map(item=><Button key={item.duration_months} size="sm" variant="secondary" disabled={!item.available||localImporting} onClick={()=>onSelectLocal(item.duration_months)}>{item.duration_months} mois</Button>)}</div>}{localDatasets.length>0&&<div className="mt-3 space-y-1 text-[10px] text-slate-600">{localDatasets.map(item=><p key={item.duration_months}>{item.duration_months}m · {item.rows.toLocaleString("fr-FR")} bars · {item.dataset_start_utc} → {item.dataset_end_utc_inclusive} · {item.available?"disponible":"fichier absent"}</p>)}</div>}{localImporting&&<p className="mt-3 text-xs text-violet-300">Validation et enregistrement du dataset local…</p>}</Block><Block title="Réutiliser un dataset" description="Les datasets déjà validés par Frontend V2 sont persistés côté backend."><label className="text-xs text-slate-400">Dataset enregistré<select className={`${fieldClass} mt-1 w-full`} value={selectedDatasetId} onChange={e=>onSelectDataset(e.target.value)}><option value="">— sélectionner —</option>{datasets.map(item=><option key={item.dataset_id} value={item.dataset_id}>{item.symbol} · {item.timeframe} · {item.candle_count} bars · {item.start_at.slice(0,10)} → {item.end_at.slice(0,10)}</option>)}</select></label>{datasetLoading&&<p className="mt-3 text-xs text-slate-500">Chargement des bornes du dataset…</p>}{datasets.length===0&&<p className="mt-3 text-xs text-slate-600">Aucun dataset V2 enregistré pour le moment.</p>}</Block>
  <Block title="Importer un nouveau CSV" description="Upload brut vers le backend : le navigateur ne convertit plus les gros datasets en JSON. Les fichiers 1m de plusieurs dizaines de Mo sont supportés."><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs text-slate-400">Symbol<input list="backtest-symbols" className={`${fieldClass} mt-1 w-full`} value={symbol} onChange={e=>setSymbol(e.target.value.toUpperCase())} placeholder="BTC/USDC"/><datalist id="backtest-symbols">{symbols.map(value=><option key={value} value={value}/>)}</datalist></label><label className="text-xs text-slate-400">Timeframe<select className={`${fieldClass} mt-1 w-full`} value={timeframe} onChange={e=>setTimeframe(e.target.value)}>{timeframes.map(value=><option key={value}>{value}</option>)}</select></label></div><label className="mt-3 block text-xs text-slate-400">Fichier CSV<input type="file" accept=".csv,text/csv" className="mt-2 block w-full text-xs" onChange={e=>{const file=e.target.files?.[0]??null;setDatasetFile(file);setFileName(file?.name??"");if(file){const detected=detectHistoricalDatasetIdentity(file.name);if(detected.symbol)setSymbol(detected.symbol);if(detected.timeframe)setTimeframe(detected.timeframe);}}}/></label><div className="mt-2 text-[11px] text-slate-500">{datasetFile?`PRÊT · ${datasetFile.name} · ${(datasetFile.size/1024/1024).toFixed(1)} Mo`:"Aucun fichier sélectionné — le bouton reste disponible pour afficher une erreur explicite."} · La limite opérateur 25 Mo a été supprimée.</div><div className="mt-4 flex items-center gap-3"><Button variant="secondary" disabled={savePending} onClick={onSave}>{savePending?"Upload & validation…":"Valider & enregistrer"}</Button>{fileName&&<span className="text-xs text-slate-500">{fileName}</span>}</div></Block></div>{preview&&<DatasetSummary preview={preview}/>}</div>
 }
 

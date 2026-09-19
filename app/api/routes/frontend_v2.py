@@ -70,6 +70,17 @@ _TERMINAL_CAMPAIGN_STATES = {"COMPLETED", "FAILED", "CANCELLED"}
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 _DATASET_UPLOAD_DEFAULT_MAX_MB = 256
+_CAMPAIGN_DATASET_MANIFEST_SCHEMA = "money-heist.campaign-prefix-datasets.v1"
+_CAMPAIGN_DATASET_MANIFEST_ENV = "MONEY_HEIST_CAMPAIGN_DATASETS_MANIFEST"
+_DEFAULT_CAMPAIGN_DATASET_MANIFEST = (
+    _PROJECT_ROOT
+    / "data"
+    / "historical"
+    / "binance_spot"
+    / "campaign_datasets"
+    / "campaign_datasets_manifest.json"
+)
+_DEFAULT_LOCAL_CAMPAIGN_SYMBOL = "BTC/USDC"
 
 
 def _dataset_upload_max_bytes() -> int | None:
@@ -388,6 +399,149 @@ class DatasetCatalogView(FrozenModel):
             is_valid=preview.is_valid,
             gap_count=preview.gap_count,
         )
+
+
+
+class LocalCampaignDatasetView(FrozenModel):
+    duration_months: int = Field(ge=1)
+    symbol: str
+    timeframe: str
+    rows: int = Field(ge=1)
+    size_bytes: int = Field(ge=1)
+    dataset_start_utc: str
+    dataset_end_utc_inclusive: str
+    dataset_end_utc_exclusive: str
+    sha256: str
+    storage: Literal["generated_prefix", "canonical_source_reference"]
+    available: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _LocalCampaignDatasetEntry:
+    duration_months: int
+    symbol: str
+    timeframe: str
+    rows: int
+    size_bytes: int
+    dataset_start_utc: str
+    dataset_end_utc_inclusive: str
+    dataset_end_utc_exclusive: str
+    sha256: str
+    storage: Literal["generated_prefix", "canonical_source_reference"]
+    path: Path
+
+    def to_view(self) -> LocalCampaignDatasetView:
+        return LocalCampaignDatasetView(
+            duration_months=self.duration_months,
+            symbol=self.symbol,
+            timeframe=self.timeframe,
+            rows=self.rows,
+            size_bytes=self.size_bytes,
+            dataset_start_utc=self.dataset_start_utc,
+            dataset_end_utc_inclusive=self.dataset_end_utc_inclusive,
+            dataset_end_utc_exclusive=self.dataset_end_utc_exclusive,
+            sha256=self.sha256,
+            storage=self.storage,
+            available=self.path.is_file(),
+        )
+
+
+def _campaign_dataset_manifest_path() -> Path:
+    configured = os.getenv(_CAMPAIGN_DATASET_MANIFEST_ENV, "").strip()
+    if not configured:
+        return _DEFAULT_CAMPAIGN_DATASET_MANIFEST
+    path = Path(configured)
+    if not path.is_absolute():
+        path = _PROJECT_ROOT / path
+    return path.resolve()
+
+
+def _manifest_basename(value: str) -> str:
+    normalized = value.strip().replace("\\", "/").rstrip("/")
+    return normalized.rsplit("/", 1)[-1] if normalized else ""
+
+
+def _load_local_campaign_dataset_entries() -> tuple[_LocalCampaignDatasetEntry, ...]:
+    manifest_path = _campaign_dataset_manifest_path()
+    if not manifest_path.is_file():
+        return ()
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("local campaign dataset manifest is unreadable") from exc
+    if payload.get("schema") != _CAMPAIGN_DATASET_MANIFEST_SCHEMA:
+        raise ValueError("unsupported local campaign dataset manifest schema")
+
+    source = payload.get("source")
+    datasets = payload.get("datasets")
+    if not isinstance(source, dict) or not isinstance(datasets, list):
+        raise ValueError("local campaign dataset manifest is incomplete")
+    symbol = str(source.get("symbol") or _DEFAULT_LOCAL_CAMPAIGN_SYMBOL).strip().upper()
+    timeframe = str(source.get("timeframe") or "").strip().lower()
+    if not symbol or timeframe not in _TIMEFRAME_SECONDS:
+        raise ValueError("local campaign dataset source identity is invalid")
+    source_filename = _manifest_basename(str(source.get("path") or ""))
+    if not source_filename:
+        raise ValueError("local campaign dataset source path is invalid")
+
+    entries: list[_LocalCampaignDatasetEntry] = []
+    for raw in datasets:
+        if not isinstance(raw, dict):
+            raise ValueError("local campaign dataset entry must be an object")
+        try:
+            duration_months = int(raw["duration_months"])
+            rows = int(raw["rows"])
+            size_bytes = int(raw["size_bytes"])
+            dataset_start_utc = str(raw["dataset_start_utc"])
+            dataset_end_utc_inclusive = str(raw["dataset_end_utc_inclusive"])
+            dataset_end_utc_exclusive = str(raw["dataset_end_utc_exclusive"])
+            sha256 = str(raw["sha256"]).strip().lower()
+            storage = str(raw["storage"]).strip()
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("local campaign dataset entry is incomplete") from exc
+        if duration_months <= 0 or rows <= 0 or size_bytes <= 0:
+            raise ValueError("local campaign dataset numeric metadata is invalid")
+        if len(sha256) != 64 or any(char not in "0123456789abcdef" for char in sha256):
+            raise ValueError("local campaign dataset sha256 is invalid")
+        if storage == "generated_prefix":
+            filename = _manifest_basename(str(raw.get("path") or ""))
+            if not filename:
+                raise ValueError("generated local campaign dataset path is invalid")
+            dataset_path = manifest_path.parent / filename
+        elif storage == "canonical_source_reference":
+            dataset_path = manifest_path.parent.parent / "backtest_ready" / source_filename
+        else:
+            raise ValueError("unsupported local campaign dataset storage mode")
+        entries.append(
+            _LocalCampaignDatasetEntry(
+                duration_months=duration_months,
+                symbol=symbol,
+                timeframe=timeframe,
+                rows=rows,
+                size_bytes=size_bytes,
+                dataset_start_utc=dataset_start_utc,
+                dataset_end_utc_inclusive=dataset_end_utc_inclusive,
+                dataset_end_utc_exclusive=dataset_end_utc_exclusive,
+                sha256=sha256,
+                storage=storage,  # type: ignore[arg-type]
+                path=dataset_path.resolve(),
+            )
+        )
+    entries.sort(key=lambda item: item.duration_months)
+    if len({item.duration_months for item in entries}) != len(entries):
+        raise ValueError("local campaign dataset durations must be unique")
+    return tuple(entries)
+
+
+def _local_campaign_entries_or_503() -> tuple[_LocalCampaignDatasetEntry, ...]:
+    try:
+        return _load_local_campaign_dataset_entries()
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+def _sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
 
 
 class CampaignConfigurationView(FrozenModel):
@@ -890,6 +1044,84 @@ async def market_constraints(symbol: str = Query(default="BTC/EUR")) -> MarketCo
         quantity_precision=metadata.quantity_precision,
         status=metadata.status,
     )
+
+
+@router.get(
+    "/backtests/local-campaign-datasets",
+    response_model=tuple[LocalCampaignDatasetView, ...],
+)
+def list_local_campaign_datasets() -> tuple[LocalCampaignDatasetView, ...]:
+    return tuple(entry.to_view() for entry in _local_campaign_entries_or_503())
+
+
+@router.post(
+    "/backtests/local-campaign-datasets/{duration_months}/import",
+    response_model=DatasetPreview,
+    status_code=201,
+)
+def import_local_campaign_dataset(
+    duration_months: int,
+    service: BacktestService,
+    store: FrontendStore,
+) -> DatasetPreview:
+    entries = _local_campaign_entries_or_503()
+    entry = next(
+        (item for item in entries if item.duration_months == duration_months),
+        None,
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Unknown local campaign dataset duration")
+    try:
+        raw = entry.path.read_bytes()
+    except OSError as exc:
+        raise HTTPException(
+            status_code=404, detail="Local campaign dataset file is missing"
+        ) from exc
+    if len(raw) != entry.size_bytes:
+        raise HTTPException(
+            status_code=409,
+            detail="Local campaign dataset size does not match its manifest",
+        )
+    if _sha256_bytes(raw) != entry.sha256:
+        raise HTTPException(
+            status_code=409,
+            detail="Local campaign dataset SHA-256 does not match its manifest",
+        )
+    try:
+        csv_text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(status_code=422, detail="local campaign dataset must be UTF-8") from exc
+
+    payload = DatasetInput(
+        csv_text=csv_text,
+        symbol=entry.symbol,
+        timeframe=entry.timeframe,
+        source=f"local_campaign_prefix:{entry.duration_months}m:{entry.sha256[:16]}",
+        candle_interval_seconds=_TIMEFRAME_SECONDS[entry.timeframe],
+    )
+    try:
+        preview = service.preview_dataset(payload)
+    except (BacktestDashboardError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if not preview.is_valid:
+        raise HTTPException(status_code=422, detail="local campaign dataset preview is not valid")
+    if preview.candle_count != entry.rows:
+        raise HTTPException(
+            status_code=409,
+            detail="Local campaign dataset row count does not match its manifest",
+        )
+    if preview.start_at.date().isoformat() != entry.dataset_start_utc:
+        raise HTTPException(
+            status_code=409,
+            detail="Local campaign dataset start does not match its manifest",
+        )
+    if preview.end_at.date().isoformat() != entry.dataset_end_utc_exclusive:
+        raise HTTPException(
+            status_code=409,
+            detail="Local campaign dataset end does not match its manifest",
+        )
+    store.save_dataset(payload, preview)
+    return preview
 
 
 @router.get("/backtests/datasets", response_model=tuple[DatasetCatalogView, ...])
