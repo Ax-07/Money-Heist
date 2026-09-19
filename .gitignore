@@ -36,3 +36,13 @@ frontend/.env.local
 # Frontend V2 durable runtime artifacts
 .money-heist/frontend-v2/
 
+
+# Money Heist - temporary batch delivery artifacts
+/apply_batch_*.py
+/README_BATCH_*.md
+/MANIFEST_BATCH_*.txt
+/SHA256SUMS_BATCH_*.txt
+/INTEGRATION_BATCH_*.md
+/verify_batch_*.ps1
+/SHA256SUMS.txt
+
