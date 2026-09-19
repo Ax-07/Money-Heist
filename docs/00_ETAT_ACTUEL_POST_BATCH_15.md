@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-19  
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`
-**Dernier commit audité :** `feat(frontend): simplify backtest campaign results`
+**Baseline intégrée auditée :** `8f707cb8f261c7c24cacba56624d9876a08e4894`
+**Dernier commit audité :** `fix(backtest): keep API responsive during post-run analysis`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -363,18 +363,18 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ## 14. Baseline intégrée récente
 
-La baseline auditée pour cette synchronisation est `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`.
+La baseline auditée pour cette synchronisation est `8f707cb8f261c7c24cacba56624d9876a08e4894`.
 
 Chaîne récente utile :
 
 ```text
 b384852e  feat(backtest): enforce spot long-only campaigns
-ae20cb96  chore(repo): ignore local campaign review archives
-35f736d4  docs: sync project memory after spot long-only
 871a3d3f  feat(frontend): simplify backtest campaign results
+bc6136ee  docs: sync project memory after backtest UX
+8f707cb8  fix(backtest): keep API responsive during post-run analysis
 ```
 
-Le lot UX post-campagne a été validé avant intégration par la suite backend complète `uv run pytest -q` avec 3 skips attendus, 67 tests frontend, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` et `git diff --cached --check`. Il reste purement observationnel : aucune autorité Scanner, Professor, Risk, PAPER ou LIVE n'a été déplacée.
+Le lot de réactivité Backtest a été validé avant intégration par la suite backend complète `uv run pytest -q` avec 3 skips attendus, les tests ciblés `test_backtest_controls.py` et `test_frontend_v2.py`, Ruff, 67 tests frontend et `pnpm run typecheck`. Les calculs post-run 23A/24A→24D restent identiques mais sont déportés hors de l'event loop FastAPI afin que `/progress`, `/capabilities` et les routes read-only restent servables pendant les campagnes longues. Aucune autorité Scanner, Professor, Risk, PAPER ou LIVE n'a été déplacée.
 
 Les documents de livraison des anciens batches sont désormais conservés sous `docs/archives/`.
 Ils sont historiques et ne définissent pas l'état courant ; les documents actifs `00` à `12`, les ADR et le code intégré gardent cette responsabilité.
@@ -413,15 +413,17 @@ Le premier run 1 mois exécuté avant `b384852e` contenait des SHORT et reste un
 
 Priorités de recherche :
 
-1. contrôler visuellement la campagne 1 mois dans la nouvelle vue Résumé / Analyse avancée ;
-2. lancer ensuite la campagne 3 mois avec la même configuration comportementale et `SPOT_LONG_ONLY` ;
-3. étendre ensuite aux campagnes 6/9/12 mois sans changer arbitrairement les paramètres ;
-4. analyser séparément DESIGN / VALIDATION / OOS ;
-5. vérifier couverture et qualité des joins avant interprétation ;
-6. formuler les hypothèses de modification à partir de DESIGN seulement ;
-7. valider toute hypothèse sur des données non utilisées pour la concevoir ;
-8. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
-9. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
+1. redémarrer backend/frontend sur `8f707cb8` et lancer un run de contrôle court ;
+2. vérifier que `/progress` et `/capabilities` restent réactifs pendant `MEASUREMENT_23A` et `FINALIZING` ;
+3. contrôler visuellement la campagne 1 mois dans la nouvelle vue Résumé / Analyse avancée ;
+4. lancer ensuite la campagne 3 mois avec la même configuration comportementale et `SPOT_LONG_ONLY` ;
+5. étendre ensuite aux campagnes 6/9/12 mois sans changer arbitrairement les paramètres ;
+6. analyser séparément DESIGN / VALIDATION / OOS ;
+7. vérifier couverture et qualité des joins avant interprétation ;
+8. formuler les hypothèses de modification à partir de DESIGN seulement ;
+9. valider toute hypothèse sur des données non utilisées pour la concevoir ;
+10. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
+11. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
 
 Aucune modification de threshold Scanner, prompt, Risk ou exécution ne doit être déduite automatiquement d’un rapport descriptif.
 
@@ -455,7 +457,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'à `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`.
+Cette synchronisation a audité GitHub `main` jusqu'à `8f707cb8f261c7c24cacba56624d9876a08e4894`.
 
 Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
