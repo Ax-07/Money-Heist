@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -24,7 +24,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 /btc_candles
-<!-- BATCH22_FRONTEND_V2 -->
+# BATCH22_FRONTEND_V2
 # Frontend V2
 frontend/node_modules/
 frontend/.next/
@@ -32,7 +32,7 @@ frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
 frontend/.env.local
-<!-- BATCH22_1_BACKTEST_COCKPIT -->
+# BATCH22_1_BACKTEST_COCKPIT
 # Frontend V2 durable runtime artifacts
 .money-heist/frontend-v2/
 
@@ -45,4 +45,12 @@ frontend/.env.local
 /INTEGRATION_BATCH_*.md
 /verify_batch_*.ps1
 /SHA256SUMS.txt
+
+
+# Money Heist - root hygiene / local delivery artifacts
+/CHANGELOG_BATCH_*.md
+/CHANGELOG_FIX_*.md
+/INTEGRATION.md
+/README_INTEGRATION.md
+/campaign_evidence/
 
