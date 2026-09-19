@@ -1,8 +1,8 @@
 # Money Heist — Sécurité et Opérations
 
 **Document :** Sécurité, exploitation et résilience  
-**Version :** 0.1  
-**Statut :** Spécification initiale
+**Version :** 0.2
+**Statut :** Référence active — sécurité / opérations
 
 ---
 

@@ -1,7 +1,7 @@
 # Money Heist — API et Modèles de Données
 
 **Document :** Contrats, schémas et API internes  
-**Version :** 0.4
+**Version :** 0.5
 **Statut :** Référence active — contrats et API intégrés
 
 ---
@@ -594,7 +594,7 @@ Une route ne peut activer `OPENAI_EXPLICIT` que si elle déclare la capability c
 
 `AIGatewayRequest`/`ProviderRequest` transportent la version de rendu, le préfixe cacheable/fingerprint de schéma et la policy. `ProviderResponse` peut retourner les diagnostics de cache. `TokenUsage` sépare input normal, read, write et output.
 
-Le transport courant est `money-heist.prompt-transport.v2`.
+Le transport actif est `money-heist.prompt-transport.v4`. Le transport `v2` reste une référence historique de l’ADR Prompt Cache initial.
 
 <!-- DOC_REALIGN_PROMPT_CACHE_API_END -->
 
@@ -875,3 +875,17 @@ Historical Replay, Feature Engine, Scanner, agents, Risk, PAPER ou LIVE.
 Une campagne connue mais dépourvue de projection pré-calculée reste un `200` avec disponibilité
 explicite à `false`. Si le bundle 24C.1 existe mais que la géométrie 24C.2 n'a pas été persistée,
 les projections Scanner/funnel restent disponibles et les collections géométriques sont vides.
+
+<!-- DOC_REALIGN_24D4_API -->
+## Addendum Batch 24D.4 — API Decision Quality Research
+
+Le Frontend V2 expose deux endpoints Research en lecture seule :
+
+```text
+GET /api/frontend/v2/backtests/runs/{campaign_id}/research/decision-quality?role=OOS
+GET /api/frontend/v2/backtests/runs/{campaign_id}/research/evidence?report_type=...&dimension=...&key=...&role=OOS
+```
+
+Le premier retourne la projection persistée Decision Quality d'un rôle et agrège les rapports descriptifs Scanner Filtering / Funnel Decision Quality disponibles. Le second pagine l'Evidence Index pour une cohorte sélectionnée ; `stage` est optionnel et `page_size` est borné.
+
+Ces endpoints lisent uniquement les sidecars déjà produits par le post-run 24D.4. Ils ne recalculent ni Forward Outcomes, ni Analytics, ni Decision Intelligence et ne produisent aucune recommandation de tuning. Une campagne historique sans sidecars Research reste explicitement indisponible.

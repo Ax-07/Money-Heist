@@ -1,8 +1,8 @@
 # Money Heist — Trading et Gestion du Risque
 
 **Document :** Trading et risque  
-**Version :** 0.1  
-**Statut :** Spécification initiale  
+**Version :** 0.2
+**Statut :** Référence active — Trading / Risk Engine
 **Références :** `01_PROJECT_MASTER.md`, `02_ARCHITECTURE.md`
 
 ---

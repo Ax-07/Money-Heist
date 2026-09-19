@@ -1179,3 +1179,14 @@ Une nouvelle conversation ne doit pas reconstruire l'état du projet uniquement 
 - timing causal des transitions de patterns corrigé (`c28b71d5`) ;
 - aucune autorité Scanner/Agents/Risk/PAPER/LIVE déplacée ;
 - mémoire projet courte formalisée par ADR-047.
+
+<!-- DOC_ACTIVE_REALIGN_20260919 -->
+## Changelog documentation — 2026-09-19 — Réalignement des documents actifs
+
+- `00` référence désormais explicitement la baseline intégrée auditée `cb0c26a0` et distingue cette baseline du HEAD futur ;
+- `01`, `02`, `08`, `09` et `12` sont réalignés sur l'état post-24D.4 ;
+- le transport Prompt Cache actif est documenté en `money-heist.prompt-transport.v4` ;
+- les snapshots intermédiaires `CURRENT / NEXT / PLANNED` de 24C/24D sont retirés de la roadmap active ;
+- `04` et `07` passent du statut historique « spécification initiale » à « référence active » ;
+- les documents de batch restent disponibles sous `docs/archives/` mais ne sont pas une source d'état courant ;
+- aucune autorité Scanner, Agents, Risk, PAPER ou LIVE n'est modifiée par ce réalignement.

@@ -1,10 +1,10 @@
 # Money Heist — Frontend et Interface V2
 
 **Document :** Référence fonctionnelle et technique du Frontend V2  
-**Version :** 1.1
-**Date :** 2026-09-15
-**Statut :** Frontend V2 / Backtest Cockpit — Batch 22.1 validé
-**Baseline auditée :** `9f42d3ebc52b71feeedf3b58160187d18bab5a62`
+**Version :** 1.2
+**Date :** 2026-09-19
+**Statut :** Frontend V2 — Backtest Cockpit, Decision Intelligence et Research Explorer 24D.4
+**Baseline auditée :** `cb0c26a0c6e32b975d3739010e74192f5ac95944`
 
 ---
 
@@ -257,9 +257,9 @@ Ordre recommandé : migrer le sidecar V2 vers le stockage SQL unifié si nécess
 
 <!-- DOC_REALIGN_FRONTEND_VALIDATION_START -->
 
-## Addendum 2026-09-15 — état validé après Batch 22.1
+## Historique de validation 2026-09-15 — Batch 22.1
 
-Baseline documentaire courante : `main @ 9f42d3ebc52b71feeedf3b58160187d18bab5a62`.
+Baseline de cette validation historique : `main @ 9f42d3ebc52b71feeedf3b58160187d18bab5a62`.
 
 Validation Frontend exécutée avec pnpm :
 
@@ -358,3 +358,21 @@ La logique de filtering/navigation est centralisée dans `decision-intelligence-
 Le store `money-heist-ui-v2` persiste les préférences génériques uniquement. Sa migration v2 accepte les anciens champs 24C.2 `technicalEventFamily` / `technicalEventType`. Les sélections de campagne et la recherche ne sont jamais persistées.
 
 Aucune API n'est ajoutée et aucun calcul Scanner/Analytics/Decision/Risk n'est déplacé dans le navigateur. Voir `archives/batches/24/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
+
+<!-- DOC_REALIGN_24D4_FRONTEND -->
+## Addendum Batch 24D.4 — Research Explorer & Evidence Index
+
+Le Backtest Cockpit expose désormais un Research Explorer observationnel construit uniquement à partir des sidecars 24D pré-calculés.
+
+Endpoints consommés :
+
+```text
+GET /api/frontend/v2/backtests/runs/{campaign_id}/research/decision-quality
+GET /api/frontend/v2/backtests/runs/{campaign_id}/research/evidence
+```
+
+La projection Decision Quality conserve la séparation `DESIGN / VALIDATION / OOS` et présente les rapports descriptifs Scanner Filtering et Funnel Decision Quality. Une cohorte sélectionnée peut ouvrir son Evidence Index paginé, puis synchroniser une preuve avec le replay à son timestamp causal sans changer son identité.
+
+Le frontend ne calcule aucun Forward Outcome, n'infère aucun seuil et ne transforme pas une cohorte descriptive en recommandation. Les sélections Research restent UI-only. Une campagne ancienne dépourvue de sidecars 24D affiche explicitement l'indisponibilité au lieu de lancer un calcul tardif.
+
+Cette couche complète Decision Intelligence 24C mais ne modifie aucune autorité Scanner, Agents, Risk, PAPER ou LIVE.

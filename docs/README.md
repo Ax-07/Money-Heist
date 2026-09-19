@@ -27,6 +27,7 @@ Les fichiers numérotés ne doivent pas être dupliqués à la racine.
 Les documents de livraison et de clôture des anciens batches sont rangés sous `docs/archives/`.
 Ils sont conservés pour la traçabilité mais ne doivent pas être utilisés comme état courant.
 Consulter `archives/HISTORIQUE_BATCHS.md` pour la chronologie complète Batch 01 → 24D.4.
+
 ## Fichiers opérationnels conservés à la racine
 
 La racine conserve volontairement les points d’entrée et documents opérateur transverses, notamment

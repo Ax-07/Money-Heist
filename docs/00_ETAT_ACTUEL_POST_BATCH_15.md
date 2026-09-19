@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-19  
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**HEAD audité :** `c28b71d55387e9d6dd84cfee475d83b9640c3404`  
-**Dernier commit :** `fix(analytics): enforce causal pattern transition timing`  
+**Baseline intégrée auditée :** `cb0c26a0c6e32b975d3739010e74192f5ac95944`
+**Dernier commit audité :** `docs: reconstruct historical batch archive`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -260,7 +260,7 @@ Principes :
 - aucune back-propagation du statut final ;
 - aucune autorité trading.
 
-Le HEAD `c28b71d` corrige explicitement la causalité du timing des transitions de patterns : le lifecycle ne peut pas devenir disponible avant la confirmation causale du dernier pivot requis.
+Le commit `c28b71d` corrige explicitement la causalité du timing des transitions de patterns : le lifecycle ne peut pas devenir disponible avant la confirmation causale du dernier pivot requis.
 
 ---
 
@@ -352,18 +352,25 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ---
 
-## 14. Derniers commits intégrés après 24D.4
+## 14. Baseline intégrée récente
 
-À la synchronisation :
+La baseline auditée pour cette synchronisation est `cb0c26a0c6e32b975d3739010e74192f5ac95944`.
+
+Chaîne récente utile :
 
 ```text
 a03ade86  feat(research): add research reports and evidence explorer
 f9061e06  chore(quality): close static hygiene gate
 faf713c4  style(prompts): normalize prompt formatting
 c28b71d5  fix(analytics): enforce causal pattern transition timing
+e463e3bd  docs: establish deterministic project memory
+890ab9e5  chore(repo): clean obsolete batch artifacts and align doc tests
+d2427b75  chore(repo): remove remaining obsolete root artifacts
+cb0c26a0  docs: reconstruct historical batch archive
 ```
 
-Ces commits sont postérieurs à plusieurs sections documentaires qui indiquent encore 24D.2/24D.3 comme `CURRENT`. Ces marqueurs historiques ne doivent donc pas être interprétés comme l’état courant.
+Les documents de livraison des anciens batches sont désormais conservés sous `docs/archives/`.
+Ils sont historiques et ne définissent pas l'état courant ; les documents actifs `00` à `12`, les ADR et le code intégré gardent cette responsabilité.
 
 ---
 
@@ -416,7 +423,7 @@ Au début d’une nouvelle session Money Heist :
 ```text
 1. lire ce fichier ;
 2. vérifier le HEAD actuel de GitHub main ;
-3. si HEAD != HEAD de ce fichier, inspecter les commits depuis cette baseline ;
+3. si HEAD != baseline intégrée auditée de ce fichier, inspecter les commits depuis cette baseline ;
 4. lire uniquement les documents de domaine nécessaires à la tâche ;
 5. consulter 10_DECISIONS_ET_CHANGELOG pour le pourquoi ;
 6. consulter 09_ROADMAP_DEVELOPPEMENT pour la suite ;
@@ -437,9 +444,9 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation voit GitHub `main` jusqu’à `c28b71d55387e9d6dd84cfee475d83b9640c3404`.
+Cette synchronisation a audité GitHub `main` jusqu'à `cb0c26a0c6e32b975d3739010e74192f5ac95944`.
 
-Elle ne peut pas connaître automatiquement les modifications non commités présentes sur une machine locale après ce commit. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
+Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
 ---
 
@@ -449,7 +456,7 @@ Ce fichier doit rester une **mémoire courte**, pas un changelog exhaustif.
 
 À chaque gros lot :
 
-1. mettre à jour HEAD + date ;
+1. mettre à jour la baseline intégrée auditée + date ;
 2. remplacer l’état courant au lieu d’empiler des sections obsolètes ;
 3. mettre les décisions dans `10_DECISIONS_ET_CHANGELOG.md` ;
 4. mettre les travaux futurs dans `09_ROADMAP_DEVELOPPEMENT.md` ;

@@ -1,8 +1,8 @@
 # Money Heist — Architecture Technique
 
 **Document :** Architecture technique  
-**Version :** 0.4
-**Statut :** Architecture active — alignée post-Batch 23A.4
+**Version :** 0.5
+**Statut :** Architecture active — alignée post-Batch 24D.4
 **Référence :** `01_PROJECT_MASTER.md`
 
 ---
@@ -959,3 +959,26 @@ La causalité visuelle distingue explicitement temps géométrique et temps de c
 Les anciens runs sans projection Analytics riche restent consultables. L'absence du sidecar
 géométrique ne déclenche aucune recomputation et produit des overlays géométriques vides.
 `BacktestRun.run_id` et le business fingerprint restent inchangés.
+
+<!-- DOC_REALIGN_POST_BATCH24D4_ARCHITECTURE -->
+## Alignement architecture post-Batch 24D.4 — 2026-09-19
+
+La chaîne observationnelle post-run est maintenant explicitement séparée du chemin décisionnel :
+
+```text
+Historical Replay / PAPER
+→ artefacts métier canoniques
+→ 24A Analytics
+→ 24B Attribution / Decision Intelligence
+→ 24C projections Frontend V2
+→ 24D Decision Quality Research
+→ sidecars / Evidence Index
+→ GET read-only
+→ Research Explorer
+```
+
+Les composants 24A–24D consomment des artefacts déjà produits et ne disposent d'aucune dépendance d'autorité vers Scanner, agents, Risk Engine, PAPER Broker ou LIVE. Les Forward Outcomes restent post-hoc et ne sont jamais réinjectés à la décision.
+
+Les projections frontend sont persistées en fin de run et lues ensuite par API. Une absence d'artefact historique reste explicitement indisponible ; aucun endpoint de lecture ne déclenche de lazy-compute métier.
+
+Les documents de livraison des batches sont désormais historiques sous `docs/archives/batches/` et ne remplacent pas les frontières actives décrites ici.

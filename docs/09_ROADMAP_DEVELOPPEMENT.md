@@ -1,8 +1,8 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots
-**Version :** 0.7
-**Statut :** Roadmap active — alignée post-Batch 23A.4
+**Version :** 0.8
+**Statut :** Roadmap active — alignée post-Batch 24D.4
 
 ---
 
@@ -669,47 +669,6 @@ les analyses de performance, le tuning, les Forward Outcomes enrichis ou l'activ
 
 24B.4 a passé la validation locale complète le 2026-09-17 : Ruff, 24B.1-24B.4, suites 23A concernées, Decision Funnel / Risk / PAPER, Agents / Orchestration, Analytics et full suite avec exactement 3 skips attendus. Batch 24B est DONE. La phase suivante reste 24C - Decision Intelligence Backend & UI ; elle ne commence pas dans ce lot.
 
-<!-- BATCH_24C2_ROADMAP -->
-## État Batch 24C — Decision Intelligence Backend & UI
-
-```text
-24C.1 — Backend Projection API                    DONE
-24C.2 — Trading Chart Analytics Overlays          DONE
-24C.3 — Decision Intelligence Inspector           NEXT
-24C.4 — Filters & Navigation                      PLANNED
-```
-
-24C.1 expose en lecture seule les artefacts 24A/24B pré-calculés au Frontend V2.
-
-24C.2 transforme le Historical Replay chart en outil d'inspection causale avec toggles et
-sélection pour Trading, Scanner/CandidateOpportunity, décisions/funnel, Risk, Technical Events,
-structure, ZigZag et patterns. La visibilité respecte les temps de disponibilité/confirmation ;
-aucun calcul Analytics ou trading n'est déplacé dans le navigateur.
-
-Validation locale 24C.2 du 2026-09-18 :
-
-- Ruff sur le périmètre Python 24C.2 : OK ;
-- frontend lint : OK ;
-- frontend typecheck : OK ;
-- Vitest : 9 fichiers / 37 tests : OK ;
-- Next.js production build : OK ;
-- suite Python complète : OK avec les 3 skips attendus.
-
-La prochaine étape est 24C.3 — Decision Intelligence Inspector complet. 24C.3 doit réutiliser la
-sélection stable préparée par 24C.2 et ne doit pas introduire de nouvelle autorité métier.
-
-<!-- BATCH_24C3_ROADMAP -->
-## État Batch 24C — Decision Intelligence Backend & UI
-
-```text
-24C.1 — Backend Projection API                    DONE
-24C.2 — Trading Chart Analytics Overlays          DONE
-24C.3 — Decision Intelligence Inspector           DONE
-24C.4 — Filters & Navigation                      NEXT
-```
-
-24C.3 raccorde d'abord automatiquement la chaîne 24A → 24B → 24C au chemin normal de fin de backtest, puis ajoute l'Inspector Decision Intelligence au panneau droit du Historical Replay. Les GET restent strictement read-only et aucun lazy-compute n'est introduit.
-
 <!-- BATCH_24C4_ROADMAP -->
 ## Clôture Batch 24C — Decision Intelligence Backend & UI
 
@@ -726,45 +685,10 @@ Batch 24C — Decision Intelligence Backend & UI    DONE
 
 La phase suivante est **Batch 24D — Decision Quality Research**. Elle seule pourra joindre Decision Intelligence @ T aux Forward Outcomes postérieurs pour les études de qualité, sans feedback dans le pipeline de décision.
 
-<!-- BATCH_24D2_SCANNER_FILTERING_QUALITY_RESEARCH -->
-## État Batch 24D — Decision Quality Research
-
-```text
-24D.1 — Research Foundation & Outcome Join         DONE
-24D.2 — Scanner Filtering Quality Research         CURRENT
-24D.3 — Funnel Decision Quality Research           NEXT
-24D.4 — Research Reports & Evidence Explorer       PLANNED
-```
-
-24D.2 construit une projection descriptive et déterministe à partir de
-`DecisionQualityResearchBundle.scanner_records`. Le Scanner reste directionless : les Forward
-Outcomes décrivent le mouvement futur du prix et ne constituent ni un P&L hypothétique, ni un
-label de trade raté, ni une recommandation de threshold. Les dimensions v1 sont
-`CLASSIFICATION`, `SCORE`, `SCORE_MARGIN`, `TRIGGER` et `MARKET_REGIME`; les contrasts restent
-strictement descriptifs. Persistance, API de rapports et Evidence Explorer restent réservés à
-24D.4.
-
-<!-- BATCH_24D3_FUNNEL_DECISION_QUALITY_RESEARCH -->
-## État Batch 24D — Decision Quality Research
-
-```text
-24D.1 — Research Foundation & Outcome Join         DONE
-24D.2 — Scanner Filtering Quality Research         DONE
-24D.3 — Funnel Decision Quality Research           CURRENT
-24D.4 — Research Reports & Evidence Explorer       NEXT
-```
-
-24D.3 joint `DecisionQualityResearchBundle.candidate_records` aux faits canoniques 24B.4
-`FunnelStageAnalyticsAttributionSet`. Les stages antérieurs à FINAL restent directionless ; FINAL,
-TradeProposal, Risk et PAPER peuvent publier des mouvements futurs alignés uniquement lorsqu'une
-direction LONG/SHORT était déjà causalement disponible. Ces métriques ne sont pas un P&L de trade.
-Le lot reste read-only, déterministe, sans tuning, persistance, endpoint ni frontend.
-
-
 <!-- PROJECT_MEMORY_SYNC_20260919 -->
 ## Synchronisation 2026-09-19 — état courant après Batch 24D.4
 
-Référence auditée : `main` au commit `c28b71d55387e9d6dd84cfee475d83b9640c3404`.
+Référence auditée : `main` au commit `cb0c26a0c6e32b975d3739010e74192f5ac95944`.
 
 État consolidé de Batch 24D :
 
@@ -777,10 +701,15 @@ Référence auditée : `main` au commit `c28b71d55387e9d6dd84cfee475d83b9640c340
 
 24D.4 ajoute le branchement post-run, les sidecars Decision Quality, l'Evidence Index, les endpoints GET read-only et le Research Explorer frontend. Les artefacts restent descriptifs/post-hoc et sans autorité de tuning ou de trading.
 
-Les commits postérieurs à 24D.4 incluent :
+Les commits intégrés après 24D.4 incluent :
 - `f9061e06` — fermeture de la gate d'hygiène statique ;
 - `faf713c4` — normalisation du format des prompts ;
-- `c28b71d5` — correction de causalité du timing des transitions de patterns.
+- `c28b71d5` — correction de causalité du timing des transitions de patterns ;
+- `e463e3bd` — mémoire projet déterministe ;
+- `890ab9e5` / `d2427b75` — nettoyage des artefacts obsolètes du repository ;
+- `cb0c26a0` — reconstruction de l'archive historique des batches.
+
+Les anciens snapshots intermédiaires 24C/24D ont été retirés de cette roadmap active ; leurs documents de livraison sont conservés sous `docs/archives/batches/24/`.
 
 ### Prochaine phase
 
