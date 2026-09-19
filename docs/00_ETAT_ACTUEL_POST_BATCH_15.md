@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-19  
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `7ebb77fc68aea470928bf222e9c1d81e397471d7`
-**Dernier commit audité :** `feat(frontend): integrate local campaign datasets`
+**Baseline intégrée auditée :** `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`
+**Dernier commit audité :** `chore(repo): ignore local campaign review archives`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -52,6 +52,7 @@ Invariants :
 - l’IA propose ; le Risk Engine déterministe autorise ;
 - aucune sortie LLM ne peut devenir directement un ordre ;
 - `NO_TRADE` est une décision valide ;
+- la capacité directionnelle du marché est explicite via `MarketPositioningMode` ; pour `SPOT_LONG_ONLY`, toute ouverture nette SHORT est interdite de façon déterministe, tandis qu'une vente de réduction/clôture d'un LONG reste autorisée ;
 - le LIVE reste fail-closed et opérateur-gaté ;
 - aucun droit de retrait ne doit être accordé aux clés de trading ;
 - les secrets ne transitent pas dans les prompts ni dans le navigateur ;
@@ -170,7 +171,7 @@ Crew principale :
 - Task Forces temporaires, budgétées et sans autorité LIVE ;
 - Master Portfolio Layer / Master Professor advisory, sans substitution au Master Risk / Risk Engine.
 
-Les prompts actifs ont été migrés vers un dialogue natif français tout en conservant les clés JSON, enums et identifiants machine. Le transport de prompt courant après cette migration est `money-heist.prompt-transport.v4`.
+Les prompts actifs restent natifs français tout en conservant les clés JSON, enums et identifiants machine. La version active du Professor est désormais v8 ; Palermo reste v4, Lisbon v2 et les spécialistes v6. Professor v8 reçoit les directions de trade autorisées par la capacité de marché et doit les respecter pendant FINALIZE. Le transport de prompt courant reste `money-heist.prompt-transport.v4`.
 
 ---
 
@@ -214,6 +215,8 @@ market_as_of   vs operational_at
 Le navigateur peut masquer, filtrer, sélectionner et naviguer, mais ne recalcule pas Analytics, Scanner, agents, Risk ou Forward Outcomes.
 
 Le catalogue local de campagne est fail-closed : seules les entrées déclarées par le manifeste local sont proposées ; avant persistance V2, le backend vérifie taille, SHA-256 brut, nombre de candles et bornes, puis repasse le CSV dans le validateur historique canonique. Aucun chemin arbitraire du disque n’est exposé au navigateur.
+
+Le Backtest Cockpit expose aussi la capacité de marché. Les campagnes Spot ciblées utilisent `SPOT_LONG_ONLY` par défaut : Professor/MOCK, Risk Engine et PaperBroker convergent sur l'interdiction d'ouvrir une position nette SHORT. `LONG_SHORT` reste disponible comme capacité explicite pour des runtimes dérivés futurs.
 
 ---
 
@@ -359,20 +362,19 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ## 14. Baseline intégrée récente
 
-La baseline auditée pour cette synchronisation est `7ebb77fc68aea470928bf222e9c1d81e397471d7`.
+La baseline auditée pour cette synchronisation est `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`.
 
 Chaîne récente utile :
 
 ```text
-cb0c26a0  docs: reconstruct historical batch archive
-4b726e94  docs: realign active documentation post 24D.4
-a633269b  fix(frontend): normalize chart theme colors
-c985e280  docs: align roadmap next phase post 24D.4
 a8ba79e2  feat(market-data): add campaign dataset prefix builder
 7ebb77fc  feat(frontend): integrate local campaign datasets
+509ff388  docs: sync project memory with campaign datasets
+b384852e  feat(backtest): enforce spot long-only campaigns
+ae20cb96  chore(repo): ignore local campaign review archives
 ```
 
-Le raccord des datasets locaux de campagne a été validé avant intégration par 13 tests ciblés `tests/api/test_frontend_v2.py`, Ruff, `pnpm run typecheck`, `pnpm run lint` et `pnpm run build`.
+Le lot Spot long-only a été validé par les tests backend ciblés, le test PaperBroker Spot, la suite backend complète `uv run pytest -q` avec 3 skips attendus, Ruff sur les fichiers concernés, le test frontend ciblé, la suite Vitest complète, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` et `git diff --check`.
 
 Les documents de livraison des anciens batches sont désormais conservés sous `docs/archives/`.
 Ils sont historiques et ne définissent pas l'état courant ; les documents actifs `00` à `12`, les ADR et le code intégré gardent cette responsabilité.
@@ -397,7 +399,7 @@ backtests reproductibles multi-régimes
 + décision opérateur explicite
 ```
 
-Le capital initial visé reste faible et le premier LIVE historique ciblé reste Spot / EUR sans marge ni levier.
+Le capital initial visé reste faible et le premier LIVE historique ciblé reste Spot / EUR sans marge ni levier. La capacité correspondante est `SPOT_LONG_ONLY` : une proposition SHORT d'ouverture est rejetée déterministiquement et ne peut pas atteindre l'exécution réelle.
 
 Aucune couche Analytics/Research ne ferme automatiquement cette gate.
 
@@ -405,17 +407,20 @@ Aucune couche Analytics/Research ne ferme automatiquement cette gate.
 
 ## 16. Priorité de développement après cette synchronisation
 
-La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois et leur sélection dans le cockpit V2.
+La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois, leur sélection dans le cockpit V2 et la capacité Spot long-only explicite.
+
+Le premier run 1 mois exécuté avant `b384852e` contenait des SHORT. Il reste un smoke technique valide pour la chaîne de replay/recherche, mais ne constitue pas une baseline économique représentative du marché Spot ciblé.
 
 Priorités de recherche :
 
-1. campagnes historiques longues et multi-régimes ;
-2. analyse séparée DESIGN / VALIDATION / OOS ;
-3. vérification de couverture et qualité des joins avant interprétation ;
-4. formulation d’hypothèses de modification à partir de DESIGN seulement ;
-5. validation de toute hypothèse sur des données non utilisées pour la concevoir ;
-6. comparaison coûts IA / qualité décisionnelle / pertes du funnel ;
-7. maintien du LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
+1. rejouer le dataset 1 mois en MOCK avec `SPOT_LONG_ONLY` pour établir la première baseline économique Spot ;
+2. étendre ensuite les campagnes 3/6/9/12 mois sans changer arbitrairement les paramètres ;
+3. analyser séparément DESIGN / VALIDATION / OOS ;
+4. vérifier couverture et qualité des joins avant interprétation ;
+5. formuler les hypothèses de modification à partir de DESIGN seulement ;
+6. valider toute hypothèse sur des données non utilisées pour la concevoir ;
+7. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
+8. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
 
 Aucune modification de threshold Scanner, prompt, Risk ou exécution ne doit être déduite automatiquement d’un rapport descriptif.
 
@@ -449,7 +454,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'à `7ebb77fc68aea470928bf222e9c1d81e397471d7`.
+Cette synchronisation a audité GitHub `main` jusqu'à `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`.
 
 Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
