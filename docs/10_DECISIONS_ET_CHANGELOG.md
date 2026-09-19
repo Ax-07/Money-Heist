@@ -1211,3 +1211,28 @@ Aligner les preuves historiques avec ADR-020 et le premier LIVE Kraken Spot, qui
 
 **Conséquence :**
 La première campagne 1 mois exécutée avant ADR-048 reste un smoke technique valide de la chaîne, mais ne constitue pas une baseline économique Spot. Elle doit être rejouée en `SPOT_LONG_ONLY` avant les campagnes empiriques 3/6/9/12 mois.
+
+### ADR-049 — Résumé opérateur et analyse avancée séparés
+
+**Date :** 2026-09-19
+**Statut :** ACCEPTED
+
+**Décision :**
+La page de résultat d'une campagne Backtest sépare deux niveaux de lecture construits à partir des mêmes artefacts canoniques :
+
+- `Résumé` est la vue par défaut et expose l'identité du run, les métriques homogènes DESIGN / VALIDATION / OOS, le Decision Funnel compact et l'equity OOS déjà persistée ;
+- `Analyse avancée` conserve les diagnostics techniques, la configuration détaillée, le Historical Replay, Analytics overlays, Decision Intelligence, Research Explorer, trades et events ;
+- les requêtes lourdes Replay / Analytics / Research ne sont activées qu'à l'ouverture de l'Analyse avancée ;
+- aucune logique Scanner, Professor, Risk, PAPER ou Research n'est réimplémentée dans le frontend ;
+- `PeriodSummary.decision_funnel`, déjà produit par le backend, devient explicitement conservé par le schéma frontend ;
+- le rendement net affiché dans le Résumé est un ratio de présentation `trading_net / initial_balance`, pas une nouvelle métrique métier persistée.
+
+**Raison :**
+La page post-campagne avait accumulé résultat économique, diagnostics d'exécution, replay causal, Decision Intelligence et recherche 24D au même niveau visuel. Cette densité rendait difficile la réponse à la question opérateur initiale : « qu'a produit la campagne et où faut-il investiguer ? ».
+
+**Conséquences :**
+- la lecture courante devient plus rapide sans supprimer les outils avancés ;
+- les trois périodes restent séparées et comparables avec les mêmes métriques ;
+- OOS reste explicitement identifié comme OUT-OF-SAMPLE ;
+- les artefacts Research restent observationnels ;
+- aucune autorité de tuning ou LIVE n'est ajoutée au frontend.

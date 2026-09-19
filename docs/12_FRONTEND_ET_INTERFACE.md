@@ -1,10 +1,10 @@
 # Money Heist — Frontend et Interface V2
 
 **Document :** Référence fonctionnelle et technique du Frontend V2  
-**Version :** 1.3
+**Version :** 1.4
 **Date :** 2026-09-19
-**Statut :** Frontend V2 — Backtest Cockpit, Decision Intelligence et Research Explorer 24D.4
-**Baseline auditée :** `cb0c26a0c6e32b975d3739010e74192f5ac95944`
+**Statut :** Frontend V2 — Backtest Cockpit, résumé opérateur, Decision Intelligence et Research Explorer 24D.4
+**Baseline auditée :** `35f736d41e1d110bb456005a6c8df77a651e069a`
 
 ---
 
@@ -151,7 +151,29 @@ Les campagnes historiques créées avant cette persistance peuvent rester limit�
 
 Le lanceur expose les bornes de DESIGN, VALIDATION et OOS en indices de bougies alignés sur les `close_time` réels renvoyés par le backend. Le split suggéré reste le point de départ, mais l'opérateur peut le modifier avant lancement. La validation impose `DESIGN < VALIDATION < OOS` sans chevauchement.
 
-Dans les résultats, les trois périodes restent affichées dans des onglets distincts. OOS porte explicitement le label `OUT-OF-SAMPLE`; aucune métrique globale ne fusionne les trois périodes.
+Après une campagne terminée, la page détail sépare désormais deux niveaux de lecture sans dupliquer les données métier :
+
+```text
+Résumé (défaut)
+→ identité dataset / mode / capability
+→ comparaison homogène DESIGN / VALIDATION / OOS
+→ trading net, rendement de présentation, drawdown, trades, win rate, profit factor, coût IA
+→ Decision Funnel compact déjà produit par le backend
+→ equity OOS persistée
+
+Analyse avancée (à la demande)
+→ diagnostics techniques d'exécution
+→ configuration figée
+→ replay causal complet
+→ overlays Analytics
+→ Decision Intelligence Inspector
+→ Research Explorer 24D
+→ trades / events / equity par période
+```
+
+Le résumé ne relance jamais le replay et ne recalcule aucun Scanner, agent, Risk ou Forward Outcome. Le `decision_funnel` déjà présent dans `PeriodSummary` est conservé par le contrat Zod frontend au lieu d'être ignoré. Le rendement net affiché dans la vue Résumé est uniquement un ratio de présentation `trading_net / initial_balance`.
+
+Dans l'analyse avancée, les trois périodes restent sélectionnables séparément. OOS porte explicitement le label `OUT-OF-SAMPLE`; aucune métrique globale ne fusionne DESIGN, VALIDATION et OOS.
 
 ## 14. Walk-forward
 
@@ -228,6 +250,8 @@ Zustand ne contient aucune donnée métier de trading.
 Priorités couvertes dans le lot : contrat API critique, mapping événements chart, logique du curseur replay, capacités frontend fail-closed et routes backend V2. Playwright contient un smoke de la modale Settings et vérifie que l’interface ne demande pas d’API key.
 
 ## 23. Conventions UI
+
+La hiérarchie d'information distingue désormais le **pilotage** de l'**investigation** : le Résumé est la vue post-campagne par défaut et l'Analyse avancée est explicitement ouverte par l'opérateur. Les identifiants techniques complets, fingerprints, timings et outils Research ne dominent plus la lecture initiale.
 
 Dark-first, densité élevée, composants compacts, badges sémantiques, focus visible et navigation clavier assurée par les primitives Radix là où elles sont utilisées. LONG/SHORT/Risk/Warning disposent de texte et formes distinctes ; aucune information critique ne dépend uniquement d’une couleur.
 

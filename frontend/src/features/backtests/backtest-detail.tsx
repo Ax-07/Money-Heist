@@ -32,6 +32,7 @@ import { formatDateTime } from "@/lib/utils";
 import { isTerminalCampaignStatus, shouldPollCampaignProgress } from "./campaign-progress";
 import { ReplayControls } from "./replay-controls";
 import type { ReplaySpeed } from "./replay-state";
+import { BacktestSummaryView } from "./backtest-summary-view";
 
 const roles = ["DESIGN", "VALIDATION", "OOS"] as const;
 const formatDuration = (ms: number) => ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)} s`;
@@ -60,14 +61,16 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
     enabled: campaign.isSuccess,
     retry: false,
   });
+  const [view, setView] = useState<"SUMMARY" | "ADVANCED">("SUMMARY");
   const [role, setRole] = useState<(typeof roles)[number]>("OOS");
+  const advancedEnabled = campaign.isSuccess && view === "ADVANCED";
   const replay = useQuery({
     queryKey: ["replay", campaignId, role],
     queryFn: () => replayQuery(campaignId, role),
-    enabled: campaign.isSuccess,
+    enabled: advancedEnabled,
     retry: false,
   });
-  const overlays = useAnalyticsOverlays(campaignId, role, campaign.isSuccess);
+  const overlays = useAnalyticsOverlays(campaignId, role, advancedEnabled);
   const setSelectedAnalyticsObject = useUiStore(state => state.setSelectedAnalyticsObject);
   const clearAnalyticsSelection = useUiStore(state => state.clearAnalyticsSelection);
   const clearResearchSelection = useUiStore(state => state.clearResearchSelection);
@@ -120,90 +123,112 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
   return (
     <div className="space-y-4">
       <div className="panel flex flex-wrap items-center gap-3 p-4">
-        <div><p className="panel-title">Backtest campaign</p><h1 className="mt-1 font-mono text-lg">{campaignId}</h1></div>
-        <StatusBadge value={summary?.ai_mode ?? progress.data?.status ?? "UNKNOWN"} />
-        <span className="ml-auto text-xs text-slate-500">{summary ? formatDateTime(summary.created_at) : ""}</span>
-      </div>
-      {summary && <CampaignHeader campaign={summary} />}
-      {summary && <PerformancePanel campaign={summary} />}
-      {configuration.data && <ConfigurationPanel configuration={configuration.data} />}
-      <Tabs
-        value={role}
-        onValueChange={value => {
-          setRole(value as typeof role);
-          setIndex(0);
-          setPlaying(false);
-          setNavigationScopeTime(null);
-          clearAnalyticsSelection();
-          clearResearchSelection();
-        }}
-      >
-        <TabsList className="w-fit">
-          {roles.map(value => <TabsTrigger key={value} value={value}>{value}{value === "OOS" ? " · OUT-OF-SAMPLE" : ""}</TabsTrigger>)}
-        </TabsList>
-      </Tabs>
-      {replay.isError ? (
-        <div className="panel p-6">
-          <p className="text-sm text-amber-200">Replay détaillé indisponible pour cette campagne.</p>
-          <p className="mt-2 text-xs leading-5 text-slate-500">Cette campagne ne possède pas les artefacts V2 nécessaires au replay détaillé. Les nouvelles campagnes V2 persistent désormais dataset, configuration, traces et exports côté backend.</p>
+        <div className="min-w-0">
+          <p className="panel-title">Backtest</p>
+          <h1 className="mt-1 text-lg font-semibold text-slate-100">
+            {summary ? `${summary.dataset.symbol} · ${summary.dataset.timeframe}` : "Campagne historique"}
+          </h1>
+          <p className="mt-1 truncate font-mono text-[10px] text-slate-600">{campaignId}</p>
         </div>
-      ) : replay.isLoading ? (
-        <div className="panel p-8 text-sm text-slate-500">Chargement du replay…</div>
-      ) : replay.data && (
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge value={summary?.status ?? progress.data?.status ?? "UNKNOWN"} />
+          {summary && <StatusBadge value={summary.ai_mode} />}
+          {configuration.data && <StatusBadge value={configuration.data.market.positioning_mode} />}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant={view === "SUMMARY" ? "secondary" : "ghost"} onClick={() => setView("SUMMARY")}>Résumé</Button>
+          <Button size="sm" variant={view === "ADVANCED" ? "secondary" : "ghost"} onClick={() => setView("ADVANCED")}>Analyse avancée</Button>
+        </div>
+        {summary && <span className="w-full text-right text-[10px] text-slate-600">{formatDateTime(summary.created_at)}</span>}
+      </div>
+
+      {!summary ? (
+        <div className="panel p-8 text-sm text-slate-500">Chargement des résultats de campagne…</div>
+      ) : view === "SUMMARY" ? (
+        <BacktestSummaryView campaign={summary} configuration={configuration.data} onAdvanced={() => setView("ADVANCED")} />
+      ) : (
         <>
-          <div className="grid min-h-[600px] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-            <section className="panel overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
-                <StatusBadge value="BACKTEST" />
-                <span className="text-xs text-slate-400">{replay.data.symbol} · {replay.data.timeframe}</span>
-                <span className="ml-auto text-[10px] text-slate-600">Données backend canoniques · replay causal au curseur</span>
-              </div>
-              <OverlayToolbar
-                overlays={overlays.data}
-                cursorTime={navigationScopeTime ?? cursorTime}
-                onNavigate={navigateToItem}
-              />
-              <div className="h-[520px]">
-                <TradingChart
-                  mode="BACKTEST"
-                  symbol={replay.data.symbol}
-                  timeframe={replay.data.timeframe}
-                  candles={replay.data.candles.slice(0, index + 1)}
-                  events={replay.data.events.filter(event => Math.floor(new Date(event.observed_at).getTime() / 1000) <= (cursorTime ?? 0))}
-                  analyticsOverlays={overlays.data}
-                  cursorTime={cursorTime}
-                  onOverlaySelect={selection => {
-                    setNavigationScopeTime(value => value ?? cursorTime);
-                    setSelectedAnalyticsObject(selection);
-                    seekTo(Math.floor(new Date(selection.navigationTimestamp).getTime() / 1000), true);
-                  }}
-                  onEventSelect={event => seekTo(Math.floor(new Date(event.observed_at).getTime() / 1000))}
+          <PerformancePanel campaign={summary} />
+          {configuration.data && <ConfigurationPanel configuration={configuration.data} />}
+          <Tabs
+            value={role}
+            onValueChange={value => {
+              setRole(value as typeof role);
+              setIndex(0);
+              setPlaying(false);
+              setNavigationScopeTime(null);
+              clearAnalyticsSelection();
+              clearResearchSelection();
+            }}
+          >
+            <TabsList className="w-fit">
+              {roles.map(value => <TabsTrigger key={value} value={value}>{value}{value === "OOS" ? " · OUT-OF-SAMPLE" : ""}</TabsTrigger>)}
+            </TabsList>
+          </Tabs>
+          {replay.isError ? (
+            <div className="panel p-6">
+              <p className="text-sm text-amber-200">Replay détaillé indisponible pour cette campagne.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Cette campagne ne possède pas les artefacts V2 nécessaires au replay détaillé. Les nouvelles campagnes V2 persistent désormais dataset, configuration, traces et exports côté backend.</p>
+            </div>
+          ) : replay.isLoading ? (
+            <div className="panel p-8 text-sm text-slate-500">Chargement de l’analyse avancée…</div>
+          ) : replay.data && (
+            <>
+              <div className="grid min-h-[600px] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                <section className="panel overflow-hidden">
+                  <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+                    <StatusBadge value="BACKTEST" />
+                    <span className="text-xs text-slate-400">{replay.data.symbol} · {replay.data.timeframe}</span>
+                    <span className="ml-auto text-[10px] text-slate-600">Données backend canoniques · replay causal au curseur</span>
+                  </div>
+                  <OverlayToolbar
+                    overlays={overlays.data}
+                    cursorTime={navigationScopeTime ?? cursorTime}
+                    onNavigate={navigateToItem}
+                  />
+                  <div className="h-[520px]">
+                    <TradingChart
+                      mode="BACKTEST"
+                      symbol={replay.data.symbol}
+                      timeframe={replay.data.timeframe}
+                      candles={replay.data.candles.slice(0, index + 1)}
+                      events={replay.data.events.filter(event => Math.floor(new Date(event.observed_at).getTime() / 1000) <= (cursorTime ?? 0))}
+                      analyticsOverlays={overlays.data}
+                      cursorTime={cursorTime}
+                      onOverlaySelect={selection => {
+                        setNavigationScopeTime(value => value ?? cursorTime);
+                        setSelectedAnalyticsObject(selection);
+                        seekTo(Math.floor(new Date(selection.navigationTimestamp).getTime() / 1000), true);
+                      }}
+                      onEventSelect={event => seekTo(Math.floor(new Date(event.observed_at).getTime() / 1000))}
+                    />
+                  </div>
+                  <ReplayControls
+                    replay={replay.data}
+                    index={index}
+                    setIndex={setReplayIndex}
+                    playing={playing}
+                    setPlaying={setPlaying}
+                    speed={speed}
+                    setSpeed={setSpeed}
+                  />
+                </section>
+                <DecisionIntelligenceInspector
+                  campaignId={campaignId}
+                  role={role}
+                  overlays={overlays.data}
                 />
               </div>
-              <ReplayControls
-                replay={replay.data}
-                index={index}
-                setIndex={setReplayIndex}
-                playing={playing}
-                setPlaying={setPlaying}
-                speed={speed}
-                setSpeed={setSpeed}
+              <ResearchExplorer
+                campaignId={campaignId}
+                role={role}
+                enabled={advancedEnabled}
+                onEvidenceSelect={navigateToResearchEvidence}
               />
-            </section>
-            <DecisionIntelligenceInspector
-              campaignId={campaignId}
-              role={role}
-              overlays={overlays.data}
-            />
-          </div>
-          <ResearchExplorer
-            campaignId={campaignId}
-            role={role}
-            enabled={campaign.isSuccess}
-            onEvidenceSelect={navigateToResearchEvidence}
-          />
-          <TradeAndEvents replay={replay.data} setIndex={time => seekTo(time)} />
-          <section className="panel p-4"><p className="panel-title mb-3">Equity · {role}</p><EquityChart points={replay.data.equity} /></section>
+              <TradeAndEvents replay={replay.data} setIndex={time => seekTo(time)} />
+              <section className="panel p-4"><p className="panel-title mb-3">Equity · {role}</p><EquityChart points={replay.data.equity} /></section>
+            </>
+          )}
         </>
       )}
     </div>
@@ -218,13 +243,9 @@ function ProgressView({ progress, cancelling, onCancel }: { progress: CampaignPr
   return <div className="space-y-4"><div className="panel p-6"><div className="flex items-center gap-2"><StatusBadge value={progress.status} /><StatusBadge value={progress.phase} /></div><h1 className="mt-4 text-xl font-semibold">{title}</h1><p className="mt-2 text-sm text-slate-400">{progress.message}</p>{progress.error && <div role="alert" className="mt-4 rounded-lg border border-rose-900/60 bg-rose-950/30 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-300">Cause backend</p><pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-rose-100">{progress.error}</pre></div>}<div className="mt-5 h-2 overflow-hidden rounded bg-slate-900"><div className="h-full bg-violet-500" style={{ width: `${progress.percent}%` }} /></div><div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500"><span>{progress.percent.toFixed(1)}%</span><span>{progress.opportunity_count} opportunités</span><span>{progress.executed_order_count} ordres PAPER</span><span>Temps: {formatDuration(progress.elapsed_ms)}</span><span>Appels IA: {progress.ai_call_count} · cumulé {formatDuration(progress.ai_wall_time_ms)}</span><span>Agents: {progress.active_agents.join(", ") || "aucun actif"}</span>{terminal && <span>Polling arrêté</span>}</div>{progress.can_cancel && <div className="mt-4"><Button variant="danger" disabled={cancelling} onClick={onCancel}>{cancelling ? "Annulation…" : "Annuler le backtest"}</Button></div>}</div></div>;
 }
 
-function CampaignHeader({ campaign }: { campaign: CampaignSummary }) {
-  return <div className="grid gap-3 lg:grid-cols-4"><Card label="Dataset" value={`${campaign.dataset.dataset_id} · ${campaign.dataset.candle_count} bars`} /><Card label="DESIGN" value={`${campaign.design.trading_net.value ?? "—"} · DD ${campaign.design.max_drawdown_pct.value ?? "—"}`} /><Card label="VALIDATION" value={`${campaign.validation.trading_net.value ?? "—"} · ${campaign.validation.closed_trades} trades`} /><Card label="OOS · OUT-OF-SAMPLE" value={`${campaign.oos.trading_net.value ?? "—"} · ${campaign.oos.closed_trades} trades`} /></div>;
-}
-
 function PerformancePanel({ campaign }: { campaign: CampaignSummary }) {
   const periods = [campaign.design, campaign.validation, campaign.oos];
-  return <details className="panel p-4"><summary className="cursor-pointer text-sm font-semibold text-slate-200">Performance du replay</summary><div className="mt-4 grid gap-3 lg:grid-cols-3">{periods.map(period => { const p = period.performance; return <div key={period.role} className="rounded-lg border border-slate-800 p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">{period.role}</p>{!p ? <p className="mt-2 text-xs text-slate-500">Profil indisponible.</p> : <div className="mt-2 space-y-1 font-mono text-xs text-slate-300"><p>Total {formatDuration(p.wall_clock_ms)}</p><p>Replay {formatDuration(p.replay_total_ms)} · pipeline {formatDuration(p.replay_pipeline_ms)}</p><p>MTF/features/scanner {formatDuration(p.replay_mtf_feature_scanner_ms)} · lifecycle {formatDuration(p.replay_lifecycle_ms)}</p><p>Contextes {formatDuration(p.replay_context_build_ms)} · mesure 23A {formatDuration(p.measurement_23a_ms)}</p><p>IA {p.ai_request_count} requêtes · latence cumulée {formatDuration(p.ai_provider_latency_ms)}</p></div>}</div>; })}</div><p className="mt-3 text-[10px] leading-4 text-slate-500">La latence IA est cumulative par requête et peut dépasser le temps mur lorsque plusieurs spécialistes sont appelés en parallèle. Ces mesures sont observationnelles et n’entrent dans aucun fingerprint métier.</p></details>;
+  return <details className="panel p-4"><summary className="cursor-pointer text-sm font-semibold text-slate-200">Diagnostics d’exécution</summary><div className="mt-4 grid gap-3 lg:grid-cols-3">{periods.map(period => { const p = period.performance; return <div key={period.role} className="rounded-lg border border-slate-800 p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">{period.role}</p>{!p ? <p className="mt-2 text-xs text-slate-500">Profil indisponible.</p> : <div className="mt-2 space-y-1 font-mono text-xs text-slate-300"><p>Total {formatDuration(p.wall_clock_ms)}</p><p>Replay {formatDuration(p.replay_total_ms)} · pipeline {formatDuration(p.replay_pipeline_ms)}</p><p>MTF/features/scanner {formatDuration(p.replay_mtf_feature_scanner_ms)} · lifecycle {formatDuration(p.replay_lifecycle_ms)}</p><p>Contextes {formatDuration(p.replay_context_build_ms)} · mesure 23A {formatDuration(p.measurement_23a_ms)}</p><p>IA {p.ai_request_count} requêtes · latence cumulée {formatDuration(p.ai_provider_latency_ms)}</p></div>}</div>; })}</div><p className="mt-3 text-[10px] leading-4 text-slate-500">La latence IA est cumulative par requête et peut dépasser le temps mur lorsque plusieurs spécialistes sont appelés en parallèle. Ces mesures sont observationnelles et n’entrent dans aucun fingerprint métier.</p></details>;
 }
 
 function Card({ label, value }: { label: string; value: string }) {

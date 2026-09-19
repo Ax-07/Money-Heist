@@ -718,6 +718,8 @@ Les anciens snapshots intermédiaires 24C/24D ont été retirés de cette roadma
 
 ### Prochaine phase
 
+Le cockpit post-campagne sépare maintenant un Résumé opérateur par défaut de l'Analyse avancée afin que les futures campagnes longues restent comparables sans masquer les outils d'investigation 24D. Cette évolution est purement observationnelle et ne modifie aucune autorité métier.
+
 La prochaine phase utile n'est pas un assouplissement automatique des règles. Elle consiste à exploiter les instruments construits :
 
 1. campagnes historiques longues multi-régimes ;

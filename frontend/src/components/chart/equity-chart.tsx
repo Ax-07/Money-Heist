@@ -1,9 +1,10 @@
 "use client";
 import { ColorType, createChart, type IChartApi, type ISeriesApi, type Time } from "lightweight-charts";
 import { useEffect, useMemo, useRef } from "react";
-import type { BacktestReplay } from "@/lib/api/schemas";
 
-export function EquityChart({ points }: {points: BacktestReplay["equity"]}) {
+type EquityPoint = { observed_at: string; equity: string };
+
+export function EquityChart({ points }: {points: readonly EquityPoint[]}) {
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const line = useRef<ISeriesApi<"Line"> | null>(null);

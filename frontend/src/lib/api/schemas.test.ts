@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import { marketCandlesQuery } from "./queries";
 import {
   dashboardSnapshotSchema,
+  decisionFunnelReportSchema,
   frontendCapabilitiesSchema,
   marketCandlesSchema,
   openAiModelCatalogSchema,
@@ -89,6 +90,48 @@ describe("critical API contracts", () => {
     expectTypeOf<MarketCandles["candles"][number]["open"]>().toEqualTypeOf<string>();
     expectTypeOf<DashboardSnapshot["events"]>().toBeArray();
     expectTypeOf<Awaited<ReturnType<typeof marketCandlesQuery>>>().toEqualTypeOf<MarketCandles>();
+  });
+
+  it("preserves the canonical Decision Funnel in period summaries", () => {
+    const report = decisionFunnelReportSchema.parse({
+      schema_version: "money-heist.decision-funnel.v1",
+      run_id: "run-1",
+      dataset_id: "dataset-1",
+      dataset_version: "v1",
+      system_id: "balanced_v1",
+      period_start: "2026-09-01T00:00:00Z",
+      period_end: "2026-09-02T00:00:00Z",
+      observation_counts: {
+        pre_scanner_warmup_skipped: 35,
+        pre_scanner_not_decision_close_skipped: 0,
+      },
+      counts: {
+        candles_evaluated: 179,
+        scanner_evaluations: 144,
+        scanner_no_trigger: 72,
+        scanner_triggered: 72,
+        candidate_opportunities: 27,
+        compute_gate_allowed: 27,
+        compute_gate_blocked: 0,
+        ai_orchestrations_triggered: 27,
+        professor_plan_no_analysis: 0,
+        orchestration_failed: 0,
+        professor_no_trade: 17,
+        trade_proposals_created: 10,
+        risk_rejected: 7,
+        risk_resized: 3,
+        risk_approved: 0,
+        paper_pipeline_failed: 0,
+        duplicate_execution_blocked: 0,
+        orders_submitted: 3,
+        fills: 3,
+      },
+      reason_counts: [],
+      post_hoc: {closed_trades: 2, broker_orders_total: 3, broker_fills_total: 3},
+    });
+    expect(report.counts.professor_no_trade).toBe(17);
+    expect(report.counts.risk_resized).toBe(3);
+    expect(report.post_hoc.closed_trades).toBe(2);
   });
 
   it("parses the verified OpenAI USD pricing catalog", () => {

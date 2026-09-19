@@ -155,6 +155,51 @@ export const localCampaignDatasetSchema = z.object({
 });
 
 const backtestMetricSchema = z.object({value: z.string().nullable(), status: z.string(), reason: z.string().nullable().optional()});
+export const decisionFunnelCountsSchema = z.object({
+  candles_evaluated: z.number().int().nonnegative(),
+  scanner_evaluations: z.number().int().nonnegative(),
+  scanner_no_trigger: z.number().int().nonnegative(),
+  scanner_triggered: z.number().int().nonnegative(),
+  candidate_opportunities: z.number().int().nonnegative(),
+  compute_gate_allowed: z.number().int().nonnegative(),
+  compute_gate_blocked: z.number().int().nonnegative(),
+  ai_orchestrations_triggered: z.number().int().nonnegative(),
+  professor_plan_no_analysis: z.number().int().nonnegative(),
+  orchestration_failed: z.number().int().nonnegative(),
+  professor_no_trade: z.number().int().nonnegative(),
+  trade_proposals_created: z.number().int().nonnegative(),
+  risk_rejected: z.number().int().nonnegative(),
+  risk_resized: z.number().int().nonnegative(),
+  risk_approved: z.number().int().nonnegative(),
+  paper_pipeline_failed: z.number().int().nonnegative(),
+  duplicate_execution_blocked: z.number().int().nonnegative(),
+  orders_submitted: z.number().int().nonnegative(),
+  fills: z.number().int().nonnegative()
+});
+export const decisionFunnelReportSchema = z.object({
+  schema_version: z.string(),
+  run_id: z.string(),
+  dataset_id: z.string(),
+  dataset_version: z.string(),
+  system_id: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  observation_counts: z.object({
+    pre_scanner_warmup_skipped: z.number().int().nonnegative(),
+    pre_scanner_not_decision_close_skipped: z.number().int().nonnegative()
+  }),
+  counts: decisionFunnelCountsSchema,
+  reason_counts: z.array(z.object({
+    stage: z.string(),
+    code: z.string(),
+    count: z.number().int().positive()
+  })).default([]),
+  post_hoc: z.object({
+    closed_trades: z.number().int().nonnegative(),
+    broker_orders_total: z.number().int().nonnegative(),
+    broker_fills_total: z.number().int().nonnegative()
+  })
+});
 export const performanceProfileSchema = z.object({
   wall_clock_ms: z.number().nonnegative(), replay_total_ms: z.number().nonnegative(), replay_lifecycle_ms: z.number().nonnegative(),
   replay_mtf_feature_scanner_ms: z.number().nonnegative(), replay_context_build_ms: z.number().nonnegative(), replay_pipeline_ms: z.number().nonnegative(),
@@ -164,7 +209,7 @@ export const periodSummarySchema = z.object({
   role: periodRole, run_id: z.string(), processed_candles: z.number(), opportunities: z.number(), executed_orders: z.number(), closed_trades: z.number(),
   trading_net: backtestMetricSchema, economic_net: backtestMetricSchema, max_drawdown_pct: backtestMetricSchema, win_rate: backtestMetricSchema,
   profit_factor: backtestMetricSchema, expectancy: backtestMetricSchema, ai_cost_eur: z.string(), self_funding_ratio: z.string().nullable(), self_funding_status: z.string(), business_sha256: z.string(),
-  performance: performanceProfileSchema.nullable().optional()
+  decision_funnel: decisionFunnelReportSchema.nullable().optional(), performance: performanceProfileSchema.nullable().optional()
 });
 export const campaignSummarySchema = z.object({
   campaign_id: z.string(), created_at: z.string(), status: z.string(), ai_mode: z.string(), dataset: datasetPreviewSchema,
