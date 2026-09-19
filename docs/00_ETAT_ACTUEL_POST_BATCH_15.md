@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-19  
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`
-**Dernier commit audité :** `chore(repo): ignore local campaign review archives`
+**Baseline intégrée auditée :** `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`
+**Dernier commit audité :** `feat(frontend): simplify backtest campaign results`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -202,7 +202,8 @@ Le cockpit V2 couvre notamment :
 - Decision Intelligence Inspector ;
 - filtres et navigation causale ;
 - Research Explorer Decision Quality ;
-- Datasets locaux de campagne 1 / 3 / 6 / 9 / 12 mois, validés côté backend puis importés dans la bibliothèque V2 persistée.
+- Datasets locaux de campagne 1 / 3 / 6 / 9 / 12 mois, validés côté backend puis importés dans la bibliothèque V2 persistée ;
+- résultats Backtest en deux niveaux : `Résumé` opérateur par défaut et `Analyse avancée` à la demande.
 
 Le chart distingue l’ancrage géométrique de l’instant causal de connaissance :
 
@@ -212,7 +213,7 @@ pivot_at       vs confirmed_at
 market_as_of   vs operational_at
 ```
 
-Le navigateur peut masquer, filtrer, sélectionner et naviguer, mais ne recalcule pas Analytics, Scanner, agents, Risk ou Forward Outcomes.
+Le navigateur peut masquer, filtrer, sélectionner et naviguer, mais ne recalcule pas Analytics, Scanner, agents, Risk ou Forward Outcomes. Le Résumé réutilise les métriques et `decision_funnel` déjà produits par le backend ; Replay, Analytics overlays, Decision Intelligence et Research ne sont chargés qu'à l'ouverture de l'Analyse avancée.
 
 Le catalogue local de campagne est fail-closed : seules les entrées déclarées par le manifeste local sont proposées ; avant persistance V2, le backend vérifie taille, SHA-256 brut, nombre de candles et bornes, puis repasse le CSV dans le validateur historique canonique. Aucun chemin arbitraire du disque n’est exposé au navigateur.
 
@@ -362,19 +363,18 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ## 14. Baseline intégrée récente
 
-La baseline auditée pour cette synchronisation est `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`.
+La baseline auditée pour cette synchronisation est `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`.
 
 Chaîne récente utile :
 
 ```text
-a8ba79e2  feat(market-data): add campaign dataset prefix builder
-7ebb77fc  feat(frontend): integrate local campaign datasets
-509ff388  docs: sync project memory with campaign datasets
 b384852e  feat(backtest): enforce spot long-only campaigns
 ae20cb96  chore(repo): ignore local campaign review archives
+35f736d4  docs: sync project memory after spot long-only
+871a3d3f  feat(frontend): simplify backtest campaign results
 ```
 
-Le lot Spot long-only a été validé par les tests backend ciblés, le test PaperBroker Spot, la suite backend complète `uv run pytest -q` avec 3 skips attendus, Ruff sur les fichiers concernés, le test frontend ciblé, la suite Vitest complète, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` et `git diff --check`.
+Le lot UX post-campagne a été validé avant intégration par la suite backend complète `uv run pytest -q` avec 3 skips attendus, 67 tests frontend, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` et `git diff --cached --check`. Il reste purement observationnel : aucune autorité Scanner, Professor, Risk, PAPER ou LIVE n'a été déplacée.
 
 Les documents de livraison des anciens batches sont désormais conservés sous `docs/archives/`.
 Ils sont historiques et ne définissent pas l'état courant ; les documents actifs `00` à `12`, les ADR et le code intégré gardent cette responsabilité.
@@ -407,20 +407,21 @@ Aucune couche Analytics/Research ne ferme automatiquement cette gate.
 
 ## 16. Priorité de développement après cette synchronisation
 
-La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois, leur sélection dans le cockpit V2 et la capacité Spot long-only explicite.
+La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois, leur sélection dans le cockpit V2, la capacité Spot long-only explicite et un écran de résultats séparant Résumé et Analyse avancée.
 
-Le premier run 1 mois exécuté avant `b384852e` contenait des SHORT. Il reste un smoke technique valide pour la chaîne de replay/recherche, mais ne constitue pas une baseline économique représentative du marché Spot ciblé.
+Le premier run 1 mois exécuté avant `b384852e` contenait des SHORT et reste un smoke technique uniquement. La campagne locale `4647d6c0-f563-43cf-aec3-79e911fffd04`, exécutée en MOCK + `SPOT_LONG_ONLY`, a été auditée comme première baseline économique Spot : aucun Professor FINAL SHORT et aucun trade SHORT ; les anciennes directions bearish deviennent `NO_TRADE`.
 
 Priorités de recherche :
 
-1. rejouer le dataset 1 mois en MOCK avec `SPOT_LONG_ONLY` pour établir la première baseline économique Spot ;
-2. étendre ensuite les campagnes 3/6/9/12 mois sans changer arbitrairement les paramètres ;
-3. analyser séparément DESIGN / VALIDATION / OOS ;
-4. vérifier couverture et qualité des joins avant interprétation ;
-5. formuler les hypothèses de modification à partir de DESIGN seulement ;
-6. valider toute hypothèse sur des données non utilisées pour la concevoir ;
-7. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
-8. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
+1. contrôler visuellement la campagne 1 mois dans la nouvelle vue Résumé / Analyse avancée ;
+2. lancer ensuite la campagne 3 mois avec la même configuration comportementale et `SPOT_LONG_ONLY` ;
+3. étendre ensuite aux campagnes 6/9/12 mois sans changer arbitrairement les paramètres ;
+4. analyser séparément DESIGN / VALIDATION / OOS ;
+5. vérifier couverture et qualité des joins avant interprétation ;
+6. formuler les hypothèses de modification à partir de DESIGN seulement ;
+7. valider toute hypothèse sur des données non utilisées pour la concevoir ;
+8. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
+9. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
 
 Aucune modification de threshold Scanner, prompt, Risk ou exécution ne doit être déduite automatiquement d’un rapport descriptif.
 
@@ -454,7 +455,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'à `ae20cb969d3a184c12bdadd9df82160ad6ae48bb`.
+Cette synchronisation a audité GitHub `main` jusqu'à `871a3d3f68fcddf7503cf6e1fbd75023a07e978a`.
 
 Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
