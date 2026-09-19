@@ -54,3 +54,6 @@ frontend/.env.local
 /README_INTEGRATION.md
 /campaign_evidence/
 
+
+# Local campaign review archives
+/.money-heist/campaign-reviews/
