@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-19  
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `cb0c26a0c6e32b975d3739010e74192f5ac95944`
-**Dernier commit audité :** `docs: reconstruct historical batch archive`
+**Baseline intégrée auditée :** `7ebb77fc68aea470928bf222e9c1d81e397471d7`
+**Dernier commit audité :** `feat(frontend): integrate local campaign datasets`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -144,6 +144,8 @@ Garanties structurantes :
 
 Le smoke `LIVE_EVAL` historique prouve la viabilité technique du pipeline IA → Risk → PAPER, pas sa rentabilité ni sa promotion LIVE.
 
+Pour les campagnes empiriques BTC/USDC 1m, `scripts/market_data/build_campaign_prefix_datasets.py` génère localement des préfixes calendaires exacts 1/3/6/9 mois et référence le 12 mois canonique. Les fichiers restent sous `data/` (ignoré par Git) et ne retirent que la queue future, afin de préserver l’état récursif des indicateurs et l’historique MTF sur les timestamps conservés.
+
 ---
 
 ## 6. Agents et organisation adaptative
@@ -198,7 +200,8 @@ Le cockpit V2 couvre notamment :
 - Analytics overlays ;
 - Decision Intelligence Inspector ;
 - filtres et navigation causale ;
-- Research Explorer Decision Quality.
+- Research Explorer Decision Quality ;
+- Datasets locaux de campagne 1 / 3 / 6 / 9 / 12 mois, validés côté backend puis importés dans la bibliothèque V2 persistée.
 
 Le chart distingue l’ancrage géométrique de l’instant causal de connaissance :
 
@@ -209,6 +212,8 @@ market_as_of   vs operational_at
 ```
 
 Le navigateur peut masquer, filtrer, sélectionner et naviguer, mais ne recalcule pas Analytics, Scanner, agents, Risk ou Forward Outcomes.
+
+Le catalogue local de campagne est fail-closed : seules les entrées déclarées par le manifeste local sont proposées ; avant persistance V2, le backend vérifie taille, SHA-256 brut, nombre de candles et bornes, puis repasse le CSV dans le validateur historique canonique. Aucun chemin arbitraire du disque n’est exposé au navigateur.
 
 ---
 
@@ -354,20 +359,20 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ## 14. Baseline intégrée récente
 
-La baseline auditée pour cette synchronisation est `cb0c26a0c6e32b975d3739010e74192f5ac95944`.
+La baseline auditée pour cette synchronisation est `7ebb77fc68aea470928bf222e9c1d81e397471d7`.
 
 Chaîne récente utile :
 
 ```text
-a03ade86  feat(research): add research reports and evidence explorer
-f9061e06  chore(quality): close static hygiene gate
-faf713c4  style(prompts): normalize prompt formatting
-c28b71d5  fix(analytics): enforce causal pattern transition timing
-e463e3bd  docs: establish deterministic project memory
-890ab9e5  chore(repo): clean obsolete batch artifacts and align doc tests
-d2427b75  chore(repo): remove remaining obsolete root artifacts
 cb0c26a0  docs: reconstruct historical batch archive
+4b726e94  docs: realign active documentation post 24D.4
+a633269b  fix(frontend): normalize chart theme colors
+c985e280  docs: align roadmap next phase post 24D.4
+a8ba79e2  feat(market-data): add campaign dataset prefix builder
+7ebb77fc  feat(frontend): integrate local campaign datasets
 ```
+
+Le raccord des datasets locaux de campagne a été validé avant intégration par 13 tests ciblés `tests/api/test_frontend_v2.py`, Ruff, `pnpm run typecheck`, `pnpm run lint` et `pnpm run build`.
 
 Les documents de livraison des anciens batches sont désormais conservés sous `docs/archives/`.
 Ils sont historiques et ne définissent pas l'état courant ; les documents actifs `00` à `12`, les ADR et le code intégré gardent cette responsabilité.
@@ -400,7 +405,7 @@ Aucune couche Analytics/Research ne ferme automatiquement cette gate.
 
 ## 16. Priorité de développement après cette synchronisation
 
-La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ».
+La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois et leur sélection dans le cockpit V2.
 
 Priorités de recherche :
 
@@ -444,7 +449,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'à `cb0c26a0c6e32b975d3739010e74192f5ac95944`.
+Cette synchronisation a audité GitHub `main` jusqu'à `7ebb77fc68aea470928bf222e9c1d81e397471d7`.
 
 Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
