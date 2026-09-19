@@ -1,7 +1,7 @@
 # Money Heist — Roadmap de Développement
 
 **Document :** Plan de développement par lots
-**Version :** 0.8
+**Version :** 0.9
 **Statut :** Roadmap active — alignée post-Batch 24D.4
 
 ---
@@ -473,18 +473,23 @@ Si le développement révèle qu’un batch est trop gros :
 
 ---
 
-## 28. Prochaine action
+## 28. Prochaine action — exploitation empirique
 
-État de construction : Batch 23A.1 Decision Funnel Baseline livré sur `main` au commit `fbec1d3fadaf811c6e84d33741aa08166cc472cd`. Le pipeline est désormais instrumenté pour expliquer quantitativement où les opportunités sont filtrées sans modifier le comportement de trading.
+L’instrumentation nécessaire à l’analyse post-hoc est désormais livrée jusqu’au Batch 24D.4 :
+Decision Funnel, Forward Outcomes, Analytics Lab, Decision Intelligence et Decision Quality Research.
+La prochaine étape n’est donc plus de construire 23A.2, mais d’exploiter ces instruments sur des campagnes historiques longues et multi-régimes.
 
-Priorités suivantes :
+Priorités :
 
-1. livrer Batch 23A.2 — Forward Outcomes post-hoc pour chaque `CandidateOpportunity`, sans feedback dans `DecisionContext` ;
-2. exécuter des campagnes historiques longues et multi-régimes avec DESIGN / VALIDATION / OOS et walk-forward en exploitant le Decision Funnel ;
-3. mesurer la fréquence de trade, les pertes de funnel, la qualité des opportunités, les coûts IA et l’apport marginal des agents avant tout assouplissement de seuil ;
-4. poursuivre la parité du contexte décisionnel LIVE ↔ Historical Replay ;
-5. valider explicitement timeframes de production et limites numériques Balanced ;
-6. maintenir le LIVE non promu tant que PAPER/SHADOW, sécurité et preflight ne sont pas satisfaits.
+1. exécuter des campagnes historiques longues et multi-régimes avec séparation DESIGN / VALIDATION / OOS et walk-forward lorsque prévu ;
+2. contrôler la couverture et la qualité des joins, des horizons Forward Outcomes et des sidecars 24D avant toute interprétation ;
+3. mesurer la fréquence de trade, les pertes du funnel, la qualité descriptive des opportunités, les coûts IA et l’apport marginal des agents ;
+4. formuler les éventuelles hypothèses de tuning à partir de DESIGN uniquement, puis les figer avant test sur VALIDATION ;
+5. préserver un véritable OOS et comparer ensuite PAPER / SHADOW avant toute promotion ;
+6. poursuivre la parité du contexte décisionnel LIVE ↔ Historical Replay et valider explicitement les timeframes de production ainsi que les limites numériques Balanced ;
+7. maintenir le LIVE non promu tant que les gates statistiques, PAPER/SHADOW, sécurité, réconciliation et preflight opérateur ne sont pas satisfaites.
+
+Aucun rapport descriptif 23A/24A/24B/24D ne constitue à lui seul une autorisation de modifier Scanner, prompts, Risk ou exécution.
 
 <!-- BATCH22_FRONTEND_V2 -->
 ## Batch 22 — Frontend V2 / Trading Cockpit
