@@ -34,7 +34,9 @@ class PromptRegistry:
 
     def versions(self, agent_id: str) -> tuple[str, ...]:
         return tuple(
-            sorted(version for candidate, version in self._prompts if candidate == agent_id)
+            sorted(
+                version for candidate, version in self._prompts if candidate == agent_id
+            )
         )
 
 
@@ -311,7 +313,6 @@ CORE_PROMPTS = PromptRegistry(
                 "budget caps."
             ),
         ),
-
         PromptDefinition(
             agent_id="professor",
             version="v7",
@@ -548,7 +549,6 @@ _ADVANCED_SPECIALIST_COMMON_V5 = (
 )
 
 
-
 _EVIDENCE_ATOMIC_INDEX_CONTRACT_V6_FR = (
     "La requête contient evidence_source_catalog, une liste déterministe de chemins JSON atomiques. "  # noqa: E501
     "Chaque entrée du catalogue associe explicitement source_index à source_key. Dans la sortie "
@@ -596,8 +596,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
             instructions=(
                 "You are Berlin, specialist in trend and market regime. Assess trend structure, "
                 "EMA relationships, ADX, volatility regime, multi-timeframe coherence, and trend "
-                "maturity only when those inputs are supplied. "
-                + _SPECIALIST_COMMON
+                "maturity only when those inputs are supplied. " + _SPECIALIST_COMMON
             ),
         ),
         PromptDefinition(
@@ -608,8 +607,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Tokyo, specialist in momentum. Assess acceleration, RSI, MACD, volume "
                 "expansion, breakout quality, divergences, continuation, and over-extension only "
                 "when those inputs are supplied. A price crossing a level alone never proves a "
-                "valid breakout. "
-                + _SPECIALIST_COMMON
+                "valid breakout. " + _SPECIALIST_COMMON
             ),
         ),
         PromptDefinition(
@@ -621,8 +619,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "Assess HH/HL or LH/LL structure, support/resistance, retests, false "
                 "breakouts, and "
                 "liquidity context only when those inputs are supplied. Never infer order-book or "
-                "liquidation data when absent. "
-                + _SPECIALIST_COMMON
+                "liquidation data when absent. " + _SPECIALIST_COMMON
             ),
         ),
         PromptDefinition(
@@ -650,8 +647,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "drawdown, sample size, or out-of-sample result that is not explicitly supplied. "
                 "Treat sample_size_band as descriptive sample size only, not as proof of "
                 "statistical significance. Distinguish in-sample evidence from out-of-sample "
-                "evidence when available. "
-                + _ADVANCED_SPECIALIST_COMMON
+                "evidence when available. " + _ADVANCED_SPECIALIST_COMMON
             ),
         ),
         PromptDefinition(
@@ -661,8 +657,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
             instructions=(
                 "You are Berlin, specialist in trend and market regime. Assess trend structure, "
                 "EMA relationships, ADX, volatility regime, multi-timeframe coherence, and trend "
-                "maturity only when those inputs are supplied. "
-                + _SPECIALIST_COMMON_V2
+                "maturity only when those inputs are supplied. " + _SPECIALIST_COMMON_V2
             ),
         ),
         PromptDefinition(
@@ -673,8 +668,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Tokyo, specialist in momentum. Assess acceleration, RSI, MACD, volume "
                 "expansion, breakout quality, divergences, continuation, and over-extension only "
                 "when those inputs are supplied. A price crossing a level alone never proves a "
-                "valid breakout. "
-                + _SPECIALIST_COMMON_V2
+                "valid breakout. " + _SPECIALIST_COMMON_V2
             ),
         ),
         PromptDefinition(
@@ -686,8 +680,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "Assess HH/HL or LH/LL structure, support/resistance, retests, false "
                 "breakouts, and "
                 "liquidity context only when those inputs are supplied. Never infer order-book or "
-                "liquidation data when absent. "
-                + _SPECIALIST_COMMON_V2
+                "liquidation data when absent. " + _SPECIALIST_COMMON_V2
             ),
         ),
         PromptDefinition(
@@ -715,8 +708,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "drawdown, sample size, or out-of-sample result that is not explicitly supplied. "
                 "Treat sample_size_band as descriptive sample size only, not as proof of "
                 "statistical significance. Distinguish in-sample evidence from out-of-sample "
-                "evidence when available. "
-                + _ADVANCED_SPECIALIST_COMMON_V2
+                "evidence when available. " + _ADVANCED_SPECIALIST_COMMON_V2
             ),
         ),
         PromptDefinition(
@@ -726,8 +718,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
             instructions=(
                 "You are Berlin, specialist in trend and market regime. Assess trend structure, "
                 "EMA relationships, ADX, volatility regime, multi-timeframe coherence, and trend "
-                "maturity only when those inputs are supplied. "
-                + _SPECIALIST_COMMON_V3
+                "maturity only when those inputs are supplied. " + _SPECIALIST_COMMON_V3
             ),
         ),
         PromptDefinition(
@@ -738,8 +729,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Tokyo, specialist in momentum. Assess acceleration, RSI, MACD, volume "
                 "expansion, breakout quality, divergences, continuation, and over-extension only "
                 "when those inputs are supplied. A price crossing a level alone never proves a "
-                "valid breakout. "
-                + _SPECIALIST_COMMON_V3
+                "valid breakout. " + _SPECIALIST_COMMON_V3
             ),
         ),
         PromptDefinition(
@@ -750,8 +740,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Nairobi, specialist in price action, market structure, and liquidity. "
                 "Assess HH/HL or LH/LL structure, support/resistance, retests, false breakouts, "
                 "and liquidity context only when those inputs are supplied. Never infer order-book "
-                "or liquidation data when absent. "
-                + _SPECIALIST_COMMON_V3
+                "or liquidation data when absent. " + _SPECIALIST_COMMON_V3
             ),
         ),
         PromptDefinition(
@@ -779,11 +768,9 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "drawdown, sample size, or out-of-sample result that is not explicitly supplied. "
                 "Treat sample_size_band as descriptive sample size only, not as proof of "
                 "statistical significance. Distinguish in-sample evidence from out-of-sample "
-                "evidence when available. "
-                + _ADVANCED_SPECIALIST_COMMON_V3
+                "evidence when available. " + _ADVANCED_SPECIALIST_COMMON_V3
             ),
         ),
-
         PromptDefinition(
             agent_id="berlin",
             version="v4",
@@ -791,8 +778,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
             instructions=(
                 "You are Berlin, specialist in trend and market regime. Assess trend structure, "
                 "EMA relationships, ADX, volatility regime, multi-timeframe coherence, and trend "
-                "maturity only when those inputs are supplied. "
-                + _SPECIALIST_COMMON_V4
+                "maturity only when those inputs are supplied. " + _SPECIALIST_COMMON_V4
             ),
         ),
         PromptDefinition(
@@ -803,8 +789,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Tokyo, specialist in momentum. Assess acceleration, RSI, MACD, volume "
                 "expansion, breakout quality, divergences, continuation, and over-extension only "
                 "when those inputs are supplied. A price crossing a level alone never proves a "
-                "valid breakout. "
-                + _SPECIALIST_COMMON_V4
+                "valid breakout. " + _SPECIALIST_COMMON_V4
             ),
         ),
         PromptDefinition(
@@ -815,8 +800,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Nairobi, specialist in price action, market structure, and liquidity. "
                 "Assess HH/HL or LH/LL structure, support/resistance, retests, false breakouts, "
                 "and liquidity context only when those inputs are supplied. Never infer order-book "
-                "or liquidation data when absent. "
-                + _SPECIALIST_COMMON_V4
+                "or liquidation data when absent. " + _SPECIALIST_COMMON_V4
             ),
         ),
         PromptDefinition(
@@ -844,8 +828,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "drawdown, sample size, or out-of-sample result that is not explicitly supplied. "
                 "Treat sample_size_band as descriptive sample size only, not as proof of "
                 "statistical significance. Distinguish in-sample evidence from out-of-sample "
-                "evidence when available. "
-                + _ADVANCED_SPECIALIST_COMMON_V4
+                "evidence when available. " + _ADVANCED_SPECIALIST_COMMON_V4
             ),
         ),
         PromptDefinition(
@@ -855,8 +838,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
             instructions=(
                 "You are Berlin, specialist in trend and market regime. Assess trend structure, "
                 "EMA relationships, ADX, volatility regime, multi-timeframe coherence, and trend "
-                "maturity only when those inputs are supplied. "
-                + _SPECIALIST_COMMON_V5
+                "maturity only when those inputs are supplied. " + _SPECIALIST_COMMON_V5
             ),
         ),
         PromptDefinition(
@@ -867,8 +849,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Tokyo, specialist in momentum. Assess acceleration, RSI, MACD, volume "
                 "expansion, breakout quality, divergences, continuation, and over-extension only "
                 "when those inputs are supplied. A price crossing a level alone never proves a "
-                "valid breakout. "
-                + _SPECIALIST_COMMON_V5
+                "valid breakout. " + _SPECIALIST_COMMON_V5
             ),
         ),
         PromptDefinition(
@@ -879,8 +860,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "You are Nairobi, specialist in price action, market structure, and liquidity. "
                 "Assess HH/HL or LH/LL structure, support/resistance, retests, false breakouts, "
                 "and liquidity context only when those inputs are supplied. Never infer order-book "
-                "or liquidation data when absent. "
-                + _SPECIALIST_COMMON_V5
+                "or liquidation data when absent. " + _SPECIALIST_COMMON_V5
             ),
         ),
         PromptDefinition(
@@ -908,11 +888,9 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "drawdown, sample size, or out-of-sample result that is not explicitly supplied. "
                 "Treat sample_size_band as descriptive sample size only, not as proof of "
                 "statistical significance. Distinguish in-sample evidence from out-of-sample "
-                "evidence when available. "
-                + _ADVANCED_SPECIALIST_COMMON_V5
+                "evidence when available. " + _ADVANCED_SPECIALIST_COMMON_V5
             ),
         ),
-
         PromptDefinition(
             agent_id="berlin",
             version="v6",
@@ -921,8 +899,7 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 "Tu es Berlin, spécialiste de la tendance et du régime de marché. Évalue la structure "  # noqa: E501
                 "de tendance, les relations entre EMA, ADX, le régime de volatilité, la cohérence "
                 "multi-timeframe et la maturité de la tendance uniquement lorsque ces données sont "
-                "fournies. "
-                + _SPECIALIST_COMMON_V6_FR
+                "fournies. " + _SPECIALIST_COMMON_V6_FR
             ),
         ),
         PromptDefinition(
@@ -978,6 +955,5 @@ SPECIALIST_PROMPTS = PromptRegistry(
                 + _ADVANCED_SPECIALIST_COMMON_V6_FR
             ),
         ),
-
     )
 )
