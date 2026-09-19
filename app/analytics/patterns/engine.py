@@ -245,6 +245,10 @@ def _alternating(pivots: Sequence[PatternPivot]) -> list[PatternPivot]:
     return result
 
 
+def _first_causal_evaluation_index(pivots: Sequence[PatternPivot]) -> int:
+    return max(pivot.confirmed_index for pivot in pivots) + 1
+
+
 def _detect_double(candles, atr, pivots, run_id, trace=None):
     kinds = tuple(pivot.kind for pivot in pivots)
     if kinds not in {("HIGH", "LOW", "HIGH"), ("LOW", "HIGH", "LOW")}:
@@ -575,10 +579,11 @@ def _detect_geometry(candles, atr, pivots, run_id, trace=None):
     confirmation_index = None
     breakout_level = None
     direction = PatternDirection.NEUTRAL
-    first_future = end + 1
-    deadline = first_future + _lookahead(duration)
+    structural_start = end + 1
+    first_future = max(structural_start, _first_causal_evaluation_index(pivots))
+    deadline = structural_start + _lookahead(duration)
     if apex is not None:
-        deadline = min(deadline, max(first_future + 1, int(apex) + 1))
+        deadline = min(deadline, max(structural_start + 1, int(apex) + 1))
     horizon = min(len(candles), deadline)
     for index in range(first_future, horizon):
         upper = high_slope * index + high_intercept
@@ -621,7 +626,9 @@ def _detect_geometry(candles, atr, pivots, run_id, trace=None):
     if transitions[-1].status == PatternStatus.FORMING and len(candles) >= deadline:
         transitions.append(
             PatternTransition.create(
-                PatternStatus.FAILED, candles[deadline - 1].close_time, reason="timeout"
+                PatternStatus.FAILED,
+                max(candles[deadline - 1].close_time, transitions[0].available_at),
+                reason="timeout",
             )
         )
     if confirmation_index is not None:
@@ -670,7 +677,8 @@ def _finalize_level(
     segments,
     metrics,
 ):
-    start = max(pivot.candle_index for pivot in pivots) + 1
+    structural_start = max(pivot.candle_index for pivot in pivots) + 1
+    start = max(structural_start, _first_causal_evaluation_index(pivots))
     duration = pivots[-1].candle_index - pivots[0].candle_index
     transitions = [
         PatternTransition.create(
@@ -680,7 +688,7 @@ def _finalize_level(
         )
     ]
     confirmation_index = None
-    deadline = start + _lookahead(duration)
+    deadline = structural_start + _lookahead(duration)
     horizon = min(len(candles), deadline)
     for index in range(start, horizon):
         close = float(candles[index].close)
@@ -719,7 +727,7 @@ def _finalize_level(
         transitions.append(
             PatternTransition.create(
                 PatternStatus.FAILED,
-                candles[deadline - 1].close_time,
+                max(candles[deadline - 1].close_time, transitions[0].available_at),
                 reason="timeout",
             )
         )
@@ -768,7 +776,8 @@ def _finalize_sloped(
     segments,
     metrics,
 ):
-    start = max(pivot.candle_index for pivot in pivots) + 1
+    structural_start = max(pivot.candle_index for pivot in pivots) + 1
+    start = max(structural_start, _first_causal_evaluation_index(pivots))
     duration = pivots[-1].candle_index - pivots[0].candle_index
     transitions = [
         PatternTransition.create(
@@ -779,7 +788,7 @@ def _finalize_sloped(
     ]
     confirmation_index = None
     breakout_level = None
-    deadline = start + _lookahead(duration)
+    deadline = structural_start + _lookahead(duration)
     horizon = min(len(candles), deadline)
     for index in range(start, horizon):
         neckline = slope * index + intercept
@@ -820,7 +829,7 @@ def _finalize_sloped(
         transitions.append(
             PatternTransition.create(
                 PatternStatus.FAILED,
-                candles[deadline - 1].close_time,
+                max(candles[deadline - 1].close_time, transitions[0].available_at),
                 reason="timeout",
             )
         )

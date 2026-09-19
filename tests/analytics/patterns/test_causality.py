@@ -137,6 +137,28 @@ def test_timeout_becomes_available_on_deadline_close_not_one_bar_later():
     assert deadline[0].failed_at == at_deadline
 
 
+def test_pattern_lifecycle_starts_after_latest_pivot_confirmation():
+    candles, _ = _forming_series()
+    rows = list(candles)
+    rows[11] = _candle(11, close=95, high=96, low=94)
+    pivots = (
+        _pivot("b1", "HIGH", 110, 4, 5),
+        _pivot("c2", "LOW", 100, 7, 8),
+        _pivot("d3", "HIGH", 110, 10, 14),
+    )
+    cutoff = rows[14].close_time
+
+    result = _run(tuple(rows), pivots, cutoff)
+
+    assert result
+    assert result[0].current_status == PatternStatus.FORMING
+    assert result[0].detected_at == cutoff
+    assert all(
+        transition.available_at >= result[0].detected_at
+        for transition in result[0].transitions
+    )
+
+
 def test_mtf_incomplete_candle_is_invisible():
     candles, pivots = _series()
     open_candle = candles[-1].model_copy(update={"is_closed": False})
