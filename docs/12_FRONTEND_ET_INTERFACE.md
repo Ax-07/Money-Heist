@@ -357,4 +357,4 @@ La logique de filtering/navigation est centralisée dans `decision-intelligence-
 
 Le store `money-heist-ui-v2` persiste les préférences génériques uniquement. Sa migration v2 accepte les anciens champs 24C.2 `technicalEventFamily` / `technicalEventType`. Les sélections de campagne et la recherche ne sont jamais persistées.
 
-Aucune API n'est ajoutée et aucun calcul Scanner/Analytics/Decision/Risk n'est déplacé dans le navigateur. Voir `BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
+Aucune API n'est ajoutée et aucun calcul Scanner/Analytics/Decision/Risk n'est déplacé dans le navigateur. Voir `archives/batches/24/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.

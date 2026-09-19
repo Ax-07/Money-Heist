@@ -436,7 +436,7 @@ LivrÃ© :
 - sÃ©lection hors filtre conservÃ©e et explicitement identifiable ;
 - reset des sÃ©lections run-specific sur changement de campagne/rÃ´le ;
 - tests frontend de filtering, ordering, timestamps et persistance ;
-- documentation `docs/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
+- documentation `docs/archives/batches/24/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
 
 FrontiÃ¨res conservÃ©es : aucun endpoint/backend mÃ©tier ajoutÃ©, aucun recalcul Analytics dans le navigateur, aucun changement Scanner/Agents/Risk/PAPER/LIVE/Forward Outcomes, `run_id` ou business fingerprint.
 

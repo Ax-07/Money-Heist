@@ -91,4 +91,4 @@ chart conserve le timestamp de géométrie (`event_at`, `pivot_at`, `market_as_o
 Les préférences sont persistées sous `money-heist-ui-v2`; les sélections de campagne ne le sont
 pas. L'ancien état 24C.2 des filtres Technical Event est migré vers les nouveaux multi-selects.
 
-Voir `docs/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.
+Voir `docs/archives/batches/24/BATCH_24C4_FILTERS_AND_NAVIGATION.md`.

@@ -19,8 +19,14 @@ Les fichiers numérotés ne doivent pas être dupliqués à la racine.
 12. `11_BACKTESTING_ET_REPLAY_HISTORIQUE.md` — Historical Replay / Backtest.
 13. `12_FRONTEND_ET_INTERFACE.md` — Frontend V2 / Backtest Cockpit.
 14. `ADR_031_OPENAI_PROMPT_CACHE_ET_COUTS.md` — Prompt Cache OpenAI et coûts IA.
-15. `CHANGELOG_PROMPT_CACHE.md` — détail du chantier Prompt Cache.
+15. `archives/README.md` — archives historiques des batches et chantiers clôturés (non canoniques pour l'état courant).
 
+<!-- DOCS_ARCHIVE_LAYOUT_V1 -->
+## Archives historiques
+
+Les documents de livraison et de clôture des anciens batches sont rangés sous `docs/archives/`.
+Ils sont conservés pour la traçabilité mais ne doivent pas être utilisés comme état courant.
+Consulter `archives/HISTORIQUE_BATCHS.md` pour la chronologie complète Batch 01 → 24D.4.
 ## Fichiers opérationnels conservés à la racine
 
 La racine conserve volontairement les points d’entrée et documents opérateur transverses, notamment
