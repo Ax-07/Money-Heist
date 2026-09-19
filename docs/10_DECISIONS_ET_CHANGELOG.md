@@ -1147,3 +1147,35 @@ Le post-traitement est observation-only : il ne rejoue ni Scanner, ni agents, ni
 **Décision :** 24C.3 réutilise le panneau droit existant, `selectedOpportunityId`, `selectedAnalyticsObject` et `inspectorOpen`. Un clic sur un objet chart ouvre l'Inspector et charge le détail 24C.1 seulement lorsqu'un `opportunity_id` existe. Les objets Analytics sans opportunité restent inspectables sans inventer de chaîne de décision.
 
 **Conséquences :** séparation stricte UI / autorité métier, affichage explicite de la causalité, dégradation contrôlée des anciens runs et absence totale d'impact LIVE.
+
+<!-- ADR047_PROJECT_MEMORY_CONTEXT -->
+### ADR-047 — Mémoire projet déterministe et contrat de reprise de contexte
+
+**Date :** 2026-09-19  
+**Statut :** ACCEPTED
+
+**Décision :** GitHub `main` reste la vérité intégrée. `00_ETAT_ACTUEL_POST_BATCH_15.md` devient la mémoire courte de démarrage : HEAD audité, architecture actuelle, état des lots, invariants, bloqueurs et handoff. `09_ROADMAP_DEVELOPPEMENT.md` conserve le futur ; `10_DECISIONS_ET_CHANGELOG.md` conserve le pourquoi ; les documents de domaine conservent les détails.
+
+Une nouvelle conversation ne doit pas reconstruire l'état du projet uniquement depuis l'historique conversationnel.
+
+**Raison :** le projet a dépassé la capacité pratique d'un contexte conversationnel monolithique et les anciens addenda documentaires peuvent rester historiquement vrais tout en étant obsolètes pour l'état courant.
+
+**Conséquences :**
+- le fichier `00` doit rester compact et être remplacé/rafraîchi, pas seulement allongé ;
+- le HEAD doit être vérifié au démarrage d'une nouvelle session ;
+- un écart de HEAD impose l'inspection des commits depuis la baseline mémorisée ;
+- les modifications locales non commités doivent être signalées explicitement dans le handoff ;
+- les conversations restent informatives mais ne remplacent pas Git et les ADR.
+
+<!-- BATCH24D4_CHANGELOG_CLOSURE -->
+## Changelog documentation — 2026-09-19 — Synchronisation post-24D.4
+
+- 24D.4 Research Reports & Evidence Explorer intégré sur `a03ade86` ;
+- pipeline post-run 24A → 24B → 24C → 24D.1/2/3/4 consolidé ;
+- sidecars Decision Quality et Evidence Index persistés ;
+- endpoints Research GET read-only et Research Explorer frontend livrés ;
+- gate d'hygiène statique fermée (`f9061e06`) ;
+- format des prompts normalisé (`faf713c4`) ;
+- timing causal des transitions de patterns corrigé (`c28b71d5`) ;
+- aucune autorité Scanner/Agents/Risk/PAPER/LIVE déplacée ;
+- mémoire projet courte formalisée par ADR-047.

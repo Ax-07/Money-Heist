@@ -760,3 +760,35 @@ TradeProposal, Risk et PAPER peuvent publier des mouvements futurs alignés uniq
 direction LONG/SHORT était déjà causalement disponible. Ces métriques ne sont pas un P&L de trade.
 Le lot reste read-only, déterministe, sans tuning, persistance, endpoint ni frontend.
 
+
+<!-- PROJECT_MEMORY_SYNC_20260919 -->
+## Synchronisation 2026-09-19 — état courant après Batch 24D.4
+
+Référence auditée : `main` au commit `c28b71d55387e9d6dd84cfee475d83b9640c3404`.
+
+État consolidé de Batch 24D :
+
+```text
+24D.1 — Research Foundation & Outcome Join          DONE
+24D.2 — Scanner Filtering Quality Research          DONE
+24D.3 — Funnel Decision Quality Research            DONE
+24D.4 — Research Reports & Evidence Explorer        DONE
+```
+
+24D.4 ajoute le branchement post-run, les sidecars Decision Quality, l'Evidence Index, les endpoints GET read-only et le Research Explorer frontend. Les artefacts restent descriptifs/post-hoc et sans autorité de tuning ou de trading.
+
+Les commits postérieurs à 24D.4 incluent :
+- `f9061e06` — fermeture de la gate d'hygiène statique ;
+- `faf713c4` — normalisation du format des prompts ;
+- `c28b71d5` — correction de causalité du timing des transitions de patterns.
+
+### Prochaine phase
+
+La prochaine phase utile n'est pas un assouplissement automatique des règles. Elle consiste à exploiter les instruments construits :
+
+1. campagnes historiques longues multi-régimes ;
+2. analyse DESIGN / VALIDATION / OOS séparée ;
+3. contrôle de couverture des joins et horizons ;
+4. formulation d'hypothèses uniquement depuis les données de conception ;
+5. validation hors échantillon avant toute modification de seuil/prompt/Risk ;
+6. poursuite PAPER/SHADOW et maintien du LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
