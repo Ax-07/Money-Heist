@@ -13,10 +13,7 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 import type { FrontendAnalyticsOverlays } from "@/lib/api/analytics-overlay-schemas";
 import type { BacktestReplay, MarketCandles } from "@/lib/api/schemas";
-import {
-  buildChartOverlayModel,
-  selectionAtTime,
-} from "./analytics-overlays";
+import { buildChartOverlayModel, selectionAtTime } from "./analytics-overlays";
 import type { OverlayFilters, OverlaySelection, OverlayVisibility } from "@/lib/analytics-overlay-state";
 
 export type TradingChartCandle = MarketCandles["candles"][number];
@@ -48,10 +45,86 @@ export function markerFor(event: TradingChartEvent): SeriesMarker<Time> {
   };
 }
 
+/**
+ * lightweight-charts 4.2.x does not parse HSL strings.
+ * Money Heist theme tokens are stored as Tailwind-style HSL triplets
+ * (for example "217 16% 58%"), so convert them to legacy rgb(...)
+ * before passing them to lightweight-charts.
+ */
+export function chartColorFromHslToken(value: string, fallback: string): string {
+  const normalized = value.trim();
+  const match = normalized.match(
+    /^(-?(?:\d+(?:\.\d+)?|\.\d+))(?:deg)?\s+((?:\d+(?:\.\d+)?|\.\d+)%)\s+((?:\d+(?:\.\d+)?|\.\d+)%)$/,
+  );
+
+  if (!match) return fallback;
+
+  const [, hueToken, saturationToken, lightnessToken] = match;
+
+  if (!hueToken || !saturationToken || !lightnessToken) {
+    return fallback;
+  }
+
+  const rawHue = Number(hueToken);
+  const saturation = Number(saturationToken.slice(0, -1));
+  const lightness = Number(lightnessToken.slice(0, -1));
+
+  if (
+    !Number.isFinite(rawHue) ||
+    !Number.isFinite(saturation) ||
+    !Number.isFinite(lightness) ||
+    saturation < 0 ||
+    saturation > 100 ||
+    lightness < 0 ||
+    lightness > 100
+  ) {
+    return fallback;
+  }
+
+  const hue = ((rawHue % 360) + 360) % 360;
+  const s = saturation / 100;
+  const l = lightness / 100;
+
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const hueSector = hue / 60;
+  const x = chroma * (1 - Math.abs((hueSector % 2) - 1));
+
+  let r1 = 0;
+  let g1 = 0;
+  let b1 = 0;
+
+  if (hueSector < 1) {
+    r1 = chroma;
+    g1 = x;
+  } else if (hueSector < 2) {
+    r1 = x;
+    g1 = chroma;
+  } else if (hueSector < 3) {
+    g1 = chroma;
+    b1 = x;
+  } else if (hueSector < 4) {
+    g1 = x;
+    b1 = chroma;
+  } else if (hueSector < 5) {
+    r1 = x;
+    b1 = chroma;
+  } else {
+    r1 = chroma;
+    b1 = x;
+  }
+
+  const m = l - chroma / 2;
+  const red = Math.round((r1 + m) * 255);
+  const green = Math.round((g1 + m) * 255);
+  const blue = Math.round((b1 + m) * 255);
+
+  return `rgb(${red}, ${green}, ${blue})`;
+}
+
 function cssToken(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
   const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return value ? `hsl(${value})` : fallback;
+  return value ? chartColorFromHslToken(value, fallback) : fallback;
 }
 
 export function TradingChartAdapter({
@@ -73,21 +146,23 @@ export function TradingChartAdapter({
   const initialFitDone = useRef(false);
 
   const chartData = useMemo(
-    () => candles.map((candle) => ({
-      time: candle.time as Time,
-      open: Number(candle.open),
-      high: Number(candle.high),
-      low: Number(candle.low),
-      close: Number(candle.close),
-    })),
+    () =>
+      candles.map((candle) => ({
+        time: candle.time as Time,
+        open: Number(candle.open),
+        high: Number(candle.high),
+        low: Number(candle.low),
+        close: Number(candle.close),
+      })),
     [candles],
   );
   const volumeData = useMemo(
-    () => candles.map((candle) => ({
-      time: candle.time as Time,
-      value: Number(candle.volume),
-      color: Number(candle.close) >= Number(candle.open) ? "rgba(16,185,129,.35)" : "rgba(244,63,94,.35)",
-    })),
+    () =>
+      candles.map((candle) => ({
+        time: candle.time as Time,
+        value: Number(candle.volume),
+        color: Number(candle.close) >= Number(candle.open) ? "rgba(16,185,129,.35)" : "rgba(244,63,94,.35)",
+      })),
     [candles],
   );
   const overlayModel = useMemo(
@@ -155,8 +230,9 @@ export function TradingChartAdapter({
     const replayMarkers = overlayVisibility.trading
       ? events.filter((event) => event.event_type.toUpperCase() !== "ANALYSIS").map(markerFor)
       : [];
-    const markers = [...replayMarkers, ...overlayModel.markers.map((item) => item.marker)]
-      .sort((left, right) => Number(left.time) - Number(right.time));
+    const markers = [...replayMarkers, ...overlayModel.markers.map((item) => item.marker)].sort(
+      (left, right) => Number(left.time) - Number(right.time),
+    );
     series.setMarkers(markers);
     zigzagRef.current?.setData(overlayModel.zigzag);
     if (!initialFitDone.current && chartData.length > 0) {
@@ -221,5 +297,7 @@ export function TradingChartAdapter({
     });
   }, [cursorTime]);
 
-  return <div ref={host} className="h-full min-h-[420px] w-full" aria-label="Graphique de trading et overlays Analytics" />;
+  return (
+    <div ref={host} className="h-full min-h-[420px] w-full" aria-label="Graphique de trading et overlays Analytics" />
+  );
 }
