@@ -15,7 +15,6 @@ from app.services.backtest import (
     stable_uuid,
 )
 
-
 START = datetime(2026, 9, 1, tzinfo=UTC)
 SYMBOL = "BTC/USDC"
 SYSTEM_ID = "balanced_v1"
@@ -561,8 +560,8 @@ async def test_decision_context_freezes_portfolio_and_market_constraints_pre_ai(
 
 
 def _historical_derivatives_archive():
-    from tempfile import TemporaryDirectory
     from pathlib import Path
+    from tempfile import TemporaryDirectory
 
     from app.services.backtest.historical_derivatives_analytics import (
         HistoricalDerivativesPoint,

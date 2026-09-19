@@ -1,7 +1,6 @@
 import ast
 from pathlib import Path
 
-
 FORBIDDEN_PREFIXES = (
     "app.agents",
     "app.trading",

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -39,7 +40,7 @@ class UnsafeMarketDataError(ExchangeAdapterError):
 def as_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("timestamp must be timezone-aware")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +71,7 @@ class CurrentPrice(BaseModel):
         return as_utc(value)
 
     @model_validator(mode="after")
-    def validate_clock_order(self) -> "CurrentPrice":
+    def validate_clock_order(self) -> CurrentPrice:
         if self.received_at < self.observed_at:
             raise ValueError("received_at must be >= observed_at")
         return self

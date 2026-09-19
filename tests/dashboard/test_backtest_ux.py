@@ -16,7 +16,6 @@ from app.dashboard.backtest import (
     WalkForwardInput,
 )
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 
@@ -29,9 +28,7 @@ def csv_series(count: int = 140) -> str:
         close = price + drift
         high = max(price, close) + Decimal("0.20")
         low = min(price, close) - Decimal("0.20")
-        rows.append(
-            f"{opened.isoformat()},{price},{high},{low},{close},{1000 + index}"
-        )
+        rows.append(f"{opened.isoformat()},{price},{high},{low},{close},{1000 + index}")
         price = close
     return "\n".join(rows) + "\n"
 
@@ -86,9 +83,14 @@ def test_preview_exposes_dataset_candle_axis_and_split_indices() -> None:
     assert split.oos_end == 139
 
     assert preview.suggested_split is not None
-    assert int(preview.suggested_split.design_start.timestamp() * 1000) == preview.candle_close_ms[0]
+    assert (
+        int(preview.suggested_split.design_start.timestamp() * 1000) == preview.candle_close_ms[0]
+    )
     assert int(preview.suggested_split.design_end.timestamp() * 1000) == preview.candle_close_ms[83]
-    assert int(preview.suggested_split.validation_start.timestamp() * 1000) == preview.candle_close_ms[84]
+    assert (
+        int(preview.suggested_split.validation_start.timestamp() * 1000)
+        == preview.candle_close_ms[84]
+    )
     assert int(preview.suggested_split.oos_start.timestamp() * 1000) == preview.candle_close_ms[112]
 
 
@@ -97,7 +99,9 @@ def test_capabilities_expose_registry_agents_without_changing_paper_boundary() -
     caps = service.capabilities()
 
     agents = {item.agent: item for item in caps.agents}
-    assert {"professor", "palermo", "lisbon", "berlin", "tokyo", "nairobi", "rio", "denver"} <= set(agents)
+    assert {"professor", "palermo", "lisbon", "berlin", "tokyo", "nairobi", "rio", "denver"} <= set(
+        agents
+    )
     assert agents["professor"].core is True
     assert agents["berlin"].core is False
     assert caps.paper_only is True
@@ -124,20 +128,23 @@ def test_agent_traces_expose_directional_targets() -> None:
         assert progress.agent_traces
 
         professor_plans = [
-            trace for trace in progress.agent_traces
+            trace
+            for trace in progress.agent_traces
             if trace.agent == "professor" and trace.phase == "PLAN"
         ]
         assert professor_plans
         assert "berlin" in professor_plans[-1].targets
 
         berlin = next(
-            trace for trace in progress.agent_traces
+            trace
+            for trace in progress.agent_traces
             if trace.agent == "berlin" and trace.phase == "ANALYSIS"
         )
         assert berlin.targets == ("professor",)
 
         palermo = next(
-            trace for trace in progress.agent_traces
+            trace
+            for trace in progress.agent_traces
             if trace.agent == "palermo" and trace.phase == "RED_TEAM"
         )
         assert palermo.targets == ("professor",)

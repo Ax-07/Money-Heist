@@ -101,9 +101,7 @@ def _specialist_alias_paths(
         if agent in seen_agents:
             # Ambiguous aliases fail closed.
             aliases = {
-                path
-                for path in aliases
-                if path != agent and not path.startswith(f"{agent}.")
+                path for path in aliases if path != agent and not path.startswith(f"{agent}.")
             }
             continue
         seen_agents.add(agent)
@@ -230,9 +228,7 @@ class OrchestrationPipeline:
         # Critical: absent optional market fields are omitted, so they cannot be cited as evidence.
         market_payload = market_context.model_dump(mode="json", exclude_none=True)
         if decision_context is not None:
-            market_payload["decision_context"] = decision_context_payload(
-                decision_context
-            )
+            market_payload["decision_context"] = decision_context_payload(decision_context)
         event(
             "context",
             "COMPLETED",
@@ -528,10 +524,11 @@ class OrchestrationPipeline:
                     calls,
                     events,
                 )
-            if isinstance(exc, UngroundedEvidenceError):
-                code = PipelineFailureCode.UNGROUNDED_EVIDENCE
-            else:
-                code = PipelineFailureCode.INVALID_SPECIALIST_OUTPUT
+            code = (
+                PipelineFailureCode.UNGROUNDED_EVIDENCE
+                if isinstance(exc, UngroundedEvidenceError)
+                else PipelineFailureCode.INVALID_SPECIALIST_OUTPUT
+            )
             return self._failed(
                 opportunity=opportunity,
                 gate_decision=gate_decision,
@@ -860,8 +857,7 @@ class OrchestrationPipeline:
         duplicates = sorted(set(provider_contexts) & set(explicit))
         if duplicates:
             raise InvalidPipelineContextError(
-                "specialist context supplied both by provider and caller: "
-                + ", ".join(duplicates)
+                "specialist context supplied both by provider and caller: " + ", ".join(duplicates)
             )
         return {**provider_contexts, **explicit}
 

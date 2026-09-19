@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
 from app.agents.models import AgentRegistryEntry, AgentRole, AgentState
 from app.agents.registry import AgentRegistry
@@ -299,9 +300,9 @@ def test_closure_expiry_cannot_exceed_request_expiry():
 
 def test_manifest_is_frozen_and_rejects_extra_authority_fields():
     closure = _close()
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         closure.manifest.live_authority = True
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         closure.__class__(
             manifest=closure.manifest,
             plan=closure.plan,

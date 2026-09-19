@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from types import SimpleNamespace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 from app.recruitment import (
     RecruitmentBaselineSpec,
@@ -150,7 +150,10 @@ def test_comparable_oos_campaign_is_eligible_as_promotion_evidence_only() -> Non
     assert decision.comparable is True
     assert decision.is_out_of_sample is True
     assert decision.reason_codes == ("COMPARABLE_OOS_PROMOTION_EVIDENCE",)
-    assert decision.provenance.evidence_basis is RecruitmentEvidenceBasis.SIMULATED_HISTORICAL_REPLAY_PAPER
+    assert (
+        decision.provenance.evidence_basis
+        is RecruitmentEvidenceBasis.SIMULATED_HISTORICAL_REPLAY_PAPER
+    )
     assert decision.provenance.baseline_run_id == plan.baseline.run.run_id
     assert decision.provenance.candidate_run_id == plan.with_candidate.run.run_id
     assert decision.auto_apply is False

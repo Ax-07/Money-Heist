@@ -68,9 +68,7 @@ def _policy(
 ) -> MasterAllocationPolicy:
     members = _members(*system_ids)
     if configured:
-        envelopes = tuple(
-            _envelope(system_id, "50", "5", "40") for system_id in sorted(system_ids)
-        )
+        envelopes = tuple(_envelope(system_id, "50", "5", "40") for system_id in sorted(system_ids))
     else:
         envelopes = tuple(
             CrewAllocationEnvelope(
@@ -108,10 +106,9 @@ def _crew_evaluation(
     pnl = Decimal(realized)
     win_rate = Metric.available(Decimal(wins) / Decimal(closed))
     expectancy = Metric.available(pnl / Decimal(closed))
-    if losses:
-        profit_factor = Metric.available(Decimal("2"))
-    else:
-        profit_factor = Metric.unbounded("NO_LOSING_TRADES")
+    profit_factor = (
+        Metric.available(Decimal("2")) if losses else Metric.unbounded("NO_LOSING_TRADES")
+    )
     body = {
         "schema": "money-heist.master-historical-crew-evaluation.v1",
         "schema_version": "1.0",
@@ -282,9 +279,7 @@ def _audit(
         "released_reservation_count": evaluation.closed_lot_count,
         "final_equity": evaluation.final_equity,
         "final_open_risk_amount": evaluation.final_open_risk_amount,
-        "final_virtual_gross_exposure_amount": (
-            evaluation.final_virtual_gross_exposure_amount
-        ),
+        "final_virtual_gross_exposure_amount": (evaluation.final_virtual_gross_exposure_amount),
         "single_master_capital_verified": True,
         "full_barrier_chain_verified": True,
         "reservation_lifecycle_verified": True,
@@ -321,9 +316,7 @@ def _audit(
         released_reservation_count=evaluation.closed_lot_count,
         final_equity=evaluation.final_equity,
         final_open_risk_amount=evaluation.final_open_risk_amount,
-        final_virtual_gross_exposure_amount=(
-            evaluation.final_virtual_gross_exposure_amount
-        ),
+        final_virtual_gross_exposure_amount=(evaluation.final_virtual_gross_exposure_amount),
         single_master_capital_verified=True,
         full_barrier_chain_verified=True,
         reservation_lifecycle_verified=True,
@@ -803,9 +796,10 @@ def test_evidence_payload_rehash_matches_stored_source_objects() -> None:
     assert stable_digest(master_historical_replay_audit_payload(evidence.audit_report)) == (
         evidence.audit_report.fingerprint_sha256
     )
-    assert stable_digest(
-        master_historical_replay_closure_payload(evidence.closure_seal)
-    ) == evidence.closure_seal.closure_fingerprint_sha256
+    assert (
+        stable_digest(master_historical_replay_closure_payload(evidence.closure_seal))
+        == evidence.closure_seal.closure_fingerprint_sha256
+    )
     assert stable_digest(master_historical_evaluation_payload(evidence.evaluation)) == (
         evidence.evaluation.fingerprint_sha256
     )

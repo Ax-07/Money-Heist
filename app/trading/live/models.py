@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Mapping
 from uuid import UUID
 
 from app.trading.paper.models import OrderSide, OrderType
@@ -61,7 +61,11 @@ class LiveOrderIntent:
         if self.expires_at <= self.created_at:
             raise ValueError("expires_at must be after created_at")
         if self.order_type is OrderType.LIMIT:
-            if self.limit_price is None or self.limit_price <= 0 or not self.limit_price.is_finite():
+            if (
+                self.limit_price is None
+                or self.limit_price <= 0
+                or not self.limit_price.is_finite()
+            ):
                 raise ValueError("LIMIT intent requires a finite positive limit_price")
         elif self.limit_price is not None:
             raise ValueError("MARKET intent must not carry limit_price")
@@ -69,7 +73,7 @@ class LiveOrderIntent:
     def is_stale(self, now: datetime) -> bool:
         if now.tzinfo is None or now.utcoffset() is None:
             return True
-        return self.expires_at <= now.astimezone(timezone.utc)
+        return self.expires_at <= now.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,7 +85,7 @@ class LiveOrderRecord:
     filled_quantity: Decimal = Decimal("0")
     average_fill_price: Decimal | None = None
     last_error_code: str | None = None
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, slots=True)

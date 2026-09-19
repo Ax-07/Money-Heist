@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import NAMESPACE_URL, uuid5
 
@@ -24,8 +24,7 @@ from app.trading.risk import (
     RiskProfile,
 )
 
-
-NOW = datetime(2026, 9, 7, 16, 30, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 16, 30, tzinfo=UTC)
 ROOT_OPPORTUNITY_ID = "70000000-0000-0000-0000-000000000011"
 SNAPSHOT_ID = "snapshot-shadow-root-11"
 SYMBOL = "BTCUSDT"

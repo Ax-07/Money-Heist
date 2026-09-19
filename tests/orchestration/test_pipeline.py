@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -69,9 +69,7 @@ def _adapt_scripted_indexed_evidence(
         # provider schema rejects them before downstream grounding.
         if not isinstance(source_key, str) or source_key not in index_by_key:
             return output
-        converted_item = {
-            key: value for key, value in item.items() if key != "source_key"
-        }
+        converted_item = {key: value for key, value in item.items() if key != "source_key"}
         converted_item["source_index"] = index_by_key[source_key]
         converted.append(converted_item)
 
@@ -239,7 +237,7 @@ def make_context(*, rsi: float | None = 62.0) -> FeatureSnapshot:
         source_snapshot_id="raw-1",
         symbol="BTCUSDT",
         timeframe="1m",
-        observed_at=datetime.now(timezone.utc),
+        observed_at=datetime.now(UTC),
         candle_count=100,
         close=100.0,
         ema_fast=101.0,
@@ -259,7 +257,7 @@ def make_context(*, rsi: float | None = 62.0) -> FeatureSnapshot:
 
 
 def make_opportunity(*, priority: int = 80) -> CandidateOpportunity:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return CandidateOpportunity(
         scanner_version="scanner-v1",
         opportunity_id=str(uuid4()),
@@ -352,10 +350,14 @@ async def test_nominal_pipeline_produces_strict_trade_proposal_and_audit():
     assert proposal.side == "LONG"
     assert proposal.entry_price == Decimal("100")
     assert proposal.stop_price == Decimal("95")
-    assert proposal.specialist_request_ids == tuple(run.request_id for run in result.specialist_runs)
+    assert proposal.specialist_request_ids == tuple(
+        run.request_id for run in result.specialist_runs
+    )
     assert proposal.palermo_request_id == result.palermo_run.request_id
     assert len(result.agent_calls) == 6
-    assert sum(call.estimated_cost_eur for call in result.agent_calls) == ledger.snapshot().spent_eur
+    assert (
+        sum(call.estimated_cost_eur for call in result.agent_calls) == ledger.snapshot().spent_eur
+    )
     assert ledger.snapshot().spent_eur <= ledger.snapshot().hard_limit_eur
     assert [event.sequence for event in result.audit_events] == list(
         range(1, len(result.audit_events) + 1)
@@ -468,9 +470,7 @@ async def test_independent_round_has_no_cross_specialist_contamination_and_paler
         assert payload["market_context"]["snapshot_id"] == "snapshot-1"
 
     palermo_index = next(
-        index
-        for index, request in enumerate(client.requests)
-        if request.agent_id == "palermo"
+        index for index, request in enumerate(client.requests) if request.agent_id == "palermo"
     )
     specialist_indexes = [client.requests.index(request) for request in specialist_requests]
     assert max(specialist_indexes) < palermo_index
@@ -752,12 +752,7 @@ async def test_frozen_decision_context_is_identical_across_full_crew_requests():
 
     script = nominal_script()
     script[("berlin", "specialist_independent_round_1")] = [
-        berlin(
-            source_key=(
-                "market_context.decision_context.market."
-                "snapshots.1m.regime"
-            )
-        )
+        berlin(source_key=("market_context.decision_context.market.snapshots.1m.regime"))
     ]
     pipeline, client, _ = make_pipeline(script)
     market_context = make_context()
@@ -772,10 +767,7 @@ async def test_frozen_decision_context_is_identical_across_full_crew_requests():
 
     assert result.status is PipelineStatus.TRADE_PROPOSAL
     assert len(client.requests) == 6
-    phases = [
-        (request.agent_id, request.metadata["phase"])
-        for request in client.requests
-    ]
+    phases = [(request.agent_id, request.metadata["phase"]) for request in client.requests]
     assert ("professor", "plan") in phases
     assert ("berlin", "specialist_independent_round_1") in phases
     assert ("tokyo", "specialist_independent_round_1") in phases
@@ -791,13 +783,9 @@ async def test_frozen_decision_context_is_identical_across_full_crew_requests():
         assert supplied["context_fingerprint"] == decision_context.context_fingerprint
         assert request.metadata["decision_context_id"] == decision_context.context_id
         assert (
-            request.metadata["decision_context_fingerprint"]
-            == decision_context.context_fingerprint
+            request.metadata["decision_context_fingerprint"] == decision_context.context_fingerprint
         )
-        assert (
-            request.metadata["decision_context_binding_version"]
-            == AGENT_CONTEXT_BINDING_VERSION
-        )
+        assert request.metadata["decision_context_binding_version"] == AGENT_CONTEXT_BINDING_VERSION
 
 
 @sync_test

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -19,8 +19,7 @@ from app.trading.risk import (
     unresolved_profile,
 )
 
-
-NOW = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -93,7 +92,6 @@ def test_incomplete_profile_fails_closed(engine, proposal, portfolio, market) ->
     assert decision.status is RiskDecisionStatus.REJECTED
     assert decision.reason_codes == (RiskReasonCode.PROFILE_INCOMPLETE,)
     assert "max_risk_per_trade_pct" in decision.details["missing"]
-
 
 
 def test_invalid_profile_is_rejected_fail_safe(engine, proposal, portfolio, market) -> None:
@@ -189,7 +187,9 @@ def test_kill_switch_rejects_new_trade(engine, proposal, portfolio, market) -> N
     assert decision.reason_codes == (RiskReasonCode.KILL_SWITCH_ACTIVE,)
 
 
-def test_stop_ai_alone_does_not_change_risk_authorization(engine, proposal, portfolio, market) -> None:
+def test_stop_ai_alone_does_not_change_risk_authorization(
+    engine, proposal, portfolio, market
+) -> None:
     decision = engine.evaluate(
         proposal=proposal,
         portfolio=portfolio,
@@ -361,7 +361,9 @@ def test_min_notional_never_causes_unsafe_upsize(engine, proposal, portfolio, ma
     assert decision.approved_quantity == Decimal("0")
 
 
-def test_quantity_step_rounding_never_exceeds_risk_budget(engine, proposal, portfolio, market) -> None:
+def test_quantity_step_rounding_never_exceeds_risk_budget(
+    engine, proposal, portfolio, market
+) -> None:
     coarse = replace(market, qty_step=Decimal("0.3"))
     decision = engine.evaluate(
         proposal=proposal,

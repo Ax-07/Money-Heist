@@ -1,10 +1,18 @@
 from __future__ import annotations
 
-from typing import Mapping, Protocol, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Protocol
 
 from app.trading.risk.models import MarketConstraints
 
-from .models import LiveAuditEvent, LiveBalance, LiveFill, LiveOrderIntent, LiveOrderRecord, ReconciliationResult
+from .models import (
+    LiveAuditEvent,
+    LiveBalance,
+    LiveFill,
+    LiveOrderIntent,
+    LiveOrderRecord,
+    ReconciliationResult,
+)
 
 
 class LiveAuditSink(Protocol):
@@ -17,7 +25,9 @@ class LiveOrderStore(Protocol):
 
 
 class LiveBroker(Protocol):
-    async def submit_order(self, intent: LiveOrderIntent, *, constraints: MarketConstraints, reference_price): ...
+    async def submit_order(
+        self, intent: LiveOrderIntent, *, constraints: MarketConstraints, reference_price
+    ): ...
     async def get_order(self, client_order_id: str) -> LiveOrderRecord | None: ...
     async def get_fills(self, client_order_id: str) -> Sequence[LiveFill]: ...
     async def get_balances(self) -> Sequence[LiveBalance]: ...
@@ -28,8 +38,12 @@ class LiveBroker(Protocol):
 class KrakenPrivateApi(Protocol):
     async def get_api_key_info(self) -> Mapping[str, object]: ...
     async def get_balance(self) -> Mapping[str, object]: ...
-    async def get_open_orders(self, *, client_order_id: str | None = None) -> Mapping[str, object]: ...
-    async def get_closed_orders(self, *, client_order_id: str | None = None) -> Mapping[str, object]: ...
+    async def get_open_orders(
+        self, *, client_order_id: str | None = None
+    ) -> Mapping[str, object]: ...
+    async def get_closed_orders(
+        self, *, client_order_id: str | None = None
+    ) -> Mapping[str, object]: ...
     async def get_trades_history(self) -> Mapping[str, object]: ...
     async def add_order(self, payload: Mapping[str, object]) -> Mapping[str, object]: ...
     async def cancel_order(self, *, client_order_id: str) -> Mapping[str, object]: ...

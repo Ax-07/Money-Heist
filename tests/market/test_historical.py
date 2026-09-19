@@ -1,4 +1,4 @@
-from datetime import timedelta, timezone
+from datetime import UTC, timedelta
 from pathlib import Path
 
 import pytest
@@ -27,7 +27,7 @@ def test_csv_import_sorts_rows_and_normalizes(tmp_path: Path):
     )
     assert len(result.candles) == 2
     assert result.candles[0].open_time.minute == 0
-    assert result.candles[0].open_time.tzinfo == timezone.utc
+    assert result.candles[0].open_time.tzinfo == UTC
     assert result.quality.is_valid is True
 
 

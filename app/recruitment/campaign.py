@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
-from typing import Sequence
 
 from app.services.backtest.ids import stable_digest, stable_uuid
 from app.services.backtest.models import BacktestConfig, BacktestRun
@@ -172,7 +172,9 @@ class RecruitmentCampaignPlan:
 
     def __post_init__(self) -> None:
         if self.execute or self.auto_apply or self.registry_mutation or self.live_authority:
-            raise ValueError("recruitment campaign plans cannot execute, mutate registry, or go LIVE")
+            raise ValueError(
+                "recruitment campaign plans cannot execute, mutate registry, or go LIVE"
+            )
         for field_name in (
             "campaign_id",
             "comparison_fingerprint",

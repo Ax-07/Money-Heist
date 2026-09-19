@@ -31,7 +31,9 @@ class Batch10EvaluationInput:
 
 
 class Batch10EvaluationPort(Protocol):
-    async def evaluate(self, evaluation_input: Batch10EvaluationInput) -> ShadowEvaluationResult: ...
+    async def evaluate(
+        self, evaluation_input: Batch10EvaluationInput
+    ) -> ShadowEvaluationResult: ...
 
 
 class CallableBatch10EvaluationAdapter:
@@ -107,9 +109,7 @@ class MappingMetricProjector:
             trading_net=self._decimal_or_none(report.get(self._keys["trading_net"])),
             economic_net=self._decimal_or_none(report.get(self._keys["economic_net"])),
             ai_cost=self._decimal_or_none(report.get(self._keys["ai_cost"])),
-            self_funding_ratio=self._decimal_or_none(
-                report.get(self._keys["self_funding_ratio"])
-            ),
+            self_funding_ratio=self._decimal_or_none(report.get(self._keys["self_funding_ratio"])),
         )
 
     @staticmethod

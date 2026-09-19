@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .models import KillSwitchState
 
@@ -25,7 +25,7 @@ class KillSwitch:
             self._state,
             stop_new_trades=True,
             reason=reason,
-            activated_at=datetime.now(timezone.utc),
+            activated_at=datetime.now(UTC),
         )
         return self._state
 
@@ -34,7 +34,7 @@ class KillSwitch:
             self._state,
             stop_ai=True,
             reason=reason,
-            activated_at=datetime.now(timezone.utc),
+            activated_at=datetime.now(UTC),
         )
         return self._state
 
@@ -44,7 +44,7 @@ class KillSwitch:
             stop_ai=True,
             emergency_mode=True,
             reason=reason,
-            activated_at=datetime.now(timezone.utc),
+            activated_at=datetime.now(UTC),
         )
         return self._state
 

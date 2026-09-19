@@ -7,10 +7,10 @@ from decimal import Decimal
 import pytest
 
 from app.market.exchange import (
-    ExchangePayloadError,
-    ExchangeRateLimitError,
     KRAKEN_INITIAL_SYMBOLS,
     KRAKEN_SOURCE,
+    ExchangePayloadError,
+    ExchangeRateLimitError,
     KrakenAdapterConfig,
     KrakenPublicMarketDataProvider,
     ResilientPublicHttpClient,

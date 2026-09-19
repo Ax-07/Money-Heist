@@ -133,7 +133,11 @@ def aggregate_decision_funnel(
 
             failure = getattr(orchestration, "failure", None)
             failure_stage = _text(getattr(failure, "stage", None)) if failure is not None else None
-            if gate is not None and _bool_attr(gate, "allows_ai") and failure_stage != "specialist_contexts":
+            if (
+                gate is not None
+                and _bool_attr(gate, "allows_ai")
+                and failure_stage != "specialist_contexts"
+            ):
                 ai_orchestrations_triggered += 1
 
             professor_plan = getattr(orchestration, "professor_plan", None)

@@ -22,7 +22,6 @@ from .specialist_contexts import (
     CompositeSpecialistContextProvider,
     SpecialistContextProvider,
 )
-
 from .task_force_report import (
     TaskForceReportIntegration,
     prepare_task_force_report_for_orchestration,

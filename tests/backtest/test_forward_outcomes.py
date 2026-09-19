@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from app.market.models import Candle
 from app.services.backtest.forward_outcomes import build_forward_outcomes_report
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 

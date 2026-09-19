@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -46,8 +46,7 @@ from app.trading.risk.models import (
 )
 from app.trading.risk.profiles import demo_profile
 
-
-NOW = datetime(2026, 9, 7, 16, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 16, 0, tzinfo=UTC)
 PROPOSAL_ID = UUID("10000000-0000-0000-0000-000000000001")
 PROFESSOR_REQUEST_ID = UUID("20000000-0000-0000-0000-000000000001")
 PALERMO_REQUEST_ID = UUID("30000000-0000-0000-0000-000000000001")

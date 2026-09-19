@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from app.services.shadow.identities import default_shadow_systems
 
 from .models import (
-    DashboardAIUsage,
     DashboardAccount,
     DashboardAgentMetric,
+    DashboardAIUsage,
     DashboardAvailability,
     DashboardBatch10,
     DashboardComparison,
@@ -33,7 +33,6 @@ from .models import (
     DashboardSystem,
     DashboardTradeProposal,
 )
-
 
 ZERO = Decimal("0")
 
@@ -176,7 +175,7 @@ def _empty_comparison() -> DashboardComparison:
 def seeded_dashboard_snapshot(
     *, clock: Any | None = None, reason: str = "No SHADOW fleet result has been observed yet"
 ) -> DashboardSnapshot:
-    now = (clock or (lambda: datetime.now(timezone.utc)))()
+    now = (clock or (lambda: datetime.now(UTC)))()
     systems = tuple(_empty_system(identity, reason) for identity in default_shadow_systems())
     return DashboardSnapshot(
         generated_at=now,
@@ -218,7 +217,7 @@ class ShadowDashboardProjector:
     """
 
     def __init__(self, *, clock: Any | None = None) -> None:
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock or (lambda: datetime.now(UTC))
 
     async def capture(self, *, runner: Any, fleet_result: Any) -> DashboardSnapshot:
         runtime_by_system = {runtime.identity.system_id: runtime for runtime in runner.runtimes}

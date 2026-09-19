@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -15,7 +15,7 @@ from app.market.snapshot import create_market_snapshot
 
 
 def make_candle(minute: int) -> Candle:
-    start = datetime(2026, 9, 7, 12, minute, tzinfo=timezone.utc)
+    start = datetime(2026, 9, 7, 12, minute, tzinfo=UTC)
     return Candle(
         symbol="BTCUSDT",
         timeframe="1m",
@@ -30,8 +30,8 @@ def make_candle(minute: int) -> Candle:
 
 
 def test_freshness_policy_marks_old_data_stale():
-    now = datetime(2026, 9, 7, 12, 5, tzinfo=timezone.utc)
-    observed = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 7, 12, 5, tzinfo=UTC)
+    observed = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
     assert is_stale(
         observed,
         now=now,
@@ -40,7 +40,7 @@ def test_freshness_policy_marks_old_data_stale():
 
 
 def test_freshness_rejects_large_future_timestamp():
-    now = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
     with pytest.raises(MarketDataValidationError, match="future"):
         is_stale(
             now + timedelta(minutes=1),
@@ -61,13 +61,13 @@ def test_gap_detection_counts_missing_intervals():
 
 
 def test_snapshot_quality_becomes_invalid_when_stale_or_gapped():
-    observed = datetime(2026, 9, 7, 12, 1, tzinfo=timezone.utc)
+    observed = datetime(2026, 9, 7, 12, 1, tzinfo=UTC)
     snapshot = create_market_snapshot(
         symbol="BTCUSDT",
         source="unit-test",
         observed_at=observed,
         received_at=observed,
-        now=datetime(2026, 9, 7, 12, 10, tzinfo=timezone.utc),
+        now=datetime(2026, 9, 7, 12, 10, tzinfo=UTC),
         freshness_policy=FreshnessPolicy(max_age=timedelta(minutes=2)),
         candle_sets={"1m": (make_candle(0), make_candle(2))},
         expected_intervals={"1m": timedelta(minutes=1)},

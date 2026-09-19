@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.evaluation import calculate_agent_metrics, calculate_ai_cost_metrics
@@ -9,8 +9,7 @@ from app.evaluation.models import (
     OpportunityTrace,
 )
 
-
-NOW = datetime(2026, 9, 7, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, tzinfo=UTC)
 
 
 def usage(request: str, agent: str, cost: str, route: str, model: str, latency: int = 100):

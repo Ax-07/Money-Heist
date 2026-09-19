@@ -10,7 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, m
 
 from app.common.canonical import stable_digest
 
-FRONTEND_DECISION_INTELLIGENCE_BUNDLE_SCHEMA_VERSION = "money-heist.frontend-decision-intelligence-bundle.v1"
+FRONTEND_DECISION_INTELLIGENCE_BUNDLE_SCHEMA_VERSION = (
+    "money-heist.frontend-decision-intelligence-bundle.v1"
+)
 FRONTEND_ANALYTICS_PROJECTION_SCHEMA_VERSION = "money-heist.frontend-analytics-projection.v1"
 FRONTEND_SCANNER_ANALYTICS_SCHEMA_VERSION = "money-heist.frontend-scanner-analytics.v1"
 FRONTEND_DECISION_DETAIL_SCHEMA_VERSION = "money-heist.frontend-decision-intelligence-detail.v1"
@@ -207,9 +209,13 @@ class FrontendScannerAnalyticsProjection(FrozenModel):
             raise ValueError("scanner total must equal records length")
         if self.matched_analytics + self.unmatched_analytics != len(self.records):
             raise ValueError("scanner Analytics counts must conserve records")
-        if self.no_trigger_count + self.below_threshold_count + self.candidate_count != len(self.records):
+        if self.no_trigger_count + self.below_threshold_count + self.candidate_count != len(
+            self.records
+        ):
             raise ValueError("scanner class counts must conserve records")
-        ordered = tuple(sorted(self.records, key=lambda item: (item.observed_at, item.scanner_evaluation_id)))
+        ordered = tuple(
+            sorted(self.records, key=lambda item: (item.observed_at, item.scanner_evaluation_id))
+        )
         if ordered != self.records:
             raise ValueError("scanner records must be deterministically sorted")
         return self
@@ -376,7 +382,9 @@ class FrontendDecisionIntelligenceBundle(FrozenModel):
         decision_ids = tuple(item.opportunity_id for item in self.decisions)
         if len(set(decision_ids)) != len(decision_ids):
             raise ValueError("Decision Intelligence bundle cannot duplicate opportunity ids")
-        expected_decisions = tuple(sorted(self.decisions, key=lambda item: (item.observed_at, item.opportunity_id)))
+        expected_decisions = tuple(
+            sorted(self.decisions, key=lambda item: (item.observed_at, item.opportunity_id))
+        )
         if expected_decisions != self.decisions:
             raise ValueError("Decision Intelligence records must be deterministically sorted")
         expected_stages = tuple(
@@ -440,7 +448,9 @@ class FrontendDecisionIntelligenceProjectionService:
         try:
             bundle = FrontendDecisionIntelligenceBundle.model_validate_json(payload)
         except ValueError as exc:
-            raise ValueError(f"invalid persisted Decision Intelligence projection for {campaign_id}/{role}") from exc
+            raise ValueError(
+                f"invalid persisted Decision Intelligence projection for {campaign_id}/{role}"
+            ) from exc
         if bundle.campaign_id != campaign_id or bundle.role != role:
             raise ValueError("persisted Decision Intelligence projection identity mismatch")
         return bundle
@@ -501,7 +511,9 @@ class FrontendDecisionIntelligenceProjectionService:
                 unavailable_reason="DECISION_INTELLIGENCE_UNAVAILABLE",
                 opportunity_link=links.get(opportunity_id),
             )
-        stages = tuple(item for item in bundle.funnel_stages if item.opportunity_id == opportunity_id)
+        stages = tuple(
+            item for item in bundle.funnel_stages if item.opportunity_id == opportunity_id
+        )
         return FrontendDecisionIntelligenceDetailProjection(
             campaign_id=campaign_id,
             role=role,
@@ -524,7 +536,9 @@ def _analytics_ref_from_decision(value: Any) -> FrontendAnalyticsRefProjection:
         analytics_snapshot_fingerprint=value.analytics_snapshot_fingerprint,
         analytics_as_of=value.analytics_as_of,
         source_cursor_fingerprint=value.source_cursor_fingerprint,
-        analytics_snapshot_source_cursor_fingerprint=(value.analytics_snapshot_source_cursor_fingerprint),
+        analytics_snapshot_source_cursor_fingerprint=(
+            value.analytics_snapshot_source_cursor_fingerprint
+        ),
         diagnostics=tuple(value.diagnostics),
     )
 
@@ -551,11 +565,19 @@ def _scanner_record_from_attribution(value: Any) -> FrontendScannerEvaluationPro
             analytics_run_id=str(value.analytics_run_id),
             opportunity_analytics_link_id=value.analytics.opportunity_analytics_link_id,
             decision_intelligence_record_id=value.analytics.decision_intelligence_record_id,
-            analytics_snapshot_id=(None if analytics_snapshot is None else analytics_snapshot.analytics_snapshot_id),
-            analytics_snapshot_fingerprint=(None if analytics_snapshot is None else analytics_snapshot.analytics_snapshot_fingerprint),
+            analytics_snapshot_id=(
+                None if analytics_snapshot is None else analytics_snapshot.analytics_snapshot_id
+            ),
+            analytics_snapshot_fingerprint=(
+                None
+                if analytics_snapshot is None
+                else analytics_snapshot.analytics_snapshot_fingerprint
+            ),
             analytics_as_of=None if analytics_snapshot is None else analytics_snapshot.as_of,
             source_cursor_fingerprint=value.observation.source_cursor_fingerprint,
-            analytics_snapshot_source_cursor_fingerprint=(None if analytics_snapshot is None else analytics_snapshot.source_cursor_fingerprint),
+            analytics_snapshot_source_cursor_fingerprint=(
+                None if analytics_snapshot is None else analytics_snapshot.source_cursor_fingerprint
+            ),
             diagnostics=tuple(value.analytics.diagnostics),
         ),
     )
@@ -573,7 +595,9 @@ def _opportunity_link(value: Any) -> FrontendOpportunityAnalyticsLinkProjection:
         observed_at=observation.observed_at,
         decision_timeframe=str(observation.decision_timeframe),
         analytics_snapshot_id=None if snapshot is None else snapshot.analytics_snapshot_id,
-        analytics_snapshot_fingerprint=(None if snapshot is None else snapshot.analytics_snapshot_fingerprint),
+        analytics_snapshot_fingerprint=(
+            None if snapshot is None else snapshot.analytics_snapshot_fingerprint
+        ),
         analytics_as_of=None if snapshot is None else snapshot.as_of,
         diagnostics=tuple(value.diagnostics),
     )
@@ -658,7 +682,9 @@ def _funnel_stage(value: Any) -> FrontendFunnelStageProjection:
             analytics_snapshot_fingerprint=value.analytics_snapshot_fingerprint,
             analytics_as_of=value.analytics_as_of,
             source_cursor_fingerprint=value.source_cursor_fingerprint,
-            analytics_snapshot_source_cursor_fingerprint=(value.analytics_snapshot_source_cursor_fingerprint),
+            analytics_snapshot_source_cursor_fingerprint=(
+                value.analytics_snapshot_source_cursor_fingerprint
+            ),
             diagnostics=tuple(value.analytics_diagnostics),
         ),
     )
@@ -716,10 +742,14 @@ def build_frontend_decision_intelligence_bundle(
     if any(item.analytics_run_id != analytics_run_id for item in snapshots):
         raise ValueError("Analytics snapshot belongs to another AnalyticsRun")
 
-    scanner_records = tuple(_scanner_record_from_attribution(item) for item in scanner_attribution.records)
+    scanner_records = tuple(
+        _scanner_record_from_attribution(item) for item in scanner_attribution.records
+    )
     scanner_by_evaluation = {item.scanner_evaluation_id: item for item in scanner_records}
     link_records = tuple(_opportunity_link(item) for item in opportunity_links.links)
-    decision_records = tuple(_decision_record(item, scanner_by_evaluation) for item in decision_intelligence.records)
+    decision_records = tuple(
+        _decision_record(item, scanner_by_evaluation) for item in decision_intelligence.records
+    )
     stage_records = tuple(_funnel_stage(item) for item in funnel_stage_attribution.records)
 
     analytics_projection = FrontendAnalyticsProjection(
@@ -743,7 +773,10 @@ def build_frontend_decision_intelligence_bundle(
             period_role=str(analytics_run.period_role),
             mtf_policy_version=str(analytics_run.mtf_policy_version),
             analytics_bundle_version=str(analytics_run.component_versions.analytics_bundle_version),
-            component_versions={str(key): str(item) for key, item in analytics_run.component_versions.canonical_payload().items()},
+            component_versions={
+                str(key): str(item)
+                for key, item in analytics_run.component_versions.canonical_payload().items()
+            },
             analytics_sha256=str(analytics_manifest.analytics_sha256),
             snapshot_count=int(analytics_manifest.snapshot_count),
         ),

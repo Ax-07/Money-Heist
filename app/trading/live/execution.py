@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Protocol
 from uuid import UUID
@@ -46,7 +46,7 @@ class ControlledLiveExecutionService:
         safety: LiveSafetyStateProvider,
         reconciliation: LiveReconciliationStateProvider,
         order_preflight: LiveOrderPreflight | None = None,
-        now=lambda: datetime.now(timezone.utc),
+        now=lambda: datetime.now(UTC),
     ) -> None:
         self._broker = broker
         self._activation = activation
@@ -133,4 +133,4 @@ class ControlledLiveExecutionService:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)

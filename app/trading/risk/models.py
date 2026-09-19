@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Iterable
-
 
 ZERO = Decimal("0")
 ONE = Decimal("1")
@@ -105,7 +104,7 @@ class TradeProposalRiskInput:
             # Naive timestamps are unsafe because persisted project timestamps
             # are specified as UTC.
             return True
-        return self.expires_at <= now.astimezone(timezone.utc)
+        return self.expires_at <= now.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +149,7 @@ class RiskDecision:
     approved_quantity: Decimal = ZERO
     approved_risk_amount: Decimal = ZERO
     approved_notional: Decimal = ZERO
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     details: dict[str, str] = field(default_factory=dict)
 
     @property

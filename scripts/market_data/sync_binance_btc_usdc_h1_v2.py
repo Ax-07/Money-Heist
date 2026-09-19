@@ -96,15 +96,10 @@ def open_source_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
 
     if path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path) as archive:
-            names = [
-                name
-                for name in archive.namelist()
-                if name.lower().endswith("btc_1h.csv")
-            ]
+            names = [name for name in archive.namelist() if name.lower().endswith("btc_1h.csv")]
             if len(names) != 1:
                 raise SyncError(
-                    "Le ZIP doit contenir exactement un btc_1h.csv "
-                    f"(trouvé: {len(names)})"
+                    f"Le ZIP doit contenir exactement un btc_1h.csv (trouvé: {len(names)})"
                 )
             data = archive.read(names[0]).decode("utf-8-sig")
             reader = csv.DictReader(io.StringIO(data))
@@ -267,9 +262,7 @@ def fetch_ccxt_updates(
     try:
         exchange.load_markets()
         if symbol not in exchange.markets:
-            raise SyncError(
-                f"{symbol} n'existe pas dans les marchés Binance chargés par CCXT"
-            )
+            raise SyncError(f"{symbol} n'existe pas dans les marchés Binance chargés par CCXT")
 
         market = exchange.market(symbol)
         if not market.get("spot"):
@@ -291,9 +284,7 @@ def fetch_ccxt_updates(
         fetched_by_ts: dict[int, list[Any]] = {}
 
         while since <= target_last_closed:
-            batch = exchange.fetch_ohlcv(
-                symbol, timeframe=timeframe, since=since, limit=1000
-            )
+            batch = exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since, limit=1000)
             if not batch:
                 break
 
@@ -528,9 +519,7 @@ def append_updates(
     return combined, len(new_rows)
 
 
-def write_source_csv(
-    path: Path, fieldnames: list[str], rows: list[dict[str, str]]
-) -> None:
+def write_source_csv(path: Path, fieldnames: list[str], rows: list[dict[str, str]]) -> None:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
@@ -670,7 +659,10 @@ def build_plan(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Met à jour btc_1h.csv Binance BTC/USDC avec CCXT et produit le CSV Money Heist."
+        description=(
+            "Met à jour btc_1h.csv Binance BTC/USDC avec CCXT et produit le CSV "
+            "Money Heist."
+        )
     )
     parser.add_argument(
         "--input",
@@ -807,9 +799,7 @@ def main() -> int:
     print("=== SPLITS 60 / 20 / 20 ===")
     splits = plan["splits"]
     print(f"DESIGN         : {splits['design_start']} -> {splits['design_end']}")
-    print(
-        f"VALIDATION     : {splits['validation_start']} -> {splits['validation_end']}"
-    )
+    print(f"VALIDATION     : {splits['validation_start']} -> {splits['validation_end']}")
     print(f"OOS            : {splits['oos_start']} -> {splits['oos_end']}")
     print()
     print("=== CONTRAINTES CCXT/BINANCE ===")
@@ -831,4 +821,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except SyncError as exc:
         print(f"ERREUR: {exc}", file=sys.stderr)
-        raise SystemExit(2)
+        raise SystemExit(2) from None

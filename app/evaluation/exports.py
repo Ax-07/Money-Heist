@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import csv
 import json
+from collections.abc import Iterable, Mapping
 from dataclasses import fields, is_dataclass
 from decimal import Decimal
 from enum import Enum
 from io import StringIO
 from types import MappingProxyType
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from .models import AgentMetrics, EvaluationReport
 

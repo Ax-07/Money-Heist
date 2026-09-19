@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from decimal import Decimal
-
 import asyncio
+from decimal import Decimal
 
 from app.dashboard.models import (
     DashboardAvailability,

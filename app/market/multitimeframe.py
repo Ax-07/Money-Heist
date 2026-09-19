@@ -474,7 +474,7 @@ class HistoricalMultiTimeframeCursor:
                 (
                     "money-heist.incremental-mtf-series.v1:"
                     f"{target}\n"
-                ).encode("utf-8")
+                ).encode()
             )
             self._target_hashers[target] = hasher
 

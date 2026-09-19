@@ -9,7 +9,6 @@ from app.services.backtest.historical_derivatives_analytics import (
 )
 from app.services.backtest.mtf_runtime import MTF_RUNTIME_VERSION
 
-
 DERIVATIVES_RUNTIME_VERSION = "historical-derivatives-runtime-v1"
 
 

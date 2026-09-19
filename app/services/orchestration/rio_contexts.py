@@ -143,8 +143,7 @@ class KrakenFuturesRioContextProvider:
                         symbol=canonical,
                         observed_at=cached.observed_at,
                         message=(
-                            f"refresh unavailable ({type(exc).__name__}); "
-                            "retained fresh cache"
+                            f"refresh unavailable ({type(exc).__name__}); retained fresh cache"
                         ),
                     )
                 )
@@ -165,10 +164,7 @@ class KrakenFuturesRioContextProvider:
                     status=MarketSidecarRefreshStatus.UNAVAILABLE,
                     symbol=canonical,
                     observed_at=snapshot.observed_at,
-                    message=(
-                        "refreshed derivatives snapshot is not usable for this "
-                        "decision time"
-                    ),
+                    message=("refreshed derivatives snapshot is not usable for this decision time"),
                 )
             )
         return complete(
@@ -256,10 +252,11 @@ class KrakenFuturesRioContextProvider:
                 status=RioContextDiagnosticStatus.DEGRADED,
                 **base,
             )
-        if last_status is MarketSidecarRefreshStatus.CACHED:
-            status = RioContextDiagnosticStatus.CACHE_HIT
-        else:
-            status = RioContextDiagnosticStatus.REFRESHED
+        status = (
+            RioContextDiagnosticStatus.CACHE_HIT
+            if last_status is MarketSidecarRefreshStatus.CACHED
+            else RioContextDiagnosticStatus.REFRESHED
+        )
         return RioContextDiagnostic(status=status, **base)
 
     def _context_for(self, symbol: str, decision_time: datetime) -> RioContext | None:
@@ -297,12 +294,8 @@ class KrakenFuturesRioContextProvider:
             funding_rate=_float_or_none(snapshot.funding_rate),
             open_interest=_float_or_none(snapshot.open_interest),
             open_interest_change_pct=_float_or_none(snapshot.open_interest_change_pct),
-            long_liquidations_notional=_float_or_none(
-                snapshot.long_liquidations_notional
-            ),
-            short_liquidations_notional=_float_or_none(
-                snapshot.short_liquidations_notional
-            ),
+            long_liquidations_notional=_float_or_none(snapshot.long_liquidations_notional),
+            short_liquidations_notional=_float_or_none(snapshot.short_liquidations_notional),
             long_short_ratio=_float_or_none(snapshot.long_short_ratio),
             missing_fields=snapshot.missing_fields,
         )

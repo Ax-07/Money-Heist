@@ -74,9 +74,7 @@ def _constraints_valid(constraints: MarketConstraints | None) -> bool:
     ):
         return False
     # Spot Batch 15 never adds leverage. ``None`` is the Batch 13 projection.
-    if constraints.max_leverage is not None and constraints.max_leverage > Decimal("1"):
-        return False
-    return True
+    return not (constraints.max_leverage is not None and constraints.max_leverage > Decimal("1"))
 
 
 async def _probe_market(settings: Settings) -> tuple[bool, dict[str, MarketReadiness]]:

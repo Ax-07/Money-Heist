@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import runpy
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
-import runpy
 
 import pytest
 
@@ -86,7 +86,9 @@ def test_shadow_probation_advisory_builds_operator_gated_enter_probation_plan() 
     assert lifecycle.current_state is RecruitmentCandidateState.SHADOW
 
 
-def test_probation_promotion_advisory_builds_recommendation_plan_only_when_capacity_exists() -> None:
+def test_probation_promotion_advisory_builds_recommendation_plan_only_when_capacity_exists() -> (
+    None
+):
     candidate = _candidate()
     package = _package()
     lifecycle = _lifecycle(package, RecruitmentCandidateState.PROBATION)
@@ -247,7 +249,9 @@ def test_advisory_must_reference_the_exact_supplied_evidence_package() -> None:
     other_candidate = _candidate(criteria=other_criteria)
     other_package = _package(criteria=other_criteria)
 
-    with pytest.raises(ValueError, match="advisory was not built from the supplied evidence package"):
+    with pytest.raises(
+        ValueError, match="advisory was not built from the supplied evidence package"
+    ):
         plan_recruitment_advisory_transition(
             other_candidate,
             other_package,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -18,7 +18,6 @@ from app.trading.paper import (
     PositionSide,
     ValidationError,
 )
-
 
 D = Decimal
 
@@ -37,7 +36,7 @@ class DeterministicIds:
 
 
 def fixed_clock() -> datetime:
-    return datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+    return datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
 
 
 def broker(**overrides) -> PaperBroker:
@@ -53,7 +52,9 @@ def broker(**overrides) -> PaperBroker:
     return PaperBroker(config, id_factory=DeterministicIds(), clock=fixed_clock)
 
 
-def market_order(side: OrderSide, qty: str, client_id: str, symbol: str = "BTCUSDT") -> PaperOrderRequest:
+def market_order(
+    side: OrderSide, qty: str, client_id: str, symbol: str = "BTCUSDT"
+) -> PaperOrderRequest:
     return PaperOrderRequest(
         system_id="balanced_v1",
         symbol=symbol,

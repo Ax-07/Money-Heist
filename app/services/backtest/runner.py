@@ -13,33 +13,33 @@ from app.market.features.multitimeframe import (
     build_multi_timeframe_feature_context,
 )
 from app.market.models import Candle
+from app.market.multitimeframe import (
+    HistoricalMultiTimeframeCursor,
+    timeframe_interval,
+)
 from app.market.structure import (
     MARKET_STRUCTURE_VERSION,
     build_market_structure_context,
 )
 from app.services.decision_context import (
     AGENT_CONTEXT_BINDING_VERSION,
+    RISK_CONTEXT_BINDING_VERSION,
     ContextAvailability,
     OptionalContextSection,
     ProvenanceRecord,
-    RISK_CONTEXT_BINDING_VERSION,
     build_decision_context,
 )
-from app.market.multitimeframe import (
-    HistoricalMultiTimeframeCursor,
-    timeframe_interval,
-)
 
-from .historical_derivatives_analytics import (
-    HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION,
-    HistoricalDerivativesAnalyticsArchive,
-)
+from .clock import ReplayClock, as_utc
+from .dataset import DatasetRef, canonical_candle_rows
 from .denver_prior import (
     FrozenDenverPriorCatalog,
     FrozenDenverPriorContextProvider,
 )
-from .clock import ReplayClock, as_utc
-from .dataset import DatasetRef, canonical_candle_rows
+from .historical_derivatives_analytics import (
+    HISTORICAL_DERIVATIVES_CONTEXT_BINDING_VERSION,
+    HistoricalDerivativesAnalyticsArchive,
+)
 from .models import BacktestResult, BacktestRun, BacktestRunStatus
 
 

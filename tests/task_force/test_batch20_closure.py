@@ -4,7 +4,6 @@ import app.evaluation as evaluation
 import app.services.orchestration as orchestration
 import app.task_force as task_force
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

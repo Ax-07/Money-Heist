@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Mapping
 
 from app.domain.enums import SystemMode
 from app.trading.risk.models import KillSwitchState, RiskDecision, RiskProfile
-
 
 INITIAL_LIVE_SYSTEM_ID = "balanced_v1"
 INITIAL_LIVE_RISK_PROFILE_ID = "balanced"
@@ -197,7 +196,7 @@ class LivePreflight:
     I/O belongs to probes/coordinators. Every UNKNOWN check is blocking.
     """
 
-    def __init__(self, *, now=lambda: datetime.now(timezone.utc)) -> None:
+    def __init__(self, *, now=lambda: datetime.now(UTC)) -> None:
         self._now = now
 
     def evaluate(self, context: LivePreflightContext) -> LivePreflightReport:
@@ -457,7 +456,7 @@ class LivePreflight:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("preflight clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
 
 @dataclass(frozen=True, slots=True)
@@ -478,7 +477,7 @@ class LiveOrderPreflightContext:
 class LiveOrderPreflight:
     """Last deterministic gate before an OrderIntent is created/submitted."""
 
-    def __init__(self, *, now=lambda: datetime.now(timezone.utc)) -> None:
+    def __init__(self, *, now=lambda: datetime.now(UTC)) -> None:
         self._now = now
 
     def evaluate(self, context: LiveOrderPreflightContext) -> tuple[LivePreflightCheck, ...]:
@@ -604,4 +603,4 @@ class LiveOrderPreflight:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("order preflight clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 FORBIDDEN_IMPORTS = (
     "app.trading.live",
     "KrakenSpotLiveBroker",

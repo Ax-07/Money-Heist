@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import runpy
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
-import runpy
 
 import pytest
 

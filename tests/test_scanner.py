@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.market.features import FeatureQuality, FeatureSnapshot, MarketRegime
 from app.market.scanner import DeterministicScanner, ScannerConfig, ScannerTrigger
@@ -12,7 +12,7 @@ def feature(**overrides: object) -> FeatureSnapshot:
         snapshot_id="snap-1",
         symbol="BTCUSDT",
         timeframe="5m",
-        observed_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        observed_at=datetime(2026, 1, 1, tzinfo=UTC),
         candle_count=60,
         close=100.0,
         ema_fast=101.0,
@@ -80,7 +80,9 @@ def test_regime_change_requires_same_symbol_and_timeframe() -> None:
     changed = scanner.scan(current, system_id="balanced_v1", previous=previous)
     assert ScannerTrigger.REGIME_CHANGE in changed.triggers
 
-    other_symbol = feature(snapshot_id="snap-3", symbol="ETHUSDT", regime=MarketRegime.BULLISH_TREND)
+    other_symbol = feature(
+        snapshot_id="snap-3", symbol="ETHUSDT", regime=MarketRegime.BULLISH_TREND
+    )
     unchanged = scanner.scan(other_symbol, system_id="balanced_v1", previous=previous)
     assert ScannerTrigger.REGIME_CHANGE not in unchanged.triggers
 

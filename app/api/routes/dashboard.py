@@ -16,7 +16,6 @@ from app.dashboard.models import (
 )
 from app.dashboard.store import DashboardStore, get_dashboard_store
 
-
 router = APIRouter(tags=["dashboard"])
 _STATIC_DIR = Path(__file__).resolve().parents[2] / "dashboard" / "static"
 

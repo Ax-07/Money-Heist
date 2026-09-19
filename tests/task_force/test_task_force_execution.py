@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
 from app.agents.models import AgentRegistryEntry, AgentRole, AgentState
 from app.agents.registry import AgentRegistry
@@ -404,7 +405,7 @@ def test_member_analysis_rejects_authority_escalation_and_duplicate_findings():
         "answer": "Grounded advisory answer.",
         "confidence": Decimal("0.5"),
     }
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         TaskForceMemberAnalysis(**{**base, "live_authority": True})
     finding = TaskForceMemberFinding(
         finding_id="same",

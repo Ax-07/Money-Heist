@@ -16,7 +16,6 @@ from app.services.decision_context import (
 )
 from app.trading.risk.models import MarketConstraints, PortfolioRiskState
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 
@@ -153,6 +152,7 @@ def test_portfolio_and_constraints_are_typed_and_fingerprinted():
 
 def test_agent_payload_is_json_safe_and_preserves_feature_numbers():
     import json
+
     from app.services.decision_context import decision_context_payload
 
     market = _market_context()

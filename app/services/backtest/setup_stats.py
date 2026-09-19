@@ -298,9 +298,7 @@ class HistoricalSetupStatsCatalog:
         setup = HistoricalSetupKey.from_market(opportunity, market_context)
         cutoff = _as_utc(as_of, field_name="as_of")
         eligible = tuple(
-            item
-            for item in self._observations
-            if item.setup == setup and item.closed_at <= cutoff
+            item for item in self._observations if item.setup == setup and item.closed_at <= cutoff
         )
         if not eligible:
             return None
@@ -398,7 +396,6 @@ class HistoricalSetupStatsCatalog:
         return catalog
 
 
-
 class DenverSetupStatsContextProvider:
     """Adapter from a frozen setup-stats catalog to orchestration specialist contexts."""
 
@@ -449,6 +446,7 @@ class DenverSetupStatsContextProvider:
             return {}
         return {"denver": stats.to_denver_context_payload()}
 
+
 def _executed_setup_entries(replay_result: Any) -> tuple[_ExecutedEntry, ...]:
     entries: list[_ExecutedEntry] = []
     for point in replay_result.points:
@@ -461,9 +459,7 @@ def _executed_setup_entries(replay_result: Any) -> tuple[_ExecutedEntry, ...]:
             getattr(result, "orchestration_result", None) if result is not None else None
         )
         proposal = (
-            getattr(orchestration, "trade_proposal", None)
-            if orchestration is not None
-            else None
+            getattr(orchestration, "trade_proposal", None) if orchestration is not None else None
         )
         required = (opportunity, feature, fill, order, proposal)
         if any(item is None for item in required):
@@ -548,16 +544,14 @@ def _validate_entry_execution_binding(entry: _ExecutedEntry, execution: Any) -> 
         (entry.quantity == Decimal(str(execution.quantity)), "quantity"),
         (entry.price == Decimal(str(execution.price)), "price"),
         (
-            entry.filled_at
-            == _as_utc(execution.filled_at, field_name="execution.filled_at"),
+            entry.filled_at == _as_utc(execution.filled_at, field_name="execution.filled_at"),
             "filled_at",
         ),
     )
     failed = [name for ok, name in checks if not ok]
     if failed:
         raise HistoricalSetupAttributionError(
-            "executed setup provenance does not match evaluation execution: "
-            + ",".join(failed)
+            "executed setup provenance does not match evaluation execution: " + ",".join(failed)
         )
 
 
@@ -633,15 +627,14 @@ def _finalize_closed_lots(
             raise HistoricalSetupAttributionError(
                 "closed Denver attribution lot is missing close provenance"
             )
-        if len(lot.trade_ids) == 1:
-            trade_id = lot.trade_ids[0]
-        else:
-            trade_id = "closed-group:" + stable_digest(
-                {
-                    "opportunity_id": lot.entry.opportunity_id,
-                    "trade_ids": lot.trade_ids,
-                }
+        trade_id = (
+            lot.trade_ids[0]
+            if len(lot.trade_ids) == 1
+            else "closed-group:"
+            + stable_digest(
+                {"opportunity_id": lot.entry.opportunity_id, "trade_ids": lot.trade_ids}
             )
+        )
         observations.append(
             HistoricalSetupObservation(
                 run_id=run.run_id,
@@ -728,14 +721,10 @@ def _observations_from_execution_provenance(
         symbol = str(execution.symbol)
         side = str(_value(execution.side))
         if side not in {"BUY", "SELL"}:
-            raise HistoricalSetupAttributionError(
-                f"unsupported evaluation execution side: {side}"
-            )
+            raise HistoricalSetupAttributionError(f"unsupported evaluation execution side: {side}")
         quantity = Decimal(str(execution.quantity))
         if quantity <= ZERO:
-            raise HistoricalSetupAttributionError(
-                "evaluation execution quantity must be positive"
-            )
+            raise HistoricalSetupAttributionError("evaluation execution quantity must be positive")
 
         entry = entry_by_fill_id.get(fill_id)
         if entry is not None:
@@ -768,10 +757,7 @@ def _observations_from_execution_provenance(
                 raise HistoricalSetupAttributionError(
                     "same-direction execution has inconsistent setup side"
                 )
-            if any(
-                lot.entry.opportunity_id == entry.opportunity_id
-                for lot in lots
-            ):
+            if any(lot.entry.opportunity_id == entry.opportunity_id for lot in lots):
                 raise HistoricalSetupAttributionError(
                     "one opportunity produced multiple active Denver entry lots"
                 )
@@ -813,9 +799,7 @@ def _observations_from_execution_provenance(
             )
             states[key] = []
         else:
-            states[key] = [
-                lot for lot in lots if lot.remaining_quantity > ZERO
-            ]
+            states[key] = [lot for lot in lots if lot.remaining_quantity > ZERO]
 
         if quantity > open_quantity:
             if entry is None:
@@ -828,9 +812,7 @@ def _observations_from_execution_provenance(
                 raise HistoricalSetupAttributionError(
                     "reversal residual side does not match setup provenance"
                 )
-            states[key] = [
-                _AttributionLot(entry=entry, remaining_quantity=residual)
-            ]
+            states[key] = [_AttributionLot(entry=entry, remaining_quantity=residual)]
 
     missing_entry_fills = sorted(set(entry_by_fill_id) - seen_execution_fill_ids)
     if missing_entry_fills:
@@ -875,9 +857,7 @@ def observations_from_historical_replay(
     strategy_fingerprint = "strategy:" + stable_digest(config_payload)
     entries = _executed_setup_entries(replay_result)
     closed_trades = tuple(evaluation_bundle.report.trading.closed_trades)
-    executions = tuple(
-        getattr(getattr(evaluation_bundle, "source", None), "executions", ()) or ()
-    )
+    executions = tuple(getattr(getattr(evaluation_bundle, "source", None), "executions", ()) or ())
 
     if executions:
         return _observations_from_execution_provenance(

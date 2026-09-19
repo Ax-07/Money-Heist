@@ -12,7 +12,6 @@ if str(ROOT) not in sys.path:
 from app.market.historical import import_candles_csv
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
 
-
 INTERVALS = {
     "1m": timedelta(minutes=1),
     "15m": timedelta(minutes=15),
@@ -74,7 +73,7 @@ def main() -> int:
             mismatch = next(
                 (
                     index
-                    for index, pair in enumerate(zip(derived, reference))
+                    for index, pair in enumerate(zip(derived, reference, strict=False))
                     if pair[0] != pair[1]
                 ),
                 None,

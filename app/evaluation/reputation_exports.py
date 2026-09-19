@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 
 from .reputation_advisory import AgentReputationAdvisoryReport
 

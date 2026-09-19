@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from math import isfinite
-from typing import Any, Mapping, Sequence
+from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 from .indicators import (
@@ -114,9 +115,7 @@ class FeatureEngine:
         bollinger_width_pct = self._bollinger_width_pct(
             bollinger_mid, bollinger_upper, bollinger_lower
         )
-        bollinger_position = self._bollinger_position(
-            closes[-1], bollinger_upper, bollinger_lower
-        )
+        bollinger_position = self._bollinger_position(closes[-1], bollinger_upper, bollinger_lower)
 
         volume_sma = self._prior_sma(volumes, self.config.volume_period)
         volume_ratio = self._ratio(volumes[-1], volume_sma)
@@ -214,7 +213,10 @@ class FeatureEngine:
         historical = [value for value in atr_values[:-1] if value is not None]
         if current is None or len(historical) < self.config.atr_expansion_lookback:
             return None
-        baseline = sum(historical[-self.config.atr_expansion_lookback :]) / self.config.atr_expansion_lookback
+        baseline = (
+            sum(historical[-self.config.atr_expansion_lookback :])
+            / self.config.atr_expansion_lookback
+        )
         return self._ratio(current, baseline)
 
     def _classify_regime(
@@ -288,9 +290,7 @@ class FeatureEngine:
         return (upper - lower) / abs(mid) * 100.0
 
     @staticmethod
-    def _bollinger_position(
-        close: float, upper: float | None, lower: float | None
-    ) -> float | None:
+    def _bollinger_position(close: float, upper: float | None, lower: float | None) -> float | None:
         if upper is None or lower is None or upper == lower:
             return None
         return (close - lower) / (upper - lower)
@@ -376,8 +376,8 @@ class FeatureEngine:
     @staticmethod
     def _as_utc(value: datetime) -> datetime:
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     @staticmethod
     def _validate_unique_timestamps(candles: Sequence[_Candle]) -> None:

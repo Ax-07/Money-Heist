@@ -212,7 +212,7 @@ class AIGateway(Generic[StructuredT]):
                 await self._usage_recorder.record(usage_record)
 
                 if settle_error is not None:
-                    raise settle_error
+                    raise settle_error from exc
                 raise
             except RetryableAIProviderError:
                 self._budget.release(reservation_id)

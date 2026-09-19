@@ -4,12 +4,12 @@ from collections import defaultdict
 from decimal import Decimal
 
 from .models import (
+    ZERO,
     AICacheSliceMetrics,
     AICostMetrics,
     AIUsageEntry,
     Metric,
     OpportunityTrace,
-    ZERO,
 )
 
 

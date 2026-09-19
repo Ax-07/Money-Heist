@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from datetime import UTC, datetime, timedelta
 
 from .models import Candle, SnapshotQuality
 
@@ -28,7 +28,7 @@ class FreshnessPolicy:
 def ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise MarketDataValidationError("timestamp must be timezone-aware")
-    return value.astimezone(timezone.utc)
+    return value.astimezone(UTC)
 
 
 def is_stale(
@@ -107,7 +107,7 @@ def count_gaps(
 
     series = validate_candle_series(candles, expected_interval=expected_interval)
     gaps = 0
-    for previous, current in zip(series, series[1:]):
+    for previous, current in zip(series, series[1:], strict=False):
         delta = current.open_time - previous.open_time
         if delta > expected_interval:
             missing = int(delta // expected_interval) - 1

@@ -7,29 +7,35 @@ from types import MappingProxyType
 from typing import Any, TypeAlias
 
 from app.agents.specialists import Berlin, Denver, Nairobi, Rio, Tokyo
+from app.evaluation.ablation_campaign import AblationCampaignPlan, AblationCampaignVariant
+from app.evaluation.ablation_campaign_execution import (
+    AblationCampaignExecutionReport,
+    AblationCampaignExecutor,
+    AblationVariantRuntime,
+)
 from app.intelligence.ai_gateway.budget import AIBudgetLedger
 from app.intelligence.ai_gateway.client import AIClient
 from app.intelligence.ai_gateway.gateway import AIGateway
 from app.intelligence.ai_gateway.routing import ModelPricing, ModelRoute, ModelRouter
 from app.intelligence.ai_gateway.usage import InMemoryAIUsageRecorder
-from app.services.backtest.mtf_runtime import mtf_runner_kwargs
-from app.services.backtest.derivatives_runtime import (
-    historical_derivatives_runner_kwargs,
-)
-from app.services.backtest.denver_prior import FrozenDenverPriorCatalog
-from app.services.backtest.denver_runtime import denver_runner_kwargs
-from app.services.backtest.historical_derivatives_analytics import (
-    HistoricalDerivativesAnalyticsArchive,
-)
 from app.services.backtest.ai_modes import BacktestAIClient
 from app.services.backtest.cache import BacktestResponseCache
 from app.services.backtest.clock import ReplayClock
+from app.services.backtest.denver_prior import FrozenDenverPriorCatalog
+from app.services.backtest.denver_runtime import denver_runner_kwargs
+from app.services.backtest.derivatives_runtime import (
+    historical_derivatives_runner_kwargs,
+)
+from app.services.backtest.historical_derivatives_analytics import (
+    HistoricalDerivativesAnalyticsArchive,
+)
 from app.services.backtest.ids import ReplayIdFactory
 from app.services.backtest.lifecycle import HistoricalPositionLifecycle
 from app.services.backtest.models import BacktestAIMode
-from app.services.backtest.splits import BacktestPeriodRole
+from app.services.backtest.mtf_runtime import mtf_runner_kwargs
 from app.services.backtest.portfolio import BacktestPortfolioStateProvider
 from app.services.backtest.runner import HistoricalReplayRunner
+from app.services.backtest.splits import BacktestPeriodRole
 from app.services.orchestration.pipeline import OrchestrationPipeline
 from app.services.paper_pipeline.journal import InMemoryPaperPipelineJournal
 from app.services.paper_pipeline.pipeline import PaperTradingPipeline
@@ -40,13 +46,6 @@ from app.services.paper_pipeline.providers import (
 )
 from app.trading.paper import PaperBroker, PaperBrokerConfig
 from app.trading.risk import KillSwitchState, MarketConstraints, RiskEngine, RiskProfile
-
-from app.evaluation.ablation_campaign import AblationCampaignPlan, AblationCampaignVariant
-from app.evaluation.ablation_campaign_execution import (
-    AblationCampaignExecutionReport,
-    AblationCampaignExecutor,
-    AblationVariantRuntime,
-)
 
 SpecialistFactory: TypeAlias = Callable[[Any], Any]
 

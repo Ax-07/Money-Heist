@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.market.exchange.models import PublicHttpResponse
 from app.market.exchange.transport import TransportInvalidJsonError, TransportNetworkError
 
-
-UTC = timezone.utc
 BASE_NOW = datetime(2026, 9, 7, 18, 0, tzinfo=UTC)
 
 

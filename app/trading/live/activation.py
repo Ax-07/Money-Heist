@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Protocol
 from uuid import uuid4
@@ -67,7 +67,7 @@ class LiveActivationController:
         *,
         system_id: str,
         audit: LiveAuditSink,
-        now=lambda: datetime.now(timezone.utc),
+        now=lambda: datetime.now(UTC),
     ) -> None:
         if not system_id.strip():
             raise ValueError("system_id must not be blank")
@@ -159,4 +159,4 @@ class LiveActivationController:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)

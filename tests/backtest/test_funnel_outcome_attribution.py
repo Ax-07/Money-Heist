@@ -17,7 +17,6 @@ from app.services.backtest.funnel_outcome_attribution import (
     build_funnel_outcome_attribution_report,
 )
 
-
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 
 

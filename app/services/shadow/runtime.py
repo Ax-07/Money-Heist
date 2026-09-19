@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from .evaluation import Batch10EvaluationInput, Batch10EvaluationPort, ShadowComparisonEngine
-from .ids import branch_idempotency_key, derived_opportunity_id, root_correlation_id
 from .identities import ShadowSystemIdentity
+from .ids import branch_idempotency_key, derived_opportunity_id, root_correlation_id
 from .models import (
     ShadowBranchContext,
     ShadowBranchStatus,
@@ -105,9 +105,9 @@ class ShadowFleetRunner:
         market_context: Any,
         now: datetime | None = None,
     ) -> ShadowFleetResult:
-        root_opportunity_id = str(getattr(root_opportunity, "opportunity_id"))
-        root_snapshot_id = str(getattr(root_opportunity, "snapshot_id"))
-        market_snapshot_id = str(getattr(market_context, "snapshot_id"))
+        root_opportunity_id = str(root_opportunity.opportunity_id)
+        root_snapshot_id = str(root_opportunity.snapshot_id)
+        market_snapshot_id = str(market_context.snapshot_id)
         if root_snapshot_id != market_snapshot_id:
             raise ValueError("root opportunity snapshot_id does not match market context")
 

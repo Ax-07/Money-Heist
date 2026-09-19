@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Iterable
 
 from .models import Candle, MarketSnapshot
 from .quality import FreshnessPolicy, build_quality, count_gaps, is_stale, validate_candle_series

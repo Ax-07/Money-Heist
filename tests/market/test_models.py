@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -11,8 +11,8 @@ def candle(**overrides):
     values = {
         "symbol": "BTCUSDT",
         "timeframe": "1m",
-        "open_time": datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc),
-        "close_time": datetime(2026, 9, 7, 12, 1, tzinfo=timezone.utc),
+        "open_time": datetime(2026, 9, 7, 12, 0, tzinfo=UTC),
+        "close_time": datetime(2026, 9, 7, 12, 1, tzinfo=UTC),
         "open": Decimal("50000"),
         "high": Decimal("50100"),
         "low": Decimal("49900"),
@@ -25,8 +25,8 @@ def candle(**overrides):
 
 def test_candle_normalizes_timestamps_to_utc():
     result = candle()
-    assert result.open_time.tzinfo == timezone.utc
-    assert result.close_time.tzinfo == timezone.utc
+    assert result.open_time.tzinfo == UTC
+    assert result.close_time.tzinfo == UTC
 
 
 def test_candle_rejects_naive_timestamp():
@@ -45,8 +45,8 @@ def test_snapshot_rejects_candle_from_other_symbol():
         MarketSnapshot(
             symbol="BTCUSDT",
             source="test",
-            observed_at=datetime(2026, 9, 7, 12, 1, tzinfo=timezone.utc),
-            received_at=datetime(2026, 9, 7, 12, 1, tzinfo=timezone.utc),
+            observed_at=datetime(2026, 9, 7, 12, 1, tzinfo=UTC),
+            received_at=datetime(2026, 9, 7, 12, 1, tzinfo=UTC),
             candles={"1m": (foreign,)},
             quality=SnapshotQuality(),
         )

@@ -6,7 +6,6 @@ from enum import StrEnum
 
 from app.agents.models import AgentState
 
-
 ZERO = Decimal("0")
 ONE = Decimal("1")
 

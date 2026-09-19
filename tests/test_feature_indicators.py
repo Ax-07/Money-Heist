@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import pytest
 
-from app.market.features.indicators import adx, atr, bollinger, ema, macd, realized_volatility_pct, rsi, sma
+from app.market.features.indicators import (
+    adx,
+    atr,
+    bollinger,
+    ema,
+    macd,
+    realized_volatility_pct,
+    rsi,
+    sma,
+)
 
 
 def test_sma_returns_expected_value() -> None:

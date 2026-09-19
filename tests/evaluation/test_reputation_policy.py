@@ -11,7 +11,6 @@ from app.evaluation.reputation_policy import (
     StateRecommendationAction,
 )
 
-
 D = Decimal
 
 

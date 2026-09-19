@@ -36,7 +36,6 @@ from app.task_force.models import (
     task_force_request_fingerprint,
 )
 
-
 NOW = datetime(2026, 9, 9, 14, 0, tzinfo=UTC)
 
 

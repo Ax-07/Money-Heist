@@ -150,7 +150,12 @@ class RecruitmentCandidateReputationEvidenceReport:
         }
         if len(ids) != 1:
             raise ValueError("candidate metrics, reputation and ablation must target one candidate")
-        if self.auto_apply or self.registry_mutation or self.promotion_action or self.live_authority:
+        if (
+            self.auto_apply
+            or self.registry_mutation
+            or self.promotion_action
+            or self.live_authority
+        ):
             raise ValueError("candidate reputation evidence cannot apply operational changes")
 
 
@@ -164,9 +169,13 @@ def _evaluation_report(execution_variant: Any) -> Any:
 
 def _candidate_metrics(report: Any, *, candidate_agent_id: str) -> AgentMetrics:
     agents = tuple(getattr(report, "agents", ()) or ())
-    matches = tuple(item for item in agents if getattr(item, "agent_id", None) == candidate_agent_id)
+    matches = tuple(
+        item for item in agents if getattr(item, "agent_id", None) == candidate_agent_id
+    )
     if len(matches) != 1:
-        raise ValueError("WITH_CANDIDATE evaluation must contain exactly one candidate AgentMetrics")
+        raise ValueError(
+            "WITH_CANDIDATE evaluation must contain exactly one candidate AgentMetrics"
+        )
     metrics = matches[0]
     if not isinstance(metrics, AgentMetrics):
         raise TypeError("candidate evaluation metric must be AgentMetrics")
@@ -242,7 +251,10 @@ def build_candidate_reputation_evidence(
         raise ValueError("recruitment ablation bridge payload does not match recomputed bridge")
 
     candidate_id = candidate_runtime_agent_id(candidate)
-    if candidate_id != plan.candidate_agent_id or candidate_id != ablation_bridge.candidate_agent_id:
+    if (
+        candidate_id != plan.candidate_agent_id
+        or candidate_id != ablation_bridge.candidate_agent_id
+    ):
         raise ValueError("candidate runtime identity mismatch")
 
     baseline_report = _evaluation_report(execution.baseline)

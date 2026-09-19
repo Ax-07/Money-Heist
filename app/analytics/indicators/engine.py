@@ -138,14 +138,11 @@ class _ATRState:
         self.previous_close: float | None = None
 
     def push(self, high: float, low: float, close: float) -> float | None:
-        if self.previous_close is None:
-            true_range = high - low
-        else:
-            true_range = max(
-                high - low,
-                abs(high - self.previous_close),
-                abs(low - self.previous_close),
-            )
+        true_range = (
+            high - low
+            if self.previous_close is None
+            else max(high - low, abs(high - self.previous_close), abs(low - self.previous_close))
+        )
         self.previous_close = close
         return self.average.push(true_range)
 

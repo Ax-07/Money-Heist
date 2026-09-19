@@ -99,11 +99,10 @@ def main() -> int:
                 f"close={snapshot.close}"
             )
 
-        if label == "1h":
-            if set(context.missing_timeframes) != {"4h", "1d"}:
-                raise SystemExit(
-                    "1h checkpoint should have 4h and 1d missing"
-                )
+        if label == "1h" and set(context.missing_timeframes) != {"4h", "1d"}:
+            raise SystemExit(
+                "1h checkpoint should have 4h and 1d missing"
+            )
         if label == "35d" and not context.all_warmups_complete:
             raise SystemExit(
                 "35d checkpoint should have all MTF warmups complete"

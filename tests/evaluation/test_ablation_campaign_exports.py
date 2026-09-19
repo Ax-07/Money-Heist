@@ -44,7 +44,8 @@ def _source_run() -> BacktestRun:
 
 
 def _report(run: BacktestRun, *, economic: str, cost: str) -> BacktestPeriodReport:
-    metric = lambda value: BacktestMetricSnapshot(Decimal(value), "AVAILABLE")
+    def metric(value):
+        return BacktestMetricSnapshot(Decimal(value), "AVAILABLE")
     return BacktestPeriodReport(
         role=BacktestPeriodRole.OOS,
         run_id=run.run_id,

@@ -7,13 +7,13 @@ from decimal import Decimal
 import pytest
 
 from app.evaluation.ablation_campaign import build_ablation_campaign
+from app.intelligence.ai_gateway.routing import ModelPricing
 from app.services.backtest.ablation_runtime import (
     PaperAblationRuntimeFactory,
     PaperAblationRuntimeSettings,
     execute_paper_ablation_campaign,
     v1_specialist_factories,
 )
-from app.intelligence.ai_gateway.routing import ModelPricing
 from app.services.backtest.cache import BacktestResponseCache
 from app.services.backtest.dataset import DatasetRef
 from app.services.backtest.models import BacktestAIMode, BacktestConfig, BacktestRun

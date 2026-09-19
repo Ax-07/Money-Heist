@@ -26,7 +26,6 @@ from .gates import (
 )
 from .models import TaskForceOperatorPolicy, TaskForcePlan, task_force_policy_fingerprint
 
-
 ZERO = Decimal("0")
 
 

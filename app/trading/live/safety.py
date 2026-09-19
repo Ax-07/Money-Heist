@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
@@ -43,7 +43,7 @@ class SqlAlchemyLiveSafetyStore:
     def clear_for_new_entries(self, *, system_id: str, reason: str) -> KillSwitchState:
         if not reason.strip():
             raise ValueError("reason must not be blank")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self._write(
             system_id=system_id,
             initialized=True,
@@ -59,7 +59,7 @@ class SqlAlchemyLiveSafetyStore:
     def stop_new_trades(self, *, system_id: str, reason: str) -> KillSwitchState:
         if not reason.strip():
             raise ValueError("reason must not be blank")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         current = self.snapshot(system_id=system_id)
         self._write(
             system_id=system_id,
@@ -76,7 +76,7 @@ class SqlAlchemyLiveSafetyStore:
     def emergency(self, *, system_id: str, reason: str) -> KillSwitchState:
         if not reason.strip():
             raise ValueError("reason must not be blank")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self._write(
             system_id=system_id,
             initialized=True,
@@ -114,7 +114,7 @@ class LiveSafetyOperator:
         store: SqlAlchemyLiveSafetyStore,
         audit: LiveAuditSink,
         system_id: str,
-        now=lambda: datetime.now(timezone.utc),
+        now=lambda: datetime.now(UTC),
     ) -> None:
         self._store = store
         self._audit = audit
@@ -158,7 +158,7 @@ class LiveSafetyOperator:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 
 
 def _utc_or_none(value: datetime | None) -> datetime | None:
@@ -167,5 +167,5 @@ def _utc_or_none(value: datetime | None) -> datetime | None:
     if value.tzinfo is None or value.utcoffset() is None:
         # SQLite may deserialize timezone-aware values as naive. Persisted
         # project timestamps are specified as UTC, so restore that contract.
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

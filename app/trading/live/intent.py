@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.services.orchestration.models import TradeProposal
@@ -29,7 +29,7 @@ def authorized_live_order_intent(
         raise ValueError("authorized risk decision must approve positive quantity")
     if proposal.side == "SHORT":
         raise ValueError("initial Kraken Spot LIVE does not support short-entry OrderIntent")
-    now = created_at or datetime.now(timezone.utc)
+    now = created_at or datetime.now(UTC)
     stable = uuid5(
         NAMESPACE_URL,
         f"money-heist:live-intent:{risk_decision_id}:{proposal.system_id}:{proposal.symbol}",

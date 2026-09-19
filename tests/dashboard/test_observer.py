@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+
 from app.dashboard.observer import DashboardShadowObserver
 from app.dashboard.projection import ShadowDashboardProjector, seeded_dashboard_snapshot
 from app.dashboard.store import DashboardStore

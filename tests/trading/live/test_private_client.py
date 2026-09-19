@@ -1,6 +1,5 @@
 import asyncio
 import json
-import socket
 
 import pytest
 
@@ -32,9 +31,11 @@ def ok(result):
 
 
 def test_private_read_retries_bounded_transport_failure():
-    sender = Sender([socket.timeout(), ok({"open": {}})])
+    sender = Sender([TimeoutError(), ok({"open": {}})])
     client = KrakenSpotPrivateRestClient(
-        credentials=Credentials(), nonce=KrakenNonce(clock_ns=lambda: 2_000_000_000), sender=sender,
+        credentials=Credentials(),
+        nonce=KrakenNonce(clock_ns=lambda: 2_000_000_000),
+        sender=sender,
         config=KrakenPrivateClientConfig(read_max_attempts=2, backoff_seconds=0),
     )
     assert asyncio.run(client.get_open_orders(client_order_id="abc")) == {"open": {}}
@@ -42,18 +43,29 @@ def test_private_read_retries_bounded_transport_failure():
 
 
 def test_add_order_is_never_retried_after_timeout():
-    sender = Sender([socket.timeout(), ok({"txid": ["SHOULD-NOT-BE-USED"]})])
+    sender = Sender([TimeoutError(), ok({"txid": ["SHOULD-NOT-BE-USED"]})])
     client = KrakenSpotPrivateRestClient(
-        credentials=Credentials(), sender=sender,
+        credentials=Credentials(),
+        sender=sender,
         config=KrakenPrivateClientConfig(read_max_attempts=3, backoff_seconds=0),
     )
     with pytest.raises(LiveAmbiguousSubmissionError):
-        asyncio.run(client.add_order({"pair": "XBTEUR", "type": "buy", "ordertype": "market", "volume": "0.01", "cl_ord_id": "abc"}))
+        asyncio.run(
+            client.add_order(
+                {
+                    "pair": "XBTEUR",
+                    "type": "buy",
+                    "ordertype": "market",
+                    "volume": "0.01",
+                    "cl_ord_id": "abc",
+                }
+            )
+        )
     assert len(sender.calls) == 1
 
 
 def test_cancel_is_never_retried_after_timeout():
-    sender = Sender([socket.timeout(), ok({"count": 1})])
+    sender = Sender([TimeoutError(), ok({"count": 1})])
     client = KrakenSpotPrivateRestClient(credentials=Credentials(), sender=sender)
     with pytest.raises(LiveAmbiguousSubmissionError):
         asyncio.run(client.cancel_order(client_order_id="abc"))

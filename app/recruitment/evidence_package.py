@@ -75,9 +75,7 @@ def _assert_candidate_spec_matches_plan(
 ) -> None:
     assumptions = dict(plan.baseline.run.config.execution_assumptions)
     source_assumptions = {
-        key: value
-        for key, value in assumptions.items()
-        if key not in _RECRUITMENT_EXECUTION_KEYS
+        key: value for key, value in assumptions.items() if key not in _RECRUITMENT_EXECUTION_KEYS
     }
     source_config = replace(
         plan.baseline.run.config,
@@ -183,8 +181,7 @@ def _package_fingerprint(
             "purpose": purpose,
             "lineage": lineage,
             "success_criteria_snapshot": [
-                criterion.model_dump(mode="json")
-                for criterion in success_criteria_snapshot
+                criterion.model_dump(mode="json") for criterion in success_criteria_snapshot
             ],
             "evidence_gate": evidence_gate,
             "ablation_bridge": ablation_bridge,
@@ -219,7 +216,9 @@ class RecruitmentCandidateEvidencePackage:
     reputation_evidence: RecruitmentCandidateReputationEvidenceReport
     audit_fingerprint_sha256: str
     package_version: str = "batch19.candidate-evidence-package.v1"
-    basis: RecruitmentEvidencePackageBasis = RecruitmentEvidencePackageBasis.AUDITABLE_CANDIDATE_EVIDENCE
+    basis: RecruitmentEvidencePackageBasis = (
+        RecruitmentEvidencePackageBasis.AUDITABLE_CANDIDATE_EVIDENCE
+    )
     criteria_evaluation_performed: bool = False
     recommendation_generated: bool = False
     auto_apply: bool = False
@@ -264,11 +263,20 @@ class RecruitmentCandidateEvidencePackage:
             raise ValueError("evidence package contains mismatched evidence purposes")
         if self.evidence_gate.status is not RecruitmentGateStatus.ALLOW:
             raise ValueError("evidence package requires an ALLOW evidence gate")
-        if self.lineage.evidence_gate_fingerprint_sha256 != self.evidence_gate.audit_fingerprint_sha256:
+        if (
+            self.lineage.evidence_gate_fingerprint_sha256
+            != self.evidence_gate.audit_fingerprint_sha256
+        ):
             raise ValueError("lineage evidence gate fingerprint does not match embedded gate")
-        if self.lineage.ablation_bridge_fingerprint_sha256 != self.ablation_bridge.audit_fingerprint_sha256:
+        if (
+            self.lineage.ablation_bridge_fingerprint_sha256
+            != self.ablation_bridge.audit_fingerprint_sha256
+        ):
             raise ValueError("lineage ablation bridge fingerprint does not match embedded bridge")
-        if self.lineage.reputation_evidence_fingerprint_sha256 != self.reputation_evidence.audit_fingerprint_sha256:
+        if (
+            self.lineage.reputation_evidence_fingerprint_sha256
+            != self.reputation_evidence.audit_fingerprint_sha256
+        ):
             raise ValueError("lineage reputation fingerprint does not match embedded evidence")
         if self.lineage.evidence_basis is not self.evidence_gate.provenance.evidence_basis:
             raise ValueError("lineage evidence basis does not match gate provenance")
@@ -286,7 +294,12 @@ class RecruitmentCandidateEvidencePackage:
             raise ValueError("success criteria snapshot does not match lineage fingerprint")
         if self.criteria_evaluation_performed or self.recommendation_generated:
             raise ValueError("Batch 19c evidence packages cannot evaluate criteria or recommend")
-        if self.auto_apply or self.registry_mutation or self.promotion_action or self.live_authority:
+        if (
+            self.auto_apply
+            or self.registry_mutation
+            or self.promotion_action
+            or self.live_authority
+        ):
             raise ValueError("candidate evidence packages cannot apply operational changes")
         expected_fingerprint = _package_fingerprint(
             recruitment_id=self.recruitment_id,

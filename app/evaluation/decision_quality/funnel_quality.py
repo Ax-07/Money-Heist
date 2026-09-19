@@ -80,7 +80,9 @@ _FIXED_STAGES: Final = (
     FunnelStage.PAPER,
 )
 _STAGE_ORDER: Final = {stage: index for index, stage in enumerate(FunnelStage)}
-_DIMENSION_ORDER: Final = {dimension: index for index, dimension in enumerate(FunnelDecisionQualityDimension)}
+_DIMENSION_ORDER: Final = {
+    dimension: index for index, dimension in enumerate(FunnelDecisionQualityDimension)
+}
 _DIRECTION_AWARE_STAGES: Final = {
     FunnelStage.PROFESSOR_FINAL,
     FunnelStage.TRADE_PROPOSAL,
@@ -180,7 +182,10 @@ class DirectionlessOutcomeStats(FrozenModel):
             != self.incomplete_count
         ):
             raise ValueError("incomplete reasons must conserve incomplete_count")
-        if self.raw_positive_count + self.raw_negative_count + self.raw_flat_count != self.complete_count:
+        if (
+            self.raw_positive_count + self.raw_negative_count + self.raw_flat_count
+            != self.complete_count
+        ):
             raise ValueError("raw sign counts must conserve complete_count")
         if (
             self.first_hit_upside_count
@@ -332,15 +337,21 @@ def _horizon(candidate: CandidateResearchRecord, bars: int) -> ForwardOutcomeHor
     return next(item for item in outcome.horizons if item.horizon_bars == bars)
 
 
-def _directionless_stats(observations: tuple[_Observation, ...], bars: int) -> DirectionlessOutcomeStats:
+def _directionless_stats(
+    observations: tuple[_Observation, ...], bars: int
+) -> DirectionlessOutcomeStats:
     horizons = tuple(_horizon(item.candidate, bars) for item in observations)
     available = tuple(item for item in horizons if item is not None)
     complete = tuple(item for item in available if item.is_complete)
     incomplete = tuple(item for item in available if not item.is_complete)
     returns = tuple(item.return_pct for item in complete if item.return_pct is not None)
     upsides = tuple(item.max_upside_pct for item in complete if item.max_upside_pct is not None)
-    downsides = tuple(item.max_downside_pct for item in complete if item.max_downside_pct is not None)
-    abs_excursions = tuple(max(abs(up), abs(down)) for up, down in zip(upsides, downsides, strict=True))
+    downsides = tuple(
+        item.max_downside_pct for item in complete if item.max_downside_pct is not None
+    )
+    abs_excursions = tuple(
+        max(abs(up), abs(down)) for up, down in zip(upsides, downsides, strict=True)
+    )
     return DirectionlessOutcomeStats(
         horizon_bars=bars,
         observation_count=len(observations),
@@ -348,9 +359,17 @@ def _directionless_stats(observations: tuple[_Observation, ...], bars: int) -> D
         outcome_missing_count=len(observations) - len(available),
         complete_count=len(complete),
         incomplete_count=len(incomplete),
-        incomplete_gap_count=sum(item.incomplete_reason is ForwardOutcomeIncompleteReason.GAP for item in incomplete),
-        incomplete_period_end_count=sum(item.incomplete_reason is ForwardOutcomeIncompleteReason.PERIOD_END for item in incomplete),
-        incomplete_gap_and_period_end_count=sum(item.incomplete_reason is ForwardOutcomeIncompleteReason.GAP_AND_PERIOD_END for item in incomplete),
+        incomplete_gap_count=sum(
+            item.incomplete_reason is ForwardOutcomeIncompleteReason.GAP for item in incomplete
+        ),
+        incomplete_period_end_count=sum(
+            item.incomplete_reason is ForwardOutcomeIncompleteReason.PERIOD_END
+            for item in incomplete
+        ),
+        incomplete_gap_and_period_end_count=sum(
+            item.incomplete_reason is ForwardOutcomeIncompleteReason.GAP_AND_PERIOD_END
+            for item in incomplete
+        ),
         raw_return_mean_pct=_mean(returns),
         raw_return_median_pct=_median(returns),
         raw_positive_count=sum(value > 0 for value in returns),
@@ -362,19 +381,31 @@ def _directionless_stats(observations: tuple[_Observation, ...], bars: int) -> D
         max_downside_median_pct=_median(downsides),
         max_absolute_excursion_mean_pct=_mean(abs_excursions),
         max_absolute_excursion_median_pct=_median(abs_excursions),
-        first_hit_upside_count=sum(item.first_hit is ForwardOutcomeFirstHit.MAX_UPSIDE for item in complete),
-        first_hit_downside_count=sum(item.first_hit is ForwardOutcomeFirstHit.MAX_DOWNSIDE for item in complete),
-        first_hit_same_candle_count=sum(item.first_hit is ForwardOutcomeFirstHit.SAME_CANDLE for item in complete),
+        first_hit_upside_count=sum(
+            item.first_hit is ForwardOutcomeFirstHit.MAX_UPSIDE for item in complete
+        ),
+        first_hit_downside_count=sum(
+            item.first_hit is ForwardOutcomeFirstHit.MAX_DOWNSIDE for item in complete
+        ),
+        first_hit_same_candle_count=sum(
+            item.first_hit is ForwardOutcomeFirstHit.SAME_CANDLE for item in complete
+        ),
     )
 
 
-def _directional_stats(observations: tuple[_Observation, ...], bars: int) -> DirectionalOutcomeStats:
-    direction_available = tuple(item for item in observations if item.direction in {"LONG", "SHORT"})
+def _directional_stats(
+    observations: tuple[_Observation, ...], bars: int
+) -> DirectionalOutcomeStats:
+    direction_available = tuple(
+        item for item in observations if item.direction in {"LONG", "SHORT"}
+    )
     aligned: list[AlignedOutcome] = []
     for item in direction_available:
         horizon = _horizon(item.candidate, bars)
         if horizon is not None and horizon.is_complete:
-            aligned.append(align_outcome_to_direction(horizon=horizon, direction=item.direction or ""))
+            aligned.append(
+                align_outcome_to_direction(horizon=horizon, direction=item.direction or "")
+            )
     returns = tuple(item.directional_return_pct for item in aligned)
     favorable = tuple(item.favorable_excursion_pct for item in aligned)
     adverse = tuple(item.adverse_excursion_pct for item in aligned)
@@ -392,9 +423,15 @@ def _directional_stats(observations: tuple[_Observation, ...], bars: int) -> Dir
         favorable_excursion_median_pct=_median(favorable),
         adverse_excursion_mean_pct=_mean(adverse),
         adverse_excursion_median_pct=_median(adverse),
-        favorable_first_hit_count=sum(item.first_hit_alignment is DirectionalFirstHit.FAVORABLE for item in aligned),
-        adverse_first_hit_count=sum(item.first_hit_alignment is DirectionalFirstHit.ADVERSE for item in aligned),
-        same_candle_first_hit_count=sum(item.first_hit_alignment is DirectionalFirstHit.SAME_CANDLE for item in aligned),
+        favorable_first_hit_count=sum(
+            item.first_hit_alignment is DirectionalFirstHit.FAVORABLE for item in aligned
+        ),
+        adverse_first_hit_count=sum(
+            item.first_hit_alignment is DirectionalFirstHit.ADVERSE for item in aligned
+        ),
+        same_candle_first_hit_count=sum(
+            item.first_hit_alignment is DirectionalFirstHit.SAME_CANDLE for item in aligned
+        ),
     )
 
 
@@ -405,12 +442,21 @@ def _canonical_direction(
     final = next((item for item in records if item.stage is FunnelStage.PROFESSOR_FINAL), None)
     proposal = next((item for item in records if item.stage is FunnelStage.TRADE_PROPOSAL), None)
     risk = next((item for item in records if item.stage is FunnelStage.RISK), None)
-    direction = final.stage_result if final and final.reached and final.failure_code is None else None
+    direction = (
+        final.stage_result if final and final.reached and final.failure_code is None else None
+    )
     if direction not in {"LONG", "SHORT", "NO_TRADE", None}:
-        raise FunnelDecisionQualityError(f"unsupported FINAL direction for {candidate.opportunity_id}: {direction}")
+        raise FunnelDecisionQualityError(
+            f"unsupported FINAL direction for {candidate.opportunity_id}: {direction}"
+        )
     if direction == "NO_TRADE":
         direction = None
-    if proposal and proposal.reached and proposal.failure_code is None and proposal.stage_result is not None:
+    if (
+        proposal
+        and proposal.reached
+        and proposal.failure_code is None
+        and proposal.stage_result is not None
+    ):
         if proposal.stage_result not in {"LONG", "SHORT"}:
             raise FunnelDecisionQualityError("TradeProposal side must be LONG or SHORT")
         if direction != proposal.stage_result:
@@ -432,7 +478,9 @@ def _stage_direction(stage: FunnelStage, canonical_direction: str | None) -> str
     return canonical_direction if stage in _DIRECTION_AWARE_STAGES else None
 
 
-def _validate_inputs(bundle: DecisionQualityResearchBundle, stage_set: FunnelStageAnalyticsAttributionSet) -> None:
+def _validate_inputs(
+    bundle: DecisionQualityResearchBundle, stage_set: FunnelStageAnalyticsAttributionSet
+) -> None:
     if bundle.schema_version != DECISION_QUALITY_RESEARCH_BUNDLE_SCHEMA_VERSION:
         raise FunnelDecisionQualityError("unsupported Decision Quality bundle schema")
     if bundle.policy_version != DECISION_QUALITY_RESEARCH_POLICY_VERSION:
@@ -495,9 +543,7 @@ def _stage_coverage(
         candidate_ids = {item.opportunity_id for item in stage_records}
         if stage in _FIXED_STAGES:
             expected_ids = {
-                item.opportunity_id
-                for item in candidates
-                if item.causal.decision is not None
+                item.opportunity_id for item in candidates if item.causal.decision is not None
             }
             if len(stage_records) != len(expected_ids) or candidate_ids != expected_ids:
                 raise FunnelDecisionQualityError(
@@ -511,19 +557,33 @@ def _stage_coverage(
                 reached_count=sum(item.reached for item in stage_records),
                 not_reached_count=sum(not item.reached for item in stage_records),
                 failure_count=sum(item.failure_code is not None for item in stage_records),
-                with_future_outcome=sum(outcomes.get(opportunity_id, False) for opportunity_id in candidate_ids),
-                without_future_outcome=sum(not outcomes.get(opportunity_id, False) for opportunity_id in candidate_ids),
+                with_future_outcome=sum(
+                    outcomes.get(opportunity_id, False) for opportunity_id in candidate_ids
+                ),
+                without_future_outcome=sum(
+                    not outcomes.get(opportunity_id, False) for opportunity_id in candidate_ids
+                ),
                 candidates_with_records=len(candidate_ids),
-                unique_agents=tuple(sorted({item.agent_id for item in stage_records if item.agent_id is not None})),
+                unique_agents=tuple(
+                    sorted({item.agent_id for item in stage_records if item.agent_id is not None})
+                ),
             )
         )
     return tuple(result)
 
 
-def _cohort_specs(record: FunnelStageAnalyticsAttributionRecord) -> tuple[tuple[FunnelDecisionQualityDimension, str, bool], ...]:
+def _cohort_specs(
+    record: FunnelStageAnalyticsAttributionRecord,
+) -> tuple[tuple[FunnelDecisionQualityDimension, str, bool], ...]:
     specs: list[tuple[FunnelDecisionQualityDimension, str, bool]] = []
     if record.stage in _FIXED_STAGES:
-        specs.append((FunnelDecisionQualityDimension.STAGE_REACHABILITY, "REACHED" if record.reached else "NOT_REACHED", False))
+        specs.append(
+            (
+                FunnelDecisionQualityDimension.STAGE_REACHABILITY,
+                "REACHED" if record.reached else "NOT_REACHED",
+                False,
+            )
+        )
     if not record.reached:
         return tuple(specs)
     if record.failure_code is not None:
@@ -535,13 +595,20 @@ def _cohort_specs(record: FunnelStageAnalyticsAttributionRecord) -> tuple[tuple[
         if record.agent_id is not None:
             specs.append((FunnelDecisionQualityDimension.SPECIALIST_AGENT, record.agent_id, False))
         if record.stage_result is not None:
-            specs.append((FunnelDecisionQualityDimension.SPECIALIST_STANCE, record.stage_result, False))
+            specs.append(
+                (FunnelDecisionQualityDimension.SPECIALIST_STANCE, record.stage_result, False)
+            )
     specs.extend(
-        (FunnelDecisionQualityDimension.STAGE_REASON, code, True)
-        for code in record.reason_codes
+        (FunnelDecisionQualityDimension.STAGE_REASON, code, True) for code in record.reason_codes
     )
     if record.stage is FunnelStage.PROFESSOR_PLAN:
-        specs.append((FunnelDecisionQualityDimension.PLAN_SELECTED_AGENT_COUNT, str(len(record.selected_agents)), False))
+        specs.append(
+            (
+                FunnelDecisionQualityDimension.PLAN_SELECTED_AGENT_COUNT,
+                str(len(record.selected_agents)),
+                False,
+            )
+        )
     return tuple(specs)
 
 
@@ -553,21 +620,37 @@ def _make_cohort(
     multi_valued: bool,
     observations: tuple[_Observation, ...],
 ) -> FunnelDecisionQualityCohort:
-    ordered = tuple(sorted(observations, key=lambda item: (item.candidate.causal.observed_at, item.candidate.opportunity_id, item.stage_record.stage_instance_order or -1, item.member_ref)))
+    ordered = tuple(
+        sorted(
+            observations,
+            key=lambda item: (
+                item.candidate.causal.observed_at,
+                item.candidate.opportunity_id,
+                item.stage_record.stage_instance_order or -1,
+                item.member_ref,
+            ),
+        )
+    )
     raw = tuple(_directionless_stats(ordered, bars) for bars in DECISION_QUALITY_RESEARCH_HORIZONS)
-    directional = tuple(_directional_stats(ordered, bars) for bars in DECISION_QUALITY_RESEARCH_HORIZONS) if stage in _DIRECTION_AWARE_STAGES else ()
+    directional = (
+        tuple(_directional_stats(ordered, bars) for bars in DECISION_QUALITY_RESEARCH_HORIZONS)
+        if stage in _DIRECTION_AWARE_STAGES
+        else ()
+    )
     member_refs = tuple(item.member_ref for item in ordered)
-    fingerprint = stable_digest({
-        "schema": FUNNEL_DECISION_QUALITY_COHORT_SCHEMA_VERSION,
-        "policy": FUNNEL_DECISION_QUALITY_POLICY_VERSION,
-        "stage": stage,
-        "dimension": dimension,
-        "key": key,
-        "multi_valued": multi_valued,
-        "member_refs": member_refs,
-        "horizons": tuple(item.model_dump(mode="python") for item in raw),
-        "directional_horizons": tuple(item.model_dump(mode="python") for item in directional),
-    })
+    fingerprint = stable_digest(
+        {
+            "schema": FUNNEL_DECISION_QUALITY_COHORT_SCHEMA_VERSION,
+            "policy": FUNNEL_DECISION_QUALITY_POLICY_VERSION,
+            "stage": stage,
+            "dimension": dimension,
+            "key": key,
+            "multi_valued": multi_valued,
+            "member_refs": member_refs,
+            "horizons": tuple(item.model_dump(mode="python") for item in raw),
+            "directional_horizons": tuple(item.model_dump(mode="python") for item in directional),
+        }
+    )
     candidate_ids = {item.candidate.opportunity_id for item in ordered}
     direction_available = sum(item.direction in {"LONG", "SHORT"} for item in ordered)
     return FunnelDecisionQualityCohort(
@@ -590,42 +673,116 @@ def _delta(left: Decimal | None, right: Decimal | None) -> Decimal | None:
     return None if left is None or right is None else left - right
 
 
-def _build_contrast(kind: FunnelDecisionQualityContrastKind, stage: FunnelStage, left: FunnelDecisionQualityCohort, right: FunnelDecisionQualityCohort) -> FunnelDecisionQualityContrast:
+def _build_contrast(
+    kind: FunnelDecisionQualityContrastKind,
+    stage: FunnelStage,
+    left: FunnelDecisionQualityCohort,
+    right: FunnelDecisionQualityCohort,
+) -> FunnelDecisionQualityContrast:
     horizons: list[FunnelDecisionQualityContrastHorizon] = []
     for bars in DECISION_QUALITY_RESEARCH_HORIZONS:
         lhs = next(item for item in left.horizons if item.horizon_bars == bars)
         rhs = next(item for item in right.horizons if item.horizon_bars == bars)
         ldir = next((item for item in left.directional_horizons if item.horizon_bars == bars), None)
-        rdir = next((item for item in right.directional_horizons if item.horizon_bars == bars), None)
-        horizons.append(FunnelDecisionQualityContrastHorizon(
-            horizon_bars=bars,
-            left_count=left.observation_count,
-            right_count=right.observation_count,
-            left_complete_count=lhs.complete_count,
-            right_complete_count=rhs.complete_count,
-            left_direction_available_count=left.direction_available_count,
-            right_direction_available_count=right.direction_available_count,
-            median_raw_return_delta_pct=_delta(lhs.raw_return_median_pct, rhs.raw_return_median_pct),
-            median_max_absolute_excursion_delta_pct=_delta(lhs.max_absolute_excursion_median_pct, rhs.max_absolute_excursion_median_pct),
-            median_directional_return_delta_pct=_delta(ldir.directional_return_median_pct, rdir.directional_return_median_pct) if ldir and rdir else None,
-            median_favorable_excursion_delta_pct=_delta(ldir.favorable_excursion_median_pct, rdir.favorable_excursion_median_pct) if ldir and rdir else None,
-            median_adverse_excursion_delta_pct=_delta(ldir.adverse_excursion_median_pct, rdir.adverse_excursion_median_pct) if ldir and rdir else None,
-        ))
-    return FunnelDecisionQualityContrast(kind=kind, stage=stage, left_key=left.key, right_key=right.key, horizons=tuple(horizons))
+        rdir = next(
+            (item for item in right.directional_horizons if item.horizon_bars == bars), None
+        )
+        horizons.append(
+            FunnelDecisionQualityContrastHorizon(
+                horizon_bars=bars,
+                left_count=left.observation_count,
+                right_count=right.observation_count,
+                left_complete_count=lhs.complete_count,
+                right_complete_count=rhs.complete_count,
+                left_direction_available_count=left.direction_available_count,
+                right_direction_available_count=right.direction_available_count,
+                median_raw_return_delta_pct=_delta(
+                    lhs.raw_return_median_pct, rhs.raw_return_median_pct
+                ),
+                median_max_absolute_excursion_delta_pct=_delta(
+                    lhs.max_absolute_excursion_median_pct, rhs.max_absolute_excursion_median_pct
+                ),
+                median_directional_return_delta_pct=_delta(
+                    ldir.directional_return_median_pct, rdir.directional_return_median_pct
+                )
+                if ldir and rdir
+                else None,
+                median_favorable_excursion_delta_pct=_delta(
+                    ldir.favorable_excursion_median_pct, rdir.favorable_excursion_median_pct
+                )
+                if ldir and rdir
+                else None,
+                median_adverse_excursion_delta_pct=_delta(
+                    ldir.adverse_excursion_median_pct, rdir.adverse_excursion_median_pct
+                )
+                if ldir and rdir
+                else None,
+            )
+        )
+    return FunnelDecisionQualityContrast(
+        kind=kind, stage=stage, left_key=left.key, right_key=right.key, horizons=tuple(horizons)
+    )
 
 
-def _contrasts(cohorts: tuple[FunnelDecisionQualityCohort, ...]) -> tuple[FunnelDecisionQualityContrast, ...]:
+def _contrasts(
+    cohorts: tuple[FunnelDecisionQualityCohort, ...],
+) -> tuple[FunnelDecisionQualityContrast, ...]:
     by_key = {(item.stage, item.dimension, item.key): item for item in cohorts}
     specs = (
-        (FunnelDecisionQualityContrastKind.PALERMO_CLEAR_VS_CAUTION, FunnelStage.PALERMO, "CLEAR", "CAUTION"),
-        (FunnelDecisionQualityContrastKind.PALERMO_CLEAR_VS_REJECT, FunnelStage.PALERMO, "CLEAR", "REJECT"),
-        (FunnelDecisionQualityContrastKind.PALERMO_CAUTION_VS_REJECT, FunnelStage.PALERMO, "CAUTION", "REJECT"),
-        (FunnelDecisionQualityContrastKind.FINAL_LONG_VS_SHORT, FunnelStage.PROFESSOR_FINAL, "LONG", "SHORT"),
-        (FunnelDecisionQualityContrastKind.FINAL_LONG_VS_NO_TRADE, FunnelStage.PROFESSOR_FINAL, "LONG", "NO_TRADE"),
-        (FunnelDecisionQualityContrastKind.FINAL_SHORT_VS_NO_TRADE, FunnelStage.PROFESSOR_FINAL, "SHORT", "NO_TRADE"),
-        (FunnelDecisionQualityContrastKind.RISK_APPROVED_VS_RESIZED, FunnelStage.RISK, "APPROVED", "RESIZED"),
-        (FunnelDecisionQualityContrastKind.RISK_APPROVED_VS_REJECTED, FunnelStage.RISK, "APPROVED", "REJECTED"),
-        (FunnelDecisionQualityContrastKind.RISK_RESIZED_VS_REJECTED, FunnelStage.RISK, "RESIZED", "REJECTED"),
+        (
+            FunnelDecisionQualityContrastKind.PALERMO_CLEAR_VS_CAUTION,
+            FunnelStage.PALERMO,
+            "CLEAR",
+            "CAUTION",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.PALERMO_CLEAR_VS_REJECT,
+            FunnelStage.PALERMO,
+            "CLEAR",
+            "REJECT",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.PALERMO_CAUTION_VS_REJECT,
+            FunnelStage.PALERMO,
+            "CAUTION",
+            "REJECT",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.FINAL_LONG_VS_SHORT,
+            FunnelStage.PROFESSOR_FINAL,
+            "LONG",
+            "SHORT",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.FINAL_LONG_VS_NO_TRADE,
+            FunnelStage.PROFESSOR_FINAL,
+            "LONG",
+            "NO_TRADE",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.FINAL_SHORT_VS_NO_TRADE,
+            FunnelStage.PROFESSOR_FINAL,
+            "SHORT",
+            "NO_TRADE",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.RISK_APPROVED_VS_RESIZED,
+            FunnelStage.RISK,
+            "APPROVED",
+            "RESIZED",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.RISK_APPROVED_VS_REJECTED,
+            FunnelStage.RISK,
+            "APPROVED",
+            "REJECTED",
+        ),
+        (
+            FunnelDecisionQualityContrastKind.RISK_RESIZED_VS_REJECTED,
+            FunnelStage.RISK,
+            "RESIZED",
+            "REJECTED",
+        ),
     )
     result = []
     for kind, stage, left_key, right_key in specs:
@@ -642,22 +799,27 @@ def build_funnel_decision_quality_report(
     funnel_stage_attribution: FunnelStageAnalyticsAttributionSet,
 ) -> FunnelDecisionQualityReport:
     _validate_inputs(bundle, funnel_stage_attribution)
-    candidates = tuple(sorted(bundle.candidate_records, key=lambda item: (item.causal.observed_at, item.opportunity_id, item.record_id)))
+    candidates = tuple(
+        sorted(
+            bundle.candidate_records,
+            key=lambda item: (item.causal.observed_at, item.opportunity_id, item.record_id),
+        )
+    )
     candidate_by_id = {item.opportunity_id: item for item in candidates}
     records_by_candidate: dict[str, list[FunnelStageAnalyticsAttributionRecord]] = defaultdict(list)
     for record in funnel_stage_attribution.records:
         records_by_candidate[record.opportunity_id].append(record)
 
-    observations_by_group: dict[tuple[FunnelStage, FunnelDecisionQualityDimension, str, bool], list[_Observation]] = defaultdict(list)
+    observations_by_group: dict[
+        tuple[FunnelStage, FunnelDecisionQualityDimension, str, bool], list[_Observation]
+    ] = defaultdict(list)
     for candidate in candidates:
         records = tuple(
             sorted(
                 records_by_candidate.get(candidate.opportunity_id, ()),
                 key=lambda item: (
                     item.stage_order,
-                    item.stage_instance_order
-                    if item.stage_instance_order is not None
-                    else -1,
+                    item.stage_instance_order if item.stage_instance_order is not None else -1,
                     item.stage_instance_id or "",
                     item.record_id,
                 ),
@@ -665,24 +827,47 @@ def build_funnel_decision_quality_report(
         )
         canonical_direction = _canonical_direction(candidate, records)
         for stage_record in records:
-            observation = _Observation(candidate, stage_record, _stage_direction(stage_record.stage, canonical_direction))
+            observation = _Observation(
+                candidate, stage_record, _stage_direction(stage_record.stage, canonical_direction)
+            )
             for dimension, key, multi_valued in _cohort_specs(stage_record):
-                observations_by_group[(stage_record.stage, dimension, key, multi_valued)].append(observation)
+                observations_by_group[(stage_record.stage, dimension, key, multi_valued)].append(
+                    observation
+                )
 
     cohorts = tuple(
-        _make_cohort(stage=stage, dimension=dimension, key=key, multi_valued=multi_valued, observations=tuple(items))
+        _make_cohort(
+            stage=stage,
+            dimension=dimension,
+            key=key,
+            multi_valued=multi_valued,
+            observations=tuple(items),
+        )
         for (stage, dimension, key, multi_valued), items in sorted(
             observations_by_group.items(),
-            key=lambda item: (_STAGE_ORDER[item[0][0]], _DIMENSION_ORDER[item[0][1]], item[0][2], item[0][3]),
+            key=lambda item: (
+                _STAGE_ORDER[item[0][0]],
+                _DIMENSION_ORDER[item[0][1]],
+                item[0][2],
+                item[0][3],
+            ),
         )
     )
     stage_coverage = _stage_coverage(candidates, funnel_stage_attribution.records)
     coverage = FunnelDecisionQualityCoverage(
         candidate_count=len(candidates),
-        candidates_with_future_outcome=sum(item.posthoc.future_outcome is not None for item in candidates),
-        candidates_without_future_outcome=sum(item.posthoc.future_outcome is None for item in candidates),
-        candidates_with_analytics=sum(item.causal.analytics.status == "MATCHED" for item in candidates),
-        candidates_without_analytics=sum(item.causal.analytics.status != "MATCHED" for item in candidates),
+        candidates_with_future_outcome=sum(
+            item.posthoc.future_outcome is not None for item in candidates
+        ),
+        candidates_without_future_outcome=sum(
+            item.posthoc.future_outcome is None for item in candidates
+        ),
+        candidates_with_analytics=sum(
+            item.causal.analytics.status == "MATCHED" for item in candidates
+        ),
+        candidates_without_analytics=sum(
+            item.causal.analytics.status != "MATCHED" for item in candidates
+        ),
         stages=stage_coverage,
     )
     contrasts = _contrasts(cohorts)
@@ -695,14 +880,18 @@ def build_funnel_decision_quality_report(
         "source_funnel_stage_set_fingerprint": funnel_stage_attribution.set_fingerprint,
     }
     report_id = stable_uuid("funnel-decision-quality-report", identity_payload)
-    report_fingerprint = stable_digest({
-        **identity_payload,
-        "source_decision_record_set_fingerprint": funnel_stage_attribution.source_decision_record_set_fingerprint,
-        "candidate_count": len(candidates),
-        "coverage": coverage.model_dump(mode="python"),
-        "cohorts": tuple(item.cohort_fingerprint for item in cohorts),
-        "contrasts": tuple(item.model_dump(mode="python") for item in contrasts),
-    })
+    report_fingerprint = stable_digest(
+        {
+            **identity_payload,
+            "source_decision_record_set_fingerprint": (
+                funnel_stage_attribution.source_decision_record_set_fingerprint
+            ),
+            "candidate_count": len(candidates),
+            "coverage": coverage.model_dump(mode="python"),
+            "cohorts": tuple(item.cohort_fingerprint for item in cohorts),
+            "contrasts": tuple(item.model_dump(mode="python") for item in contrasts),
+        }
+    )
     return FunnelDecisionQualityReport(
         report_id=report_id,
         research_run_id=bundle.research_run.research_run_id,

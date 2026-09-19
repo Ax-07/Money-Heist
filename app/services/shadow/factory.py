@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 from .identities import ShadowSystemIdentity
@@ -64,10 +64,11 @@ def build_shadow_runtime(
     if risk_engine is None:
         risk_engine = RiskEngine()
 
-    if hasattr(market_constraints, "get_market_constraints"):
-        market_constraints_provider = market_constraints
-    else:
-        market_constraints_provider = ImmutableMarketConstraintsProvider(market_constraints)
+    market_constraints_provider = (
+        market_constraints
+        if hasattr(market_constraints, "get_market_constraints")
+        else ImmutableMarketConstraintsProvider(market_constraints)
+    )
 
     portfolio_provider = MutableShadowPortfolioProvider(identity.system_id, portfolio_state)
     risk_profile_provider = ShadowRiskProfileProvider(identity.system_id, risk_profile)

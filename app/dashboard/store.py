@@ -9,7 +9,6 @@ from fastapi import Request
 from .models import DashboardSnapshot
 from .projection import seeded_dashboard_snapshot
 
-
 T = TypeVar("T")
 
 

@@ -6,7 +6,6 @@ from .evaluation import (
     ShadowComparisonEngine,
 )
 from .factory import build_shadow_runtime
-from .ids import branch_idempotency_key, derived_opportunity_id, root_correlation_id
 from .identities import (
     AGGRESSIVE_TOKYO,
     BALANCED,
@@ -16,6 +15,7 @@ from .identities import (
     ShadowSystemIdentity,
     default_shadow_systems,
 )
+from .ids import branch_idempotency_key, derived_opportunity_id, root_correlation_id
 from .models import (
     MetricAvailability,
     ShadowBranchContext,

@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from decimal import Decimal
 from types import MappingProxyType
 
-from .models import AgentMetrics, AIUsageEntry, Metric, OpportunityTrace, ZERO
+from .models import ZERO, AgentMetrics, AIUsageEntry, Metric, OpportunityTrace
 
 
 def calculate_agent_metrics(

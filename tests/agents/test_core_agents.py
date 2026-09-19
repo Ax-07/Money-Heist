@@ -7,9 +7,9 @@ import pytest
 
 from app.agents import CORE_AGENT_REGISTRY, CORE_PROMPTS, Lisbon, Palermo, TheProfessor
 from app.agents.models import LisbonReport, PalermoReview, ProfessorDecision, ProfessorPlan
-from app.services.orchestration.models import ProfessorFinalDecision
 from app.intelligence.ai_gateway.models import AIGatewayResult, AIUsageRecord
 from app.intelligence.ai_gateway.strict_schema import build_strict_json_schema
+from app.services.orchestration.models import ProfessorFinalDecision
 
 
 class FakeGateway:
@@ -143,7 +143,10 @@ def test_professor_finalize_allowed_paths_use_real_top_level_namespaces():
                     "stance": "LONG",
                     "evidence": [
                         {
-                            "source_key": "market_context.decision_context.market.snapshots.1h.rsi_14",
+                            "source_key": (
+                                "market_context.decision_context.market."
+                                "snapshots.1h.rsi_14"
+                            ),
                             "observation": "positive",
                         }
                     ],
@@ -195,10 +198,7 @@ class IndexedFinalGateway:
         request_payload = json.loads(request.input_text)
         catalog = request_payload["evidence_source_catalog"]
         self.allowed_source_keys = [entry["source_key"] for entry in catalog]
-        index_by_key = {
-            entry["source_key"]: entry["source_index"]
-            for entry in catalog
-        }
+        index_by_key = {entry["source_key"]: entry["source_index"] for entry in catalog}
 
         provider_payload = self.canonical_output.model_dump(mode="python")
         provider_payload["evidence"] = [
@@ -413,7 +413,9 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
         assert entry.core is True
         assert entry.allowed_tools == ()
         assert entry.prompt_version == expected_versions[entry.agent_id]
-        assert CORE_PROMPTS.get(entry.agent_id, entry.prompt_version).version == entry.prompt_version
+        assert (
+            CORE_PROMPTS.get(entry.agent_id, entry.prompt_version).version == entry.prompt_version
+        )
 
 
 def test_prompt_registry_rejects_unknown_version():

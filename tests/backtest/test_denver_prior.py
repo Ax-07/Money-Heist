@@ -27,7 +27,6 @@ from app.services.backtest.setup_stats import (
 )
 from app.services.backtest.splits import BacktestPeriodRole
 
-
 BASE = datetime(2026, 1, 1, tzinfo=UTC)
 
 

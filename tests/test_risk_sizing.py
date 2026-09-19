@@ -3,8 +3,8 @@ from decimal import Decimal
 import pytest
 
 from app.trading.risk import MarketConstraints, floor_to_step, quantity_from_risk
-from app.trading.risk.sizing import cap_and_round_quantity
 from app.trading.risk.models import RiskReasonCode
+from app.trading.risk.sizing import cap_and_round_quantity
 
 
 def test_quantity_from_risk_uses_stop_distance() -> None:

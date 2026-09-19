@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
 from .models import (
+    ZERO,
     KillSwitchState,
     MarketConstraints,
     PortfolioRiskState,
@@ -13,7 +14,6 @@ from .models import (
     RiskReasonCode,
     TradeProposalRiskInput,
     TradeSide,
-    ZERO,
     reasons,
 )
 from .sizing import cap_and_round_quantity, quantity_from_risk
@@ -36,7 +36,7 @@ class RiskEngine:
         kill_switch: KillSwitchState | None = None,
         now: datetime | None = None,
     ) -> RiskDecision:
-        now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        now = (now or datetime.now(UTC)).astimezone(UTC)
         kill_switch = kill_switch or KillSwitchState()
 
         rejection = self._preflight_rejection(
@@ -220,13 +220,12 @@ class RiskEngine:
         if proposal.requested_leverage > effective_leverage:
             return self._reject(proposal, RiskReasonCode.MAX_LEVERAGE, now=now)
 
-        if profile.min_expected_rr is not None:
-            if (
-                proposal.expected_rr is None
-                or not self._non_negative_finite_decimal(proposal.expected_rr)
-                or proposal.expected_rr < profile.min_expected_rr
-            ):
-                return self._reject(proposal, RiskReasonCode.MIN_EXPECTED_RR, now=now)
+        if profile.min_expected_rr is not None and (
+            proposal.expected_rr is None
+            or not self._non_negative_finite_decimal(proposal.expected_rr)
+            or proposal.expected_rr < profile.min_expected_rr
+        ):
+            return self._reject(proposal, RiskReasonCode.MIN_EXPECTED_RR, now=now)
 
         return None
 
@@ -254,9 +253,7 @@ class RiskEngine:
             profile.max_correlated_exposure_pct,
         )
         if any(
-            value is None
-            or not cls._non_negative_finite_decimal(value)
-            or value > Decimal("1")
+            value is None or not cls._non_negative_finite_decimal(value) or value > Decimal("1")
             for value in percentage_limits
         ):
             return False
@@ -266,11 +263,10 @@ class RiskEngine:
             return False
         if profile.max_leverage < Decimal("1"):
             return False
-        if profile.min_expected_rr is not None and not cls._non_negative_finite_decimal(
-            profile.min_expected_rr
-        ):
-            return False
-        return True
+        return not (
+            profile.min_expected_rr is not None
+            and not cls._non_negative_finite_decimal(profile.min_expected_rr)
+        )
 
     @classmethod
     def _valid_portfolio(cls, state: PortfolioRiskState) -> bool:
@@ -324,6 +320,6 @@ class RiskEngine:
             proposal_id=proposal.proposal_id,
             status=RiskDecisionStatus.REJECTED,
             reason_codes=(code,),
-            created_at=now or datetime.now(timezone.utc),
+            created_at=now or datetime.now(UTC),
             details=details or {},
         )

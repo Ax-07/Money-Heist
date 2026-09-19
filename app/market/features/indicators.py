@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from math import log, sqrt
 from statistics import fmean, pstdev
-from typing import Sequence
 
 
 def sma(values: Sequence[float], period: int) -> float | None:
@@ -40,14 +40,14 @@ def rsi(values: Sequence[float], period: int = 14) -> float | None:
 
     gains: list[float] = []
     losses: list[float] = []
-    for previous, current in zip(values, values[1:]):
+    for previous, current in zip(values, values[1:], strict=False):
         change = current - previous
         gains.append(max(change, 0.0))
         losses.append(max(-change, 0.0))
 
     avg_gain = fmean(gains[:period])
     avg_loss = fmean(losses[:period])
-    for gain, loss in zip(gains[period:], losses[period:]):
+    for gain, loss in zip(gains[period:], losses[period:], strict=False):
         avg_gain = ((avg_gain * (period - 1)) + gain) / period
         avg_loss = ((avg_loss * (period - 1)) + loss) / period
 
@@ -59,7 +59,9 @@ def rsi(values: Sequence[float], period: int = 14) -> float | None:
     return 100.0 - (100.0 / (1.0 + rs))
 
 
-def true_ranges(highs: Sequence[float], lows: Sequence[float], closes: Sequence[float]) -> list[float]:
+def true_ranges(
+    highs: Sequence[float], lows: Sequence[float], closes: Sequence[float]
+) -> list[float]:
     _same_length(highs, lows, closes)
     if not closes:
         return []
@@ -96,7 +98,9 @@ def atr_series(
     return wilder_series(true_ranges(highs, lows, closes), period)
 
 
-def atr(highs: Sequence[float], lows: Sequence[float], closes: Sequence[float], period: int = 14) -> float | None:
+def atr(
+    highs: Sequence[float], lows: Sequence[float], closes: Sequence[float], period: int = 14
+) -> float | None:
     series = atr_series(highs, lows, closes, period)
     return series[-1] if series else None
 
@@ -110,7 +114,7 @@ def macd(
     fast = ema_series(values, fast_period)
     slow = ema_series(values, slow_period)
     macd_points: list[tuple[int, float]] = []
-    for index, (fast_value, slow_value) in enumerate(zip(fast, slow)):
+    for index, (fast_value, slow_value) in enumerate(zip(fast, slow, strict=False)):
         if fast_value is not None and slow_value is not None:
             macd_points.append((index, fast_value - slow_value))
 
@@ -125,7 +129,9 @@ def macd(
     return line, signal, histogram
 
 
-def bollinger(values: Sequence[float], period: int = 20, stddev_multiplier: float = 2.0) -> tuple[float | None, float | None, float | None]:
+def bollinger(
+    values: Sequence[float], period: int = 20, stddev_multiplier: float = 2.0
+) -> tuple[float | None, float | None, float | None]:
     _validate_period(period)
     if len(values) < period:
         return None, None, None
@@ -157,13 +163,17 @@ def adx(
     minus_values = wilder_series(minus_dm, period)
 
     dx_values: list[float] = []
-    for atr_value, plus_value, minus_value in zip(atr_values, plus_values, minus_values):
+    for atr_value, plus_value, minus_value in zip(
+        atr_values, plus_values, minus_values, strict=False
+    ):
         if atr_value is None or plus_value is None or minus_value is None or atr_value == 0.0:
             continue
         plus_di = 100.0 * plus_value / atr_value
         minus_di = 100.0 * minus_value / atr_value
         denominator = plus_di + minus_di
-        dx_values.append(0.0 if denominator == 0.0 else 100.0 * abs(plus_di - minus_di) / denominator)
+        dx_values.append(
+            0.0 if denominator == 0.0 else 100.0 * abs(plus_di - minus_di) / denominator
+        )
 
     if len(dx_values) < period:
         return None
@@ -178,7 +188,9 @@ def realized_volatility_pct(values: Sequence[float], period: int = 20) -> float 
     window = values[-(period + 1) :]
     if any(value <= 0.0 for value in window):
         return None
-    returns = [log(current / previous) for previous, current in zip(window, window[1:])]
+    returns = [
+        log(current / previous) for previous, current in zip(window, window[1:], strict=False)
+    ]
     return pstdev(returns) * sqrt(period) * 100.0
 
 

@@ -10,7 +10,6 @@ from app.services.backtest.denver_prior import (
 from app.services.backtest.mtf_runtime import MTF_RUNTIME_VERSION
 from app.services.backtest.splits import BacktestPeriodRole
 
-
 DENVER_RUNTIME_VERSION = "frozen-denver-runtime-v1"
 
 

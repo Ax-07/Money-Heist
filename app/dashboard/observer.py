@@ -6,7 +6,6 @@ from typing import Any
 from .projection import ShadowDashboardProjector
 from .store import DashboardStore
 
-
 logger = logging.getLogger(__name__)
 
 

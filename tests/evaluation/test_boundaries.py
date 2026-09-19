@@ -1,3 +1,4 @@
+from datetime import UTC
 from pathlib import Path
 
 
@@ -22,7 +23,7 @@ def test_existing_paper_pipeline_does_not_depend_on_evaluation() -> None:
 
 
 def test_evaluation_error_does_not_destroy_rebuildable_trading_source() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
     from decimal import Decimal
 
     import pytest
@@ -34,7 +35,7 @@ def test_evaluation_error_does_not_destroy_rebuildable_trading_source() -> None:
         def build(self, **_kwargs):
             raise RuntimeError("evaluation reporter unavailable")
 
-    now = datetime(2026, 9, 7, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 7, tzinfo=UTC)
     source = EvaluationSource(
         executions=(
             ExecutionRecord(

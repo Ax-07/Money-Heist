@@ -65,9 +65,7 @@ def _policy(
 ) -> MasterAllocationPolicy:
     members = _members(*system_ids)
     if configured:
-        envelopes = tuple(
-            _envelope(system_id, "50", "5", "40") for system_id in sorted(system_ids)
-        )
+        envelopes = tuple(_envelope(system_id, "50", "5", "40") for system_id in sorted(system_ids))
     else:
         envelopes = tuple(
             CrewAllocationEnvelope(
@@ -105,10 +103,9 @@ def _crew_evaluation(
     pnl = Decimal(realized)
     win_rate = Metric.available(Decimal(wins) / Decimal(closed))
     expectancy = Metric.available(pnl / Decimal(closed))
-    if losses:
-        profit_factor = Metric.available(Decimal("2"))
-    else:
-        profit_factor = Metric.unbounded("NO_LOSING_TRADES")
+    profit_factor = (
+        Metric.available(Decimal("2")) if losses else Metric.unbounded("NO_LOSING_TRADES")
+    )
     body = {
         "schema": "money-heist.master-historical-crew-evaluation.v1",
         "schema_version": "1.0",
@@ -279,9 +276,7 @@ def _audit(
         "released_reservation_count": evaluation.closed_lot_count,
         "final_equity": evaluation.final_equity,
         "final_open_risk_amount": evaluation.final_open_risk_amount,
-        "final_virtual_gross_exposure_amount": (
-            evaluation.final_virtual_gross_exposure_amount
-        ),
+        "final_virtual_gross_exposure_amount": (evaluation.final_virtual_gross_exposure_amount),
         "single_master_capital_verified": True,
         "full_barrier_chain_verified": True,
         "reservation_lifecycle_verified": True,
@@ -318,9 +313,7 @@ def _audit(
         released_reservation_count=evaluation.closed_lot_count,
         final_equity=evaluation.final_equity,
         final_open_risk_amount=evaluation.final_open_risk_amount,
-        final_virtual_gross_exposure_amount=(
-            evaluation.final_virtual_gross_exposure_amount
-        ),
+        final_virtual_gross_exposure_amount=(evaluation.final_virtual_gross_exposure_amount),
         single_master_capital_verified=True,
         full_barrier_chain_verified=True,
         reservation_lifecycle_verified=True,
@@ -388,7 +381,6 @@ def _evidence(
     )
 
 
-
 def _evidence_with_allocation_fp(
     allocation_fp: str,
     *,
@@ -416,8 +408,7 @@ def _overall_crew(report, system_id: str):
     return next(
         item
         for item in report.crew_analyses
-        if item.scope is MasterAllocationAnalysisScope.ALL_EVIDENCE
-        and item.system_id == system_id
+        if item.scope is MasterAllocationAnalysisScope.ALL_EVIDENCE and item.system_id == system_id
     )
 
 
@@ -632,8 +623,7 @@ def test_pairwise_regime_comparison_uses_only_matching_regime_evidence() -> None
     trend_pair = next(
         item
         for item in report.pairwise_comparisons
-        if item.scope is MasterAllocationAnalysisScope.REGIME
-        and item.regime_label == "TREND"
+        if item.scope is MasterAllocationAnalysisScope.REGIME and item.regime_label == "TREND"
     )
     assert trend_pair.evidence_count == 1
     assert trend_pair.evidence_ids == (trend.evidence_id,)

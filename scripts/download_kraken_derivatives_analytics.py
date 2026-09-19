@@ -24,7 +24,6 @@ from app.services.backtest.historical_derivatives_analytics import (
     write_canonical_derivatives_csv,
 )
 
-
 BASE_URL = "https://futures.kraken.com/api/charts/v1/analytics"
 
 
@@ -77,10 +76,7 @@ def _close_series(
         and all(len(item) == expected for item in raw)
     ):
         return tuple(raw[3])
-    if (
-        len(raw) == expected
-        and all(_is_sequence(item) and len(item) >= 4 for item in raw)
-    ):
+    if len(raw) == expected and all(_is_sequence(item) and len(item) >= 4 for item in raw):
         return tuple(item[3] for item in raw)
     if expected == 0:
         return ()
@@ -184,9 +180,7 @@ async def _collect(
         )
         if more:
             if window_end - window_start <= timedelta(hours=6):
-                raise RuntimeError(
-                    f"{metric}: pagination still required in minimum window"
-                )
+                raise RuntimeError(f"{metric}: pagination still required in minimum window")
             midpoint = window_start + (window_end - window_start) / 2
             await recurse(window_start, midpoint)
             await recurse(midpoint, window_end)
@@ -195,24 +189,16 @@ async def _collect(
         for timestamp, value in points.items():
             previous = values.get(timestamp)
             if previous is not None and previous != value:
-                raise ValueError(
-                    f"{metric}: conflicting duplicate at {timestamp.isoformat()}"
-                )
+                raise ValueError(f"{metric}: conflicting duplicate at {timestamp.isoformat()}")
             values[timestamp] = value
 
     cursor = start
     while cursor < end:
-        if cursor.month == 12:
-            next_month = cursor.replace(
-                year=cursor.year + 1,
-                month=1,
-                day=1,
-            )
-        else:
-            next_month = cursor.replace(
-                month=cursor.month + 1,
-                day=1,
-            )
+        next_month = (
+            cursor.replace(year=cursor.year + 1, month=1, day=1)
+            if cursor.month == 12
+            else cursor.replace(month=cursor.month + 1, day=1)
+        )
         boundary = min(next_month, end)
         if boundary <= cursor:
             boundary = min(cursor + timedelta(days=31), end)
@@ -249,9 +235,7 @@ async def _main(args: argparse.Namespace) -> int:
     lag = timedelta(seconds=args.availability_lag_seconds)
 
     client = ResilientPublicHttpClient(
-        StdlibJsonTransport(
-            user_agent="money-heist-historical-derivatives-download/1"
-        ),
+        StdlibJsonTransport(user_agent="money-heist-historical-derivatives-download/1"),
         policy=RetryPolicy(
             timeout_seconds=15.0,
             max_attempts=3,
@@ -291,13 +275,9 @@ async def _main(args: argparse.Namespace) -> int:
     missing_oi = [timestamp for timestamp in grid if timestamp not in oi]
     missing_ratio = [timestamp for timestamp in grid if timestamp not in ratio]
     if missing_oi:
-        raise SystemExit(
-            f"open-interest has {len(missing_oi)} missing hourly point(s)"
-        )
+        raise SystemExit(f"open-interest has {len(missing_oi)} missing hourly point(s)")
     if missing_ratio:
-        raise SystemExit(
-            f"long-short-ratio has {len(missing_ratio)} missing hourly point(s)"
-        )
+        raise SystemExit(f"long-short-ratio has {len(missing_ratio)} missing hourly point(s)")
 
     rows: list[HistoricalDerivativesPoint] = []
     for timestamp in grid:
@@ -305,11 +285,7 @@ async def _main(args: argparse.Namespace) -> int:
         previous_oi = oi.get(timestamp - step)
         oi_change = None
         if previous_oi is not None and previous_oi != 0:
-            oi_change = (
-                (current_oi - previous_oi)
-                / previous_oi
-                * Decimal("100")
-            )
+            oi_change = (current_oi - previous_oi) / previous_oi * Decimal("100")
         rows.append(
             HistoricalDerivativesPoint(
                 observed_at=timestamp,
@@ -339,15 +315,9 @@ async def _main(args: argparse.Namespace) -> int:
     print(f"availability_lag_seconds: {args.availability_lag_seconds}")
     print(f"funding_points: {counts['funding_rate']:,}")
     print(f"open_interest_points: {counts['open_interest']:,}")
-    print(
-        "open_interest_change_points: "
-        f"{counts['open_interest_change_pct']:,}"
-    )
+    print(f"open_interest_change_points: {counts['open_interest_change_pct']:,}")
     print(f"long_short_ratio_points: {counts['long_short_ratio']:,}")
-    print(
-        "first_funding_at: "
-        f"{archive.first_metric_observed_at('funding_rate')}"
-    )
+    print(f"first_funding_at: {archive.first_metric_observed_at('funding_rate')}")
     print(f"dataset_fingerprint: {archive.dataset_fingerprint}")
     print(f"output: {args.output}")
     return 0

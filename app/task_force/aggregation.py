@@ -20,7 +20,6 @@ from .models import (
     task_force_request_fingerprint,
 )
 
-
 ZERO = Decimal("0")
 
 

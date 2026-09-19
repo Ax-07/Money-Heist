@@ -122,7 +122,9 @@ class RecruitmentAdvisoryReport:
             raise ValueError("reason_codes must not contain duplicates")
         object.__setattr__(self, "reason_codes", normalized)
         if not self.criteria_evaluation_performed or not self.recommendation_generated:
-            raise ValueError("Batch 19d advisory must record criteria evaluation and recommendation")
+            raise ValueError(
+                "Batch 19d advisory must record criteria evaluation and recommendation"
+            )
         if (
             self.auto_apply
             or self.registry_mutation
@@ -287,7 +289,10 @@ def _reason_codes(
         reasons.add("PROBATION_EVIDENCE_SUPPORTS_PROMOTION_RECOMMENDATION")
     elif action is RecruitmentAdvisoryAction.REJECT and not reasons:
         reasons.add("RECRUITMENT_EVIDENCE_REJECTED")
-    elif action is RecruitmentAdvisoryAction.EXTEND and current_state is RecruitmentCandidateState.CANDIDATE:
+    elif (
+        action is RecruitmentAdvisoryAction.EXTEND
+        and current_state is RecruitmentCandidateState.CANDIDATE
+    ):
         reasons.add("SHADOW_STAGE_REQUIRED_BEFORE_PROBATION")
     elif action is RecruitmentAdvisoryAction.EXTEND and not reasons:
         reasons.add("MORE_RECRUITMENT_EVIDENCE_REQUIRED")

@@ -2,26 +2,34 @@ from __future__ import annotations
 
 import asyncio
 import json
-import socket
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Callable, Mapping, Protocol
+from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .auth import KrakenCredentialProvider, KrakenNonce, encode_kraken_form, sign_kraken_request
-from .errors import LiveAmbiguousSubmissionError, LiveApiError, LiveExchangeRejectError, LiveTransportError
-
+from .errors import (
+    LiveAmbiguousSubmissionError,
+    LiveApiError,
+    LiveExchangeRejectError,
+    LiveTransportError,
+)
 
 KRAKEN_PRIVATE_BASE_URL = "https://api.kraken.com"
 
 
 class RawHttpSender(Protocol):
-    def send(self, *, url: str, body: bytes, headers: Mapping[str, str], timeout: float) -> tuple[int, bytes]: ...
+    def send(
+        self, *, url: str, body: bytes, headers: Mapping[str, str], timeout: float
+    ) -> tuple[int, bytes]: ...
 
 
 class UrllibRawHttpSender:
-    def send(self, *, url: str, body: bytes, headers: Mapping[str, str], timeout: float) -> tuple[int, bytes]:
+    def send(
+        self, *, url: str, body: bytes, headers: Mapping[str, str], timeout: float
+    ) -> tuple[int, bytes]:
         request = Request(url, data=body, headers=dict(headers), method="POST")
         try:
             with urlopen(request, timeout=timeout) as response:  # nosec B310 - fixed Kraken host
@@ -51,13 +59,15 @@ class KrakenPrivateClientConfig:
 class KrakenSpotPrivateRestClient:
     """Strict Spot private API allowlist. No arbitrary endpoint method is exposed."""
 
-    _READ_PATHS = frozenset({
-        "/0/private/GetApiKeyInfo",
-        "/0/private/Balance",
-        "/0/private/OpenOrders",
-        "/0/private/ClosedOrders",
-        "/0/private/TradesHistory",
-    })
+    _READ_PATHS = frozenset(
+        {
+            "/0/private/GetApiKeyInfo",
+            "/0/private/Balance",
+            "/0/private/OpenOrders",
+            "/0/private/ClosedOrders",
+            "/0/private/TradesHistory",
+        }
+    )
     _WRITE_PATHS = frozenset({"/0/private/AddOrder", "/0/private/CancelOrder"})
     _ALL_PATHS = _READ_PATHS | _WRITE_PATHS
 
@@ -78,18 +88,30 @@ class KrakenSpotPrivateRestClient:
         self._pace_lock = asyncio.Lock()
         self._last_request_at = 0.0
 
-    async def get_api_key_info(self): return await self._request("/0/private/GetApiKeyInfo", {}, write=False)
-    async def get_balance(self): return await self._request("/0/private/Balance", {}, write=False)
+    async def get_api_key_info(self):
+        return await self._request("/0/private/GetApiKeyInfo", {}, write=False)
+
+    async def get_balance(self):
+        return await self._request("/0/private/Balance", {}, write=False)
+
     async def get_open_orders(self, *, client_order_id: str | None = None):
         payload = {"trades": "true"}
-        if client_order_id: payload["cl_ord_id"] = client_order_id
+        if client_order_id:
+            payload["cl_ord_id"] = client_order_id
         return await self._request("/0/private/OpenOrders", payload, write=False)
+
     async def get_closed_orders(self, *, client_order_id: str | None = None):
         payload = {"trades": "true"}
-        if client_order_id: payload["cl_ord_id"] = client_order_id
+        if client_order_id:
+            payload["cl_ord_id"] = client_order_id
         return await self._request("/0/private/ClosedOrders", payload, write=False)
-    async def get_trades_history(self): return await self._request("/0/private/TradesHistory", {"trades": "false"}, write=False)
-    async def add_order(self, payload: Mapping[str, object]): return await self._request("/0/private/AddOrder", payload, write=True)
+
+    async def get_trades_history(self):
+        return await self._request("/0/private/TradesHistory", {"trades": "false"}, write=False)
+
+    async def add_order(self, payload: Mapping[str, object]):
+        return await self._request("/0/private/AddOrder", payload, write=True)
+
     async def cancel_order(self, *, client_order_id: str):
         return await self._request("/0/private/CancelOrder", {"txid": client_order_id}, write=True)
 
@@ -108,7 +130,9 @@ class KrakenSpotPrivateRestClient:
             body = encode_kraken_form(request_payload)
             headers = {
                 "API-Key": credentials.api_key,
-                "API-Sign": sign_kraken_request(url_path=path, payload=request_payload, api_secret=credentials.api_secret),
+                "API-Sign": sign_kraken_request(
+                    url_path=path, payload=request_payload, api_secret=credentials.api_secret
+                ),
                 "Content-Type": "application/x-www-form-urlencoded",
                 "Accept": "application/json",
                 "User-Agent": "money-heist-live-broker/14",
@@ -141,7 +165,7 @@ class KrakenSpotPrivateRestClient:
                 return result
             except LiveExchangeRejectError:
                 raise
-            except (TimeoutError, socket.timeout, URLError, OSError, LiveTransportError) as exc:
+            except (TimeoutError, URLError, OSError, LiveTransportError) as exc:
                 last_error = exc
                 if write:
                     raise LiveAmbiguousSubmissionError(

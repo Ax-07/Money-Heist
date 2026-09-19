@@ -250,7 +250,10 @@ def test_builds_batch18_reputation_dimensions_and_distinct_candidate_costs() -> 
     assert report.costs.candidate_direct_cost_share_ratio == Decimal("1.2") / Decimal("3.5")
     assert report.costs.candidate_budget_utilization_ratio == Decimal("0.24")
     assert report.costs.candidate_direct_cost_within_budget is True
-    assert report.costs.basis is RecruitmentCostEvidenceBasis.ESTIMATED_AI_USAGE_EUR_IN_SIMULATED_HISTORICAL_REPLAY_PAPER
+    assert (
+        report.costs.basis
+        is RecruitmentCostEvidenceBasis.ESTIMATED_AI_USAGE_EUR_IN_SIMULATED_HISTORICAL_REPLAY_PAPER
+    )
 
 
 def test_candidate_reputation_evidence_has_no_operational_state_or_promotion_authority() -> None:

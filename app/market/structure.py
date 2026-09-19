@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any, Mapping
+from typing import Any
 
 from app.market.models import Candle
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
-
 
 MARKET_STRUCTURE_VERSION = "market-structure-v1"
 

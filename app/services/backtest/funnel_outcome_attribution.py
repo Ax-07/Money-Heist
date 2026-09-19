@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.evaluation.forward_outcomes import ForwardOutcomeReport
 from app.evaluation.funnel_outcome_attribution import (
     FunnelOutcomeAttributionReport,
     FunnelOutcomeSubject,
     aggregate_funnel_outcome_attribution,
 )
-from app.evaluation.forward_outcomes import ForwardOutcomeReport
 
 
 def _value(value: Any) -> str | None:

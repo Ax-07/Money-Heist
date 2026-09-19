@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.intelligence.ai_gateway.budget import AIBudgetLedger
@@ -47,11 +47,12 @@ class ComputeGate:
         *,
         now: datetime | None = None,
     ) -> ComputeGateDecision:
-        evaluated_at = now or datetime.now(timezone.utc)
-        if evaluated_at.tzinfo is None:
-            evaluated_at = evaluated_at.replace(tzinfo=timezone.utc)
-        else:
-            evaluated_at = evaluated_at.astimezone(timezone.utc)
+        evaluated_at = now or datetime.now(UTC)
+        evaluated_at = (
+            evaluated_at.replace(tzinfo=UTC)
+            if evaluated_at.tzinfo is None
+            else evaluated_at.astimezone(UTC)
+        )
 
         remaining = self._budget.snapshot().remaining_eur
         if opportunity.expires_at <= evaluated_at:

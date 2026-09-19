@@ -1,12 +1,12 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.trading.live.readonly import ReadOnlyKrakenPrivateView
 from app.trading.live.reconciliation import StartupReconciliationCoordinator
 from app.trading.live.store import InMemoryLiveAuditSink, InMemoryLiveOrderStore
 
-NOW = datetime(2026, 9, 7, 20, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 20, 0, tzinfo=UTC)
 
 
 class ReadClient:

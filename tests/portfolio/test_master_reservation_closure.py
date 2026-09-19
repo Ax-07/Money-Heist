@@ -152,15 +152,11 @@ def evidence(*, state: str = "reserved"):
             release_ref="cancel:req-1",
         )
 
-    if state == "committed":
-        current = snapshot(
-            observed_at=OBSERVED_AT,
-            crew_a_risk="2",
-            crew_a_gross="40",
-            crew_a_positions=1,
-        )
-    else:
-        current = snapshot(observed_at=OBSERVED_AT)
+    current = (
+        snapshot(observed_at=OBSERVED_AT, crew_a_risk="2", crew_a_gross="40", crew_a_positions=1)
+        if state == "committed"
+        else snapshot(observed_at=OBSERVED_AT)
+    )
     ledger_snapshot = ledger.snapshot()
     report = build_reservation_reconciliation_report(
         policy=configured_policy,
@@ -541,9 +537,7 @@ def test_failed_reservation_attempts_are_not_invented_as_lifecycle_records() -> 
         policy=configured_policy,
         opening_snapshot=opening,
     )
-    failed = ledger.reserve(
-        request("too-large", risk="99", gross="999")
-    )
+    failed = ledger.reserve(request("too-large", risk="99", gross="999"))
     assert failed.reservation is None
     ledger_snapshot = ledger.snapshot()
     current = snapshot(observed_at=OBSERVED_AT)

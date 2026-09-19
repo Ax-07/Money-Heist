@@ -4,15 +4,14 @@ import csv
 import hashlib
 import json
 from bisect import bisect_right
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Callable, Iterable
 
 from app.agents.models import RioContext
 from app.market.exchange.kraken_futures import DerivativesPositioningSnapshot
-
 
 HISTORICAL_DERIVATIVES_ANALYTICS_VERSION = "historical-derivatives-analytics-v1"
 HISTORICAL_DERIVATIVES_ANALYTICS_SOURCE = "kraken_futures_historical_analytics"
@@ -160,7 +159,7 @@ class HistoricalDerivativesAnalyticsArchive:
     def from_canonical_csv(
         cls,
         path: str | Path,
-    ) -> "HistoricalDerivativesAnalyticsArchive":
+    ) -> HistoricalDerivativesAnalyticsArchive:
         csv_path = Path(path)
         with csv_path.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)

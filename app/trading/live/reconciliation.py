@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Mapping
 
 from .models import LiveAuditEvent, LiveOrderStatus, ReconciliationFinding
 from .ports import KrakenPrivateApi, LiveAuditSink, LiveBroker
@@ -33,7 +33,7 @@ class StartupReconciliationCoordinator:
         api: KrakenPrivateApi,
         store,
         audit: LiveAuditSink,
-        now=lambda: datetime.now(timezone.utc),
+        now=lambda: datetime.now(UTC),
     ) -> None:
         self._system_id = system_id
         self._broker = broker
@@ -183,4 +183,4 @@ class StartupReconciliationCoordinator:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise RuntimeError("clock must be timezone-aware")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)

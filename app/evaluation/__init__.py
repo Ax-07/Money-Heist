@@ -23,8 +23,8 @@ from .ai_costs import calculate_ai_cost_metrics
 from .exports import agent_metrics_to_csv, report_to_dict, report_to_json
 from .lisbon import DeterministicLisbonReporter, self_funding_ratio
 from .models import (
-    AICostMetrics,
     AgentMetrics,
+    AICostMetrics,
     CounterfactualOutcome,
     DataKind,
     EquityPoint,

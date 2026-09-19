@@ -52,7 +52,9 @@ def test_missing_precomputed_decision_intelligence_is_explicit(tmp_path: Path) -
     app.state.frontend_v2_store = ExistingStore()
     app.include_router(router)
     with TestClient(app) as client:
-        response = client.get("/api/frontend/v2/backtests/runs/old-run/opportunities/opp-1/decision-intelligence?role=OOS")
+        response = client.get(
+            "/api/frontend/v2/backtests/runs/old-run/opportunities/opp-1/decision-intelligence?role=OOS"
+        )
 
     assert response.status_code == 200
     payload = response.json()

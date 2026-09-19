@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -9,8 +9,7 @@ from app.dashboard.models import DashboardAvailability, DashboardProvenance
 from app.dashboard.projection import seeded_dashboard_snapshot
 from app.services.shadow.identities import default_shadow_systems
 
-
-FIXED = datetime(2026, 9, 7, 18, 0, tzinfo=timezone.utc)
+FIXED = datetime(2026, 9, 7, 18, 0, tzinfo=UTC)
 
 
 def test_seeded_snapshot_is_read_only_paper_shadow_only():

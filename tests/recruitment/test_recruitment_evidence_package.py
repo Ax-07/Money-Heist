@@ -227,7 +227,6 @@ def _case(
     return candidate, plan, execution, gate, bridge
 
 
-
 def _package_case(role: BacktestPeriodRole = BacktestPeriodRole.OOS):
     candidate, plan, execution, gate, bridge = _case(role)
     reputation = build_candidate_reputation_evidence(
@@ -262,17 +261,27 @@ def test_package_freezes_complete_verified_evidence_chain() -> None:
     assert package.lineage.execution_fingerprint == execution.execution_fingerprint
     assert package.lineage.evidence_gate_fingerprint_sha256 == gate.audit_fingerprint_sha256
     assert package.lineage.ablation_bridge_fingerprint_sha256 == bridge.audit_fingerprint_sha256
-    assert package.lineage.reputation_evidence_fingerprint_sha256 == reputation.audit_fingerprint_sha256
+    assert (
+        package.lineage.reputation_evidence_fingerprint_sha256
+        == reputation.audit_fingerprint_sha256
+    )
 
 
 def test_package_lineage_preserves_simulated_paper_provenance() -> None:
     _, plan, execution, _, _, _, package = _package_case()
 
-    assert package.lineage.evidence_basis is RecruitmentEvidenceBasis.SIMULATED_HISTORICAL_REPLAY_PAPER
+    assert (
+        package.lineage.evidence_basis is RecruitmentEvidenceBasis.SIMULATED_HISTORICAL_REPLAY_PAPER
+    )
     assert package.lineage.baseline_run_id == plan.baseline.run.run_id
     assert package.lineage.candidate_run_id == plan.with_candidate.run.run_id
-    assert package.lineage.baseline_business_sha256 == execution.baseline.period_report.business_sha256
-    assert package.lineage.candidate_business_sha256 == execution.with_candidate.period_report.business_sha256
+    assert (
+        package.lineage.baseline_business_sha256 == execution.baseline.period_report.business_sha256
+    )
+    assert (
+        package.lineage.candidate_business_sha256
+        == execution.with_candidate.period_report.business_sha256
+    )
     assert package.basis is RecruitmentEvidencePackageBasis.AUDITABLE_CANDIDATE_EVIDENCE
 
 
@@ -372,7 +381,6 @@ def test_candidate_spec_drift_after_campaign_planning_is_rejected() -> None:
         )
 
 
-
 def test_model_or_tool_drift_after_campaign_planning_is_rejected() -> None:
     candidate, plan, execution, gate, bridge, reputation, _ = _package_case()
     drifted = candidate.model_copy(
@@ -391,6 +399,7 @@ def test_model_or_tool_drift_after_campaign_planning_is_rejected() -> None:
             bridge,
             reputation,
         )
+
 
 def test_package_rejects_tampered_lineage_with_stale_package_fingerprint() -> None:
     _, _, _, _, _, _, package = _package_case()

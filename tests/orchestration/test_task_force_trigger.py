@@ -16,7 +16,6 @@ from app.services.orchestration.task_force_trigger import (
 )
 from app.task_force.models import TaskForceInfluenceScope, TaskForceTrigger
 
-
 NOW = datetime(2026, 9, 9, 15, 0, tzinfo=UTC)
 
 

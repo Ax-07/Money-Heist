@@ -1,5 +1,5 @@
 import inspect
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from app.evaluation import EvaluationService
@@ -14,8 +14,7 @@ from app.evaluation.models import (
     SelfFundingStatus,
 )
 
-
-NOW = datetime(2026, 9, 7, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, tzinfo=UTC)
 
 
 def executions(exit_price: str):

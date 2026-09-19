@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.market.replay import opportunities_from_replay, replay_scanner
 
 
 def synthetic_history() -> list[dict[str, object]]:
-    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 1, tzinfo=UTC)
     candles: list[dict[str, object]] = []
     price = 100.0
     for index in range(80):

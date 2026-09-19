@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from uuid import NAMESPACE_URL, UUID, uuid5
 
-
 _PREFIX = "money-heist:shadow:v1"
 
 

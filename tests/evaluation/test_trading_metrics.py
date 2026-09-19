@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from app.evaluation import DataKind, EquityPoint, ExecutionRecord, calculate_trading_metrics
 from app.evaluation.models import MetricStatus
 
-
-NOW = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 12, 0, tzinfo=UTC)
 
 
 def execution(

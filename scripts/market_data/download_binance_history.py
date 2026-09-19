@@ -36,11 +36,11 @@ import urllib.error
 import urllib.request
 import zipfile
 from calendar import monthrange
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterator, Sequence
 
 BASE_URL = "https://data.binance.vision/data/spot"
 USER_AGENT = "Money-Heist-Historical-Data/1.0"
@@ -134,7 +134,10 @@ class ArchiveSpec:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Download official Binance Spot kline archives and prepare deterministic Money Heist datasets."
+        description=(
+            "Download official Binance Spot kline archives and prepare deterministic "
+            "Money Heist datasets."
+        )
     )
     parser.add_argument("--symbol", default="BTCUSDC", help="Binance symbol, default: BTCUSDC")
     parser.add_argument(
@@ -143,7 +146,9 @@ def parse_args() -> argparse.Namespace:
         help="Symbol written in normalized CSV, default: BTC/USDC",
     )
     period = parser.add_mutually_exclusive_group()
-    period.add_argument("--months", type=int, default=12, help="Trailing calendar months, default: 12")
+    period.add_argument(
+        "--months", type=int, default=12, help="Trailing calendar months, default: 12"
+    )
     period.add_argument("--start", help="Start UTC date YYYY-MM-DD (requires --end)")
     parser.add_argument("--end", help="End UTC date YYYY-MM-DD, inclusive. Default: yesterday UTC")
     parser.add_argument(
@@ -156,7 +161,10 @@ def parse_args() -> argparse.Namespace:
         "--derive",
         nargs="*",
         default=list(DERIVED_DEFAULTS),
-        help="Intervals to derive from native 1m. Default: 15m 1h 4h 1d. Use --derive with no values to disable.",
+        help=(
+            "Intervals to derive from native 1m. Default: 15m 1h 4h 1d. "
+            "Use --derive with no values to disable."
+        ),
     )
     parser.add_argument(
         "--output-dir",
@@ -209,10 +217,12 @@ def add_months(d: date, months: int) -> date:
 
 
 def resolve_period(args: argparse.Namespace) -> tuple[date, date]:
-    yesterday_utc = datetime.now(timezone.utc).date() - timedelta(days=1)
+    yesterday_utc = datetime.now(UTC).date() - timedelta(days=1)
     end = iso_date(args.end) if args.end else yesterday_utc
-    if end >= datetime.now(timezone.utc).date():
-        raise SystemExit("--end must be yesterday UTC or earlier so every requested candle is closed.")
+    if end >= datetime.now(UTC).date():
+        raise SystemExit(
+            "--end must be yesterday UTC or earlier so every requested candle is closed."
+        )
 
     if args.start:
         if not args.end:
@@ -383,7 +393,10 @@ def download_with_monthly_fallback(
     verify_checksum: bool,
     force: bool,
 ) -> tuple[list[Path], list[dict]]:
-    """If a planned monthly archive is not published yet, transparently fall back to daily archives."""
+    (
+        "If a planned monthly archive is not published yet, transparently fall back "
+        "to daily archives."
+    )
     paths: list[Path] = []
     records: list[dict] = []
     for spec in specs:
@@ -399,7 +412,8 @@ def download_with_monthly_fallback(
             raise RuntimeError(f"Required daily archive is missing: {spec.remote_url(symbol)}")
 
         print(
-            f"  monthly archive unavailable for {spec.year:04d}-{spec.month:02d}; falling back to daily files",
+            f"  monthly archive unavailable for {spec.year:04d}-{spec.month:02d}; "
+            "falling back to daily files",
             flush=True,
         )
         start = date(spec.year, spec.month, 1)
@@ -447,12 +461,15 @@ def iter_zip_klines(path: Path) -> Iterator[dict[str, str]]:
                 if row[0].strip().lower() in ("open_time", "open time"):
                     continue
                 if len(row) < 12:
-                    raise RuntimeError(f"Malformed row in {path}: expected >=12 columns, got {len(row)}")
-                yield dict(zip(BINANCE_FIELDS, row[:12]))
+                    raise RuntimeError(
+                        f"Malformed row in {path}: expected >=12 columns, got {len(row)}"
+                    )
+                yield dict(zip(BINANCE_FIELDS, row[:12], strict=False))
 
 
 def archive_sort_key(path: Path) -> tuple[int, ...]:
-    # Sorting lexicographically is already chronological for YYYY-MM[-DD], but include kind path for determinism.
+    # Sorting lexicographically is already chronological for YYYY-MM[-DD].
+    # Include the kind path for deterministic ordering.
     return tuple(ord(ch) for ch in path.name)
 
 
@@ -466,9 +483,10 @@ def write_native_csv(
     end: date,
 ) -> dict:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    start_ms = int(datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc).timestamp() * 1000)
+    start_ms = int(datetime.combine(start, datetime.min.time(), tzinfo=UTC).timestamp() * 1000)
     end_exclusive_ms = int(
-        datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc).timestamp() * 1000
+        datetime.combine(end + timedelta(days=1), datetime.min.time(), tzinfo=UTC).timestamp()
+        * 1000
     )
     interval_ms = INTERVAL_MS[interval]
 
@@ -501,7 +519,9 @@ def write_native_csv(
                         duplicates += 1
                         continue
                     if ot < last_open:
-                        raise RuntimeError(f"Non-monotonic archive sequence: {ot} after {last_open}")
+                        raise RuntimeError(
+                            f"Non-monotonic archive sequence: {ot} after {last_open}"
+                        )
                     delta = ot - last_open
                     if delta != interval_ms:
                         gaps.append(
@@ -543,7 +563,7 @@ def write_native_csv(
                 last_full_row = {k: src[k] for k in BINANCE_FIELDS}
 
     tmp.replace(output_path)
-    expected = ((end_exclusive_ms - start_ms) // interval_ms)
+    expected = (end_exclusive_ms - start_ms) // interval_ms
     summary = {
         "path": str(output_path),
         "interval": interval,
@@ -647,9 +667,10 @@ def derive_from_1m(
         last_open = bstart
         return True
 
-    with source_path.open("r", encoding="utf-8", newline="") as src_f, tmp.open(
-        "w", encoding="utf-8", newline=""
-    ) as out_f:
+    with (
+        source_path.open("r", encoding="utf-8", newline="") as src_f,
+        tmp.open("w", encoding="utf-8", newline="") as out_f,
+    ):
         reader = csv.DictReader(src_f)
         writer = csv.DictWriter(out_f, fieldnames=OUTPUT_FIELDS)
         writer.writeheader()
@@ -681,7 +702,6 @@ def derive_from_1m(
     }
 
 
-
 def export_backtest_ready(source_path: Path, output_path: Path) -> dict:
     """Export a rich normalized/resampled CSV to Money Heist's current replay contract.
 
@@ -702,16 +722,15 @@ def export_backtest_ready(source_path: Path, output_path: Path) -> dict:
     duplicate_count = 0
     non_monotonic_count = 0
 
-    with source_path.open("r", encoding="utf-8", newline="") as src_f, tmp.open(
-        "w", encoding="utf-8", newline=""
-    ) as out_f:
+    with (
+        source_path.open("r", encoding="utf-8", newline="") as src_f,
+        tmp.open("w", encoding="utf-8", newline="") as out_f,
+    ):
         reader = csv.DictReader(src_f)
         required = {"open_time", "open", "high", "low", "close", "volume"}
         missing = required - set(reader.fieldnames or [])
         if missing:
-            raise RuntimeError(
-                f"Cannot export {source_path}: missing columns {sorted(missing)}"
-            )
+            raise RuntimeError(f"Cannot export {source_path}: missing columns {sorted(missing)}")
 
         writer = csv.DictWriter(out_f, fieldnames=BACKTEST_FIELDS)
         writer.writeheader()
@@ -753,6 +772,7 @@ def export_backtest_ready(source_path: Path, output_path: Path) -> dict:
         "money_heist_contract": "timestamp,open,high,low,close,volume",
     }
 
+
 def compare_derived_native(derived_path: Path, native_path: Path) -> dict:
     def load(path: Path) -> dict[int, dict[str, str]]:
         with path.open("r", encoding="utf-8", newline="") as f:
@@ -780,10 +800,11 @@ def compare_derived_native(derived_path: Path, native_path: Path) -> dict:
         b = native[ts]
         diffs: dict[str, dict[str, str]] = {}
         for field in compare_fields:
-            if field == "trade_count":
-                equal = int(Decimal(a[field])) == int(Decimal(b[field]))
-            else:
-                equal = d(a[field]) == d(b[field])
+            equal = (
+                int(Decimal(a[field])) == int(Decimal(b[field]))
+                if field == "trade_count"
+                else d(a[field]) == d(b[field])
+            )
             if not equal:
                 diffs[field] = {"derived": a[field], "native": b[field]}
         if diffs:
@@ -806,7 +827,7 @@ def compare_derived_native(derived_path: Path, native_path: Path) -> dict:
 def ms_iso(value: int | None) -> str | None:
     if value is None:
         return None
-    return datetime.fromtimestamp(value / 1000, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(value / 1000, tz=UTC).isoformat()
 
 
 def main() -> int:
@@ -816,7 +837,9 @@ def main() -> int:
 
     for interval in args.intervals:
         if interval not in INTERVAL_MS:
-            raise SystemExit(f"Unsupported interval {interval!r}; supported: {', '.join(INTERVAL_MS)}")
+            raise SystemExit(
+                f"Unsupported interval {interval!r}; supported: {', '.join(INTERVAL_MS)}"
+            )
     for interval in args.derive:
         if interval not in INTERVAL_MS:
             raise SystemExit(f"Unsupported derived interval {interval!r}")
@@ -835,7 +858,7 @@ def main() -> int:
     stamp = f"{start.isoformat()}_{end.isoformat()}"
     manifest: dict = {
         "schema_version": 1,
-        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "created_at_utc": datetime.now(UTC).isoformat(),
         "exchange_id": "binance",
         "market_type": "spot",
         "source_symbol": symbol,
@@ -938,7 +961,10 @@ def main() -> int:
             f"mismatch={cmp_summary['mismatch_rows']:,}"
         )
         if cmp_summary["mismatch_rows"]:
-            print("  WARNING: 15m resampling mismatches detected; inspect manifest before using derived data.")
+            print(
+                "  WARNING: 15m resampling mismatches detected; "
+                "inspect manifest before using derived data."
+            )
 
     print("\n[backtest-ready] exporting current Money Heist CSV contract")
     slug_symbol = args.display_symbol.lower().replace("/", "_").replace("-", "_")
@@ -964,9 +990,7 @@ def main() -> int:
         summary["last_timestamp_iso_utc"] = ms_iso(summary["last_timestamp"])
         summary["canonical_for_backtest"] = True
         manifest["backtest_ready"][interval] = summary
-        print(
-            f"  {interval}: rows={summary['rows']:,} -> {summary['path']}"
-        )
+        print(f"  {interval}: rows={summary['rows']:,} -> {summary['path']}")
 
     if "15m" in native_paths and "15m" in derived_paths:
         native_control = backtest_dir / f"binance_{slug_symbol}_15m_native_control_{stamp}.csv"
@@ -1004,7 +1028,9 @@ def main() -> int:
         print("\nDATA QUALITY WARNINGS:")
         for warning in warnings:
             print(f"  - {warning}")
-        print("Keep the files, but do not promote them as canonical until the warnings are reviewed.")
+        print(
+            "Keep the files, but do not promote them as canonical until the warnings are reviewed."
+        )
     else:
         print("\nData-quality checks passed for the requested period.")
     return 0
@@ -1014,5 +1040,8 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except KeyboardInterrupt:
-        print("\nInterrupted. Cached archives are preserved; rerun the same command to resume.", file=sys.stderr)
-        raise SystemExit(130)
+        print(
+            "\nInterrupted. Cached archives are preserved; rerun the same command to resume.",
+            file=sys.stderr,
+        )
+        raise SystemExit(130) from None

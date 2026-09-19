@@ -4,8 +4,8 @@ from decimal import Decimal
 
 from app.services.paper_pipeline import PaperPipelineStatus
 from app.services.shadow import (
-    CallableBatch10EvaluationAdapter,
     DEFAULT_SHADOW_SYSTEMS,
+    CallableBatch10EvaluationAdapter,
     MappingMetricProjector,
     MetricAvailability,
     ShadowEvaluationStatus,
@@ -18,9 +18,7 @@ from ._helpers import FakeAIUsage, make_runtime, market_context, root_opportunit
 def test_evaluation_is_called_independently_with_system_scoped_history_and_costs():
     runtimes = tuple(make_runtime(identity) for identity in DEFAULT_SHADOW_SYSTEMS)
     for index, runtime in enumerate(runtimes, start=1):
-        runtime.capture_ai_usage(
-            [FakeAIUsage(runtime.identity.system_id, Decimal("0.1") * index)]
-        )
+        runtime.capture_ai_usage([FakeAIUsage(runtime.identity.system_id, Decimal("0.1") * index)])
 
     seen_inputs = []
 
@@ -58,8 +56,7 @@ def test_evaluation_is_called_independently_with_system_scoped_history_and_costs
         for item in seen_inputs
     )
     assert all(
-        item.evaluation.status is ShadowEvaluationStatus.COMPLETED
-        for item in result.systems
+        item.evaluation.status is ShadowEvaluationStatus.COMPLETED for item in result.systems
     )
 
 
@@ -110,9 +107,7 @@ def test_evaluation_error_does_not_rollback_already_produced_paper_state():
         ).run(root_opportunity=root_opportunity(), market_context=market_context())
     )
 
-    assert all(
-        item.paper_result.status is PaperPipelineStatus.EXECUTED for item in result.systems
-    )
+    assert all(item.paper_result.status is PaperPipelineStatus.EXECUTED for item in result.systems)
     assert result.systems[1].evaluation.status is ShadowEvaluationStatus.FAILED
     assert len(run(runtimes[1].paper_broker.get_positions())) == 1
     assert result.systems[0].evaluation.status is ShadowEvaluationStatus.COMPLETED
@@ -142,7 +137,10 @@ def test_comparison_uses_only_metrics_that_batch10_projection_reports_available(
     assert result.comparison.metrics["trading_net"].availability is MetricAvailability.PARTIAL
     assert result.comparison.metrics["economic_net"].availability is MetricAvailability.UNAVAILABLE
     assert result.comparison.metrics["ai_cost"].availability is MetricAvailability.AVAILABLE
-    assert result.comparison.metrics["self_funding_ratio"].availability is MetricAvailability.UNAVAILABLE
+    assert (
+        result.comparison.metrics["self_funding_ratio"].availability
+        is MetricAvailability.UNAVAILABLE
+    )
 
 
 def test_economic_net_and_trading_net_remain_distinct_in_comparison():
@@ -167,8 +165,9 @@ def test_economic_net_and_trading_net_remain_distinct_in_comparison():
             ),
         ).run(root_opportunity=root_opportunity(), market_context=market_context())
     )
-    assert result.comparison.metrics["trading_net"].values != result.comparison.metrics[
-        "economic_net"
-    ].values
+    assert (
+        result.comparison.metrics["trading_net"].values
+        != result.comparison.metrics["economic_net"].values
+    )
     assert result.comparison.promotion_system_id is None
     assert result.comparison.risk_change is None

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -8,7 +8,7 @@ from app.services.orchestration import ComputeGate, ComputeGatePolicy, ComputeLe
 
 
 def opportunity(*, priority: int, expires_delta: int = 300) -> CandidateOpportunity:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return CandidateOpportunity(
         scanner_version="scanner-v1",
         opportunity_id=str(uuid4()),
@@ -54,7 +54,7 @@ def test_compute_gate_blocks_insufficient_or_expired_opportunity():
     expired_opportunity = opportunity(priority=60, expires_delta=-1)
     expired = ComputeGate(AIBudgetLedger("1.00"), policy).evaluate(
         expired_opportunity,
-        now=datetime.now(timezone.utc),
+        now=datetime.now(UTC),
     )
     assert budget_blocked.level is ComputeLevel.SKIP_AI
     assert budget_blocked.reason.value == "BUDGET_INSUFFICIENT"

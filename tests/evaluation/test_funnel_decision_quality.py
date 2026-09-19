@@ -99,7 +99,13 @@ def test_short_direction_alignment() -> None:
 
 def test_short_favorable_market_alignment() -> None:
     aligned = align_outcome_to_direction(
-        horizon=complete_horizon(10, raw_return="-5", upside="1", downside="-7", first_hit=ForwardOutcomeFirstHit.MAX_DOWNSIDE),
+        horizon=complete_horizon(
+            10,
+            raw_return="-5",
+            upside="1",
+            downside="-7",
+            first_hit=ForwardOutcomeFirstHit.MAX_DOWNSIDE,
+        ),
         direction="SHORT",
     )
     assert aligned.directional_return_pct == Decimal("5")
@@ -137,7 +143,9 @@ def source_identity(run: str = "run-a", analytics: str = "analytics-a") -> Resea
     )
 
 
-def candidate(opportunity_id: str, *, direction: str | None, with_outcome: bool = True) -> CandidateResearchRecord:
+def candidate(
+    opportunity_id: str, *, direction: str | None, with_outcome: bool = True
+) -> CandidateResearchRecord:
     source = source_identity()
     scanner = ScannerResearchProjection(
         scanner_evaluation_id=f"scan-{opportunity_id}",
@@ -231,7 +239,9 @@ def stage_record(
         stage_status="FAILED" if failure else ("COMPLETED" if reached else None),
         stage_result=result,
         reason_codes=reasons,
-        selected_agents=("berlin", "tokyo") if stage is FunnelStage.PROFESSOR_PLAN and reached else (),
+        selected_agents=("berlin", "tokyo")
+        if stage is FunnelStage.PROFESSOR_PLAN and reached
+        else (),
         failure_code=failure,
         failure_stage="fixture" if failure else None,
         source_projection_path="fixture",
@@ -245,19 +255,39 @@ def stage_record(
     )
 
 
-def fixed_records(opportunity_id: str, *, final: str = "LONG", risk: str = "APPROVED") -> tuple[FunnelStageAnalyticsAttributionRecord, ...]:
+def fixed_records(
+    opportunity_id: str, *, final: str = "LONG", risk: str = "APPROVED"
+) -> tuple[FunnelStageAnalyticsAttributionRecord, ...]:
     return (
         stage_record(opportunity_id, FunnelStage.COMPUTE_GATE, result="LEVEL_2_MINI_CREW"),
         stage_record(opportunity_id, FunnelStage.PROFESSOR_PLAN, result="ANALYZE"),
         stage_record(opportunity_id, FunnelStage.PALERMO, result="CAUTION"),
         stage_record(opportunity_id, FunnelStage.PROFESSOR_FINAL, result=final),
-        stage_record(opportunity_id, FunnelStage.TRADE_PROPOSAL, reached=final != "NO_TRADE", result=final if final != "NO_TRADE" else None),
-        stage_record(opportunity_id, FunnelStage.RISK, reached=final != "NO_TRADE", result=risk if final != "NO_TRADE" else None, reasons=("MIN_EXPECTED_RR",) if risk == "REJECTED" else ()),
-        stage_record(opportunity_id, FunnelStage.PAPER, reached=final != "NO_TRADE" and risk != "REJECTED", result="FILLED" if risk != "REJECTED" else None),
+        stage_record(
+            opportunity_id,
+            FunnelStage.TRADE_PROPOSAL,
+            reached=final != "NO_TRADE",
+            result=final if final != "NO_TRADE" else None,
+        ),
+        stage_record(
+            opportunity_id,
+            FunnelStage.RISK,
+            reached=final != "NO_TRADE",
+            result=risk if final != "NO_TRADE" else None,
+            reasons=("MIN_EXPECTED_RR",) if risk == "REJECTED" else (),
+        ),
+        stage_record(
+            opportunity_id,
+            FunnelStage.PAPER,
+            reached=final != "NO_TRADE" and risk != "REJECTED",
+            result="FILLED" if risk != "REJECTED" else None,
+        ),
     )
 
 
-def bundle_and_stage_set(*, final: str = "LONG", risk: str = "APPROVED") -> tuple[DecisionQualityResearchBundle, FunnelStageAnalyticsAttributionSet]:
+def bundle_and_stage_set(
+    *, final: str = "LONG", risk: str = "APPROVED"
+) -> tuple[DecisionQualityResearchBundle, FunnelStageAnalyticsAttributionSet]:
     item = candidate("opp-1", direction=final if final != "NO_TRADE" else None)
     source = source_identity()
     run = DecisionQualityResearchRun(
@@ -276,8 +306,16 @@ def bundle_and_stage_set(*, final: str = "LONG", risk: str = "APPROVED") -> tupl
         research_run=run,
         candidate_records=(item,),
         scanner_records=(),
-        candidate_coverage=CandidateJoinCoverage(total=1, joined=0, missing_decision_intelligence=0, missing_forward_outcome=0, missing_analytics=1),
-        scanner_coverage=ScannerJoinCoverage(total=0, joined=0, missing_forward_outcome=0, missing_analytics=0),
+        candidate_coverage=CandidateJoinCoverage(
+            total=1,
+            joined=0,
+            missing_decision_intelligence=0,
+            missing_forward_outcome=0,
+            missing_analytics=1,
+        ),
+        scanner_coverage=ScannerJoinCoverage(
+            total=0, joined=0, missing_forward_outcome=0, missing_analytics=0
+        ),
         bundle_fingerprint=SHA,
     )
     records = fixed_records("opp-1", final=final, risk=risk)
@@ -301,7 +339,12 @@ def bundle_and_stage_set(*, final: str = "LONG", risk: str = "APPROVED") -> tupl
 def test_early_stage_cohorts_are_directionless() -> None:
     bundle, stages = bundle_and_stage_set(final="LONG")
     report = build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages)
-    palermo = next(item for item in report.cohorts if item.stage is FunnelStage.PALERMO and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT)
+    palermo = next(
+        item
+        for item in report.cohorts
+        if item.stage is FunnelStage.PALERMO
+        and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT
+    )
     assert palermo.key == "CAUTION"
     assert palermo.direction_available_count == 0
     assert palermo.directional_horizons == ()
@@ -310,12 +353,26 @@ def test_early_stage_cohorts_are_directionless() -> None:
 def test_final_long_has_directional_metrics_and_no_trade_has_none() -> None:
     bundle, stages = bundle_and_stage_set(final="LONG")
     report = build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages)
-    final = next(item for item in report.cohorts if item.stage is FunnelStage.PROFESSOR_FINAL and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT and item.key == "LONG")
+    final = next(
+        item
+        for item in report.cohorts
+        if item.stage is FunnelStage.PROFESSOR_FINAL
+        and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT
+        and item.key == "LONG"
+    )
     assert final.directional_horizons[3].directional_return_median_pct == Decimal("4")
 
     bundle_nt, stages_nt = bundle_and_stage_set(final="NO_TRADE")
-    report_nt = build_funnel_decision_quality_report(bundle=bundle_nt, funnel_stage_attribution=stages_nt)
-    no_trade = next(item for item in report_nt.cohorts if item.stage is FunnelStage.PROFESSOR_FINAL and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT and item.key == "NO_TRADE")
+    report_nt = build_funnel_decision_quality_report(
+        bundle=bundle_nt, funnel_stage_attribution=stages_nt
+    )
+    no_trade = next(
+        item
+        for item in report_nt.cohorts
+        if item.stage is FunnelStage.PROFESSOR_FINAL
+        and item.dimension is FunnelDecisionQualityDimension.STAGE_RESULT
+        and item.key == "NO_TRADE"
+    )
     assert no_trade.direction_available_count == 0
     assert all(item.directional_complete_count == 0 for item in no_trade.directional_horizons)
 
@@ -323,7 +380,12 @@ def test_final_long_has_directional_metrics_and_no_trade_has_none() -> None:
 def test_risk_rejected_reason_is_multivalued_and_direction_aware() -> None:
     bundle, stages = bundle_and_stage_set(final="LONG", risk="REJECTED")
     report = build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages)
-    risk_reason = next(item for item in report.cohorts if item.stage is FunnelStage.RISK and item.dimension is FunnelDecisionQualityDimension.STAGE_REASON)
+    risk_reason = next(
+        item
+        for item in report.cohorts
+        if item.stage is FunnelStage.RISK
+        and item.dimension is FunnelDecisionQualityDimension.STAGE_REASON
+    )
     assert risk_reason.key == "MIN_EXPECTED_RR"
     assert risk_reason.multi_valued is True
     assert risk_reason.direction_available_count == 1
@@ -332,16 +394,27 @@ def test_risk_rejected_reason_is_multivalued_and_direction_aware() -> None:
 def test_run_and_analytics_mismatch_fail_closed() -> None:
     bundle, stages = bundle_and_stage_set()
     with pytest.raises(FunnelDecisionQualityError, match="BacktestRun"):
-        build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages.model_copy(update={"source_backtest_run_id": "run-b"}))
+        build_funnel_decision_quality_report(
+            bundle=bundle,
+            funnel_stage_attribution=stages.model_copy(update={"source_backtest_run_id": "run-b"}),
+        )
     with pytest.raises(FunnelDecisionQualityError, match="AnalyticsRun"):
-        build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages.model_copy(update={"analytics_run_id": "analytics-b"}))
+        build_funnel_decision_quality_report(
+            bundle=bundle,
+            funnel_stage_attribution=stages.model_copy(update={"analytics_run_id": "analytics-b"}),
+        )
 
 
 def test_unknown_opportunity_fails_closed() -> None:
     bundle, stages = bundle_and_stage_set()
     foreign = stages.records[0].model_copy(update={"opportunity_id": "foreign"})
     with pytest.raises(FunnelDecisionQualityError, match="unknown opportunities"):
-        build_funnel_decision_quality_report(bundle=bundle, funnel_stage_attribution=stages.model_copy(update={"records": (foreign, *stages.records[1:])}))
+        build_funnel_decision_quality_report(
+            bundle=bundle,
+            funnel_stage_attribution=stages.model_copy(
+                update={"records": (foreign, *stages.records[1:])}
+            ),
+        )
 
 
 def test_deterministic_json_under_input_shuffle() -> None:

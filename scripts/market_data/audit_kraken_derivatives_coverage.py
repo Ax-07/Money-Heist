@@ -45,7 +45,7 @@ class MetricAudit:
     failures: int = 0
 
     @classmethod
-    def create(cls) -> "MetricAudit":
+    def create(cls) -> MetricAudit:
         return cls(timestamps=set())
 
 
@@ -156,14 +156,11 @@ def _month_windows(start: datetime, end: datetime) -> list[tuple[datetime, datet
     windows: list[tuple[datetime, datetime]] = []
     cursor = start
     while cursor < end:
-        if cursor.month == 12:
-            next_month = cursor.replace(
-                year=cursor.year + 1, month=1, day=1
-            )
-        else:
-            next_month = cursor.replace(
-                month=cursor.month + 1, day=1
-            )
+        next_month = (
+            cursor.replace(year=cursor.year + 1, month=1, day=1)
+            if cursor.month == 12
+            else cursor.replace(month=cursor.month + 1, day=1)
+        )
         boundary = min(next_month, end)
         if boundary <= cursor:
             boundary = min(cursor + timedelta(days=31), end)

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
@@ -14,8 +14,7 @@ from app.evaluation.adapters import (
 )
 from app.evaluation.exports import agent_metrics_to_csv, report_to_json
 
-
-NOW = datetime(2026, 9, 7, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, tzinfo=UTC)
 
 
 def enum(value):

@@ -3,15 +3,15 @@ from __future__ import annotations
 from decimal import Decimal
 
 from .models import (
-    AICacheSliceMetrics,
+    ZERO,
     AgentMetrics,
+    AICacheSliceMetrics,
     LisbonEvaluationReport,
     LisbonRecommendation,
     Metric,
     SelfFundingRatio,
     SelfFundingStatus,
     TradingMetrics,
-    ZERO,
 )
 
 

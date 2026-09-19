@@ -4,7 +4,7 @@ import hashlib
 import json
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 

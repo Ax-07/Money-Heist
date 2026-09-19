@@ -111,7 +111,9 @@ def test_same_trade_can_be_accepted_and_rejected_by_explicitly_different_context
         balanced,
         risk_profile=explicit_test_profile(balanced.system_id, max_positions=0),
     )
-    third = make_runtime(DEFAULT_SHADOW_SYSTEMS[2], orchestration=ScenarioOrchestration(outcome="NO_TRADE"))
+    third = make_runtime(
+        DEFAULT_SHADOW_SYSTEMS[2], orchestration=ScenarioOrchestration(outcome="NO_TRADE")
+    )
     result = run(
         ShadowFleetRunner((accepted, rejected, third)).run(
             root_opportunity=root_opportunity(), market_context=market_context()

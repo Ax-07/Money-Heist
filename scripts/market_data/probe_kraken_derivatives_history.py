@@ -18,7 +18,6 @@ from app.market.exchange.transport import (
     StdlibJsonTransport,
 )
 
-
 BASE_URL = "https://futures.kraken.com/api/charts/v1/analytics"
 ANALYTICS_TYPES = (
     "funding",

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 from .config import PaperBrokerConfig
 from .models import (
+    ZERO,
     AccountState,
     BrokerOrder,
     Fill,
@@ -19,9 +20,7 @@ from .models import (
     Position,
     PositionSide,
     StopLoss,
-    ZERO,
 )
-
 
 BPS_DENOMINATOR = Decimal("10000")
 
@@ -76,7 +75,7 @@ class PaperBroker:
     ) -> None:
         self.config = config or PaperBrokerConfig()
         self._id_factory = id_factory or (lambda: str(uuid4()))
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock or (lambda: datetime.now(UTC))
 
         self._cash_balance = self.config.initial_balance
         self._fees_paid = ZERO
@@ -103,7 +102,8 @@ class PaperBroker:
         if existing_id is not None:
             if self._request_fingerprints[request.client_order_id] != fingerprint:
                 raise IdempotencyConflict(
-                    f"client_order_id {request.client_order_id!r} already exists with different payload"
+                    f"client_order_id {request.client_order_id!r} already exists with "
+                    "different payload"
                 )
             return self._orders[existing_id]
 
@@ -248,9 +248,7 @@ class PaperBroker:
         stop = self._stops.get(symbol)
         position = self._positions.get(symbol)
         if stop is not None and position is not None and position.is_open:
-            should_trigger = (
-                position.side is PositionSide.LONG and price <= stop.stop_price
-            ) or (
+            should_trigger = (position.side is PositionSide.LONG and price <= stop.stop_price) or (
                 position.side is PositionSide.SHORT and price >= stop.stop_price
             )
             if should_trigger:
@@ -280,7 +278,8 @@ class PaperBroker:
     def _validate_request(self, request: PaperOrderRequest) -> None:
         if request.system_id != self.config.system_id:
             raise ValidationError(
-                f"order system_id={request.system_id!r} does not match broker system_id={self.config.system_id!r}"
+                f"order system_id={request.system_id!r} does not match broker "
+                f"system_id={self.config.system_id!r}"
             )
         if not request.symbol.strip():
             raise ValidationError("symbol must not be empty")
@@ -318,10 +317,11 @@ class PaperBroker:
 
     def _fill_market_order(self, order: BrokerOrder, mark: Decimal) -> BrokerOrder:
         slippage = self.config.market_slippage_bps / BPS_DENOMINATOR
-        if order.side is OrderSide.BUY:
-            fill_price = mark * (Decimal("1") + slippage)
-        else:
-            fill_price = mark * (Decimal("1") - slippage)
+        fill_price = (
+            mark * (Decimal("1") + slippage)
+            if order.side is OrderSide.BUY
+            else mark * (Decimal("1") - slippage)
+        )
         return self._apply_full_fill(
             order,
             fill_price=fill_price,
@@ -399,17 +399,22 @@ class PaperBroker:
         new_qty = old_qty + signed_fill
         realized_delta = ZERO
 
-        if old_qty == ZERO or (old_qty > ZERO and signed_fill > ZERO) or (old_qty < ZERO and signed_fill < ZERO):
+        if (
+            old_qty == ZERO
+            or (old_qty > ZERO and signed_fill > ZERO)
+            or (old_qty < ZERO and signed_fill < ZERO)
+        ):
             total_abs = abs(old_qty) + abs(signed_fill)
             avg = (
                 (position.average_entry * abs(old_qty)) + (fill_price * abs(signed_fill))
             ) / total_abs
         else:
             closing_qty = min(abs(old_qty), abs(signed_fill))
-            if old_qty > ZERO:
-                realized_delta = (fill_price - position.average_entry) * closing_qty
-            else:
-                realized_delta = (position.average_entry - fill_price) * closing_qty
+            realized_delta = (
+                (fill_price - position.average_entry) * closing_qty
+                if old_qty > ZERO
+                else (position.average_entry - fill_price) * closing_qty
+            )
 
             if new_qty == ZERO:
                 avg = ZERO

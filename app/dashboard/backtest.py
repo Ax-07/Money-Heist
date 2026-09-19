@@ -594,9 +594,7 @@ class ObservableBacktestAIClient:
             return await self._delegate.complete(request)
         finally:
             self._runtime.ai_call_count += 1
-            self._runtime.ai_wall_time_ms += max(
-                int(round((perf_counter() - started) * 1000)), 0
-            )
+            self._runtime.ai_wall_time_ms += max(int(round((perf_counter() - started) * 1000)), 0)
             if agent is not None:
                 self._runtime.active_agents.discard(agent)
 
@@ -1549,15 +1547,11 @@ class BacktestDashboardService:
             )
             exports[f"{prefix}-funnel-outcome-attribution.json"] = (
                 "application/json",
-                funnel_outcome_attribution_to_json(
-                    execution.funnel_outcome_attribution
-                ),
+                funnel_outcome_attribution_to_json(execution.funnel_outcome_attribution),
             )
             exports[f"{prefix}-scanner-forward-outcomes.json"] = (
                 "application/json",
-                scanner_forward_outcomes_to_json(
-                    execution.scanner_forward_outcomes
-                ),
+                scanner_forward_outcomes_to_json(execution.scanner_forward_outcomes),
             )
             if execution.period.performance is not None:
                 exports[f"{prefix}-performance.json"] = (
@@ -1787,7 +1781,9 @@ class BacktestDashboardService:
                 run=run,
                 progress_callback=on_progress if runtime is not None else None,
                 point_callback=on_point if runtime is not None else None,
-                cancel_check=((lambda: runtime.cancel_event.is_set()) if runtime is not None else None),
+                cancel_check=(
+                    (lambda: runtime.cancel_event.is_set()) if runtime is not None else None
+                ),
             )
         finally:
             if live_http_client is not None:
@@ -1819,9 +1815,7 @@ class BacktestDashboardService:
             scanner_version=str(scanner_config.scanner_version),
             min_priority_score=int(scanner_config.min_priority_score),
         )
-        measurement_23a_ms = max(
-            int(round((perf_counter() - measurement_started) * 1000)), 0
-        )
+        measurement_23a_ms = max(int(round((perf_counter() - measurement_started) * 1000)), 0)
         performance = PerformanceProfileView(
             wall_clock_ms=max(int(round((perf_counter() - run_started) * 1000)), 0),
             replay_total_ms=replay.timings.total_ms,
@@ -1832,9 +1826,7 @@ class BacktestDashboardService:
             evaluation_ms=evaluation_ms,
             measurement_23a_ms=measurement_23a_ms,
             ai_request_count=len(usage.records),
-            ai_provider_latency_ms=sum(
-                max(int(record.latency_ms), 0) for record in usage.records
-            ),
+            ai_provider_latency_ms=sum(max(int(record.latency_ms), 0) for record in usage.records),
         )
         period_report = BacktestPeriodReport.from_evaluation(role, replay, evaluation)
         period = self._period_summary(

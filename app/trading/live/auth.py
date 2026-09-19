@@ -6,8 +6,9 @@ import hmac
 import os
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping, Protocol
+from typing import Protocol
 from urllib.parse import urlencode
 
 

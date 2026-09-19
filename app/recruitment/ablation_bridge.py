@@ -54,7 +54,12 @@ class RecruitmentAblationBridgeResult:
             raise ValueError("audit_fingerprint_sha256 must be a SHA-256 hex digest")
         if self.comparison.agent_id != self.candidate_agent_id:
             raise ValueError("ablation comparison must target candidate_agent_id")
-        if self.auto_apply or self.registry_mutation or self.promotion_action or self.live_authority:
+        if (
+            self.auto_apply
+            or self.registry_mutation
+            or self.promotion_action
+            or self.live_authority
+        ):
             raise ValueError("recruitment ablation bridge cannot apply operational changes")
 
     @property
@@ -120,7 +125,9 @@ def bridge_recruitment_to_ablation(
             "candidate_agent_id": candidate_id,
             "purpose": evidence_gate.purpose,
             "evidence_gate_fingerprint_sha256": evidence_gate.audit_fingerprint_sha256,
-            "semantics": RecruitmentAblationSemantics.FULL_WITH_CANDIDATE_VS_WITHOUT_CANDIDATE_BASELINE,
+            "semantics": (
+                RecruitmentAblationSemantics.FULL_WITH_CANDIDATE_VS_WITHOUT_CANDIDATE_BASELINE
+            ),
             "comparison": comparison,
             "auto_apply": False,
             "registry_mutation": False,

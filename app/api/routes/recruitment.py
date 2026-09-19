@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from app.recruitment.api import RecruitmentApiCapabilities, get_recruitment_api_capabilities
 
-
 router = APIRouter(tags=["recruitment"])
 
 

@@ -6,7 +6,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from app.market.features import FeatureSnapshot, MarketRegime
 
-from .models import CandidateOpportunity, ScanResult, ScannerTrigger
+from .models import CandidateOpportunity, ScannerTrigger, ScanResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,9 +119,7 @@ class DeterministicScanner:
         buffer_pct = self.config.range_break_buffer_pct
         if upper_distance is not None and upper_distance >= buffer_pct:
             return True
-        if lower_distance is not None and lower_distance <= -buffer_pct:
-            return True
-        return False
+        return bool(lower_distance is not None and lower_distance <= -buffer_pct)
 
     @staticmethod
     def _regime_change(

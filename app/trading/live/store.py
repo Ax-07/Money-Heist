@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Iterable
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -19,7 +19,6 @@ from app.trading.paper.models import OrderSide, OrderType
 
 from .models import LiveAuditEvent, LiveFill, LiveOrderIntent, LiveOrderRecord, LiveOrderStatus
 
-
 _UNRESOLVED_STATUSES = frozenset(
     {
         LiveOrderStatus.NEW,
@@ -32,8 +31,8 @@ _UNRESOLVED_STATUSES = frozenset(
 
 def _utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class InMemoryLiveOrderStore:
@@ -169,7 +168,7 @@ class SqlAlchemyLiveOrderStore:
             return tuple(self._to_domain(row) for row in rows)
 
     def put_fills(self, client_order_id: str, fills: Iterable[LiveFill]) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._session_factory.begin() as session:
             for fill in fills:
                 row = session.get(LiveFillPersistenceRecord, fill.trade_id)
@@ -223,7 +222,7 @@ class SqlAlchemyLiveOrderStore:
                 row.last_reconciled_at = _utc(at)
 
     def mark_reconciliation_required(self, *, system_id: str, reason: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._session_factory.begin() as session:
             row = session.get(LiveReconciliationPersistenceRecord, system_id)
             if row is None:

@@ -6,12 +6,11 @@ import pytest
 from app.market.models import Candle
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
 from app.market.structure import (
-    BreakoutState,
     MARKET_STRUCTURE_VERSION,
+    BreakoutState,
     SwingStructure,
     build_market_structure_context,
 )
-
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
 

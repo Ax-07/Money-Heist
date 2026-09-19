@@ -82,10 +82,12 @@ def test_mock_gateway_returns_validated_structured_output_and_usage():
 
 
 def test_invalid_structured_output_is_retried_once_then_succeeds():
-    gateway, client = build_gateway([
-        response('{"stance":"LONG","confidence":9}'),
-        response('{"stance":"NEUTRAL","confidence":0.5}'),
-    ])
+    gateway, client = build_gateway(
+        [
+            response('{"stance":"LONG","confidence":9}'),
+            response('{"stance":"NEUTRAL","confidence":0.5}'),
+        ]
+    )
     result = asyncio.run(gateway.generate_structured(request(), Decision))
     assert result.attempts == 2
     assert result.output.stance == "NEUTRAL"
@@ -95,20 +97,24 @@ def test_invalid_structured_output_is_retried_once_then_succeeds():
 
 
 def test_invalid_structured_output_fails_after_bounded_attempts():
-    gateway, client = build_gateway([
-        response("not-json"),
-        response("still-not-json"),
-    ])
+    gateway, client = build_gateway(
+        [
+            response("not-json"),
+            response("still-not-json"),
+        ]
+    )
     with pytest.raises(StructuredOutputError):
         asyncio.run(gateway.generate_structured(request(), Decision))
     assert len(client.requests) == 2
 
 
 def test_retryable_provider_error_is_bounded():
-    gateway, client = build_gateway([
-        RetryableAIProviderError("timeout"),
-        RetryableAIProviderError("timeout"),
-    ])
+    gateway, client = build_gateway(
+        [
+            RetryableAIProviderError("timeout"),
+            RetryableAIProviderError("timeout"),
+        ]
+    )
     with pytest.raises(RetryableAIProviderError):
         asyncio.run(gateway.generate_structured(request(), Decision))
     assert len(client.requests) == 2
@@ -154,7 +160,9 @@ def test_fallback_route_is_selected_when_primary_does_not_fit_budget():
 
 
 def test_failed_retry_releases_reservation_for_next_attempt():
-    zero_pricing = ModelPricing(input_per_million_eur=Decimal("0"), output_per_million_eur=Decimal("0"))
+    zero_pricing = ModelPricing(
+        input_per_million_eur=Decimal("0"), output_per_million_eur=Decimal("0")
+    )
     route = ModelRoute(
         route_id="primary",
         provider="mock",

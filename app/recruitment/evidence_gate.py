@@ -124,13 +124,21 @@ class RecruitmentEvidenceGateDecision:
         object.__setattr__(self, "reason_codes", normalized)
         if len(self.audit_fingerprint_sha256) != 64:
             raise ValueError("audit_fingerprint_sha256 must be a SHA-256 hex digest")
-        if self.auto_apply or self.registry_mutation or self.promotion_action or self.live_authority:
+        if (
+            self.auto_apply
+            or self.registry_mutation
+            or self.promotion_action
+            or self.live_authority
+        ):
             raise ValueError("recruitment evidence gates cannot apply operational changes")
         if self.status is RecruitmentGateStatus.ALLOW and not self.comparable:
             raise ValueError("non-comparable evidence cannot be allowed")
-        if self.purpose is RecruitmentEvidencePurpose.PROMOTION:
-            if self.status is RecruitmentGateStatus.ALLOW and not self.is_out_of_sample:
-                raise ValueError("promotion evidence can only be allowed when OOS")
+        if (
+            self.purpose is RecruitmentEvidencePurpose.PROMOTION
+            and self.status is RecruitmentGateStatus.ALLOW
+            and not self.is_out_of_sample
+        ):
+            raise ValueError("promotion evidence can only be allowed when OOS")
 
 
 def _success_criteria_fingerprint(candidate: RecruitmentCandidateSpec) -> str:
@@ -149,9 +157,7 @@ def _material_config_payload(config: Any) -> dict[str, Any]:
     payload = dict(config.canonical_payload())
     assumptions = dict(payload.get("execution_assumptions", {}))
     payload["execution_assumptions"] = {
-        key: value
-        for key, value in assumptions.items()
-        if key not in _RECRUITMENT_EXECUTION_KEYS
+        key: value for key, value in assumptions.items() if key not in _RECRUITMENT_EXECUTION_KEYS
     }
     return payload
 
@@ -231,10 +237,22 @@ def _comparability_reasons(
         reasons.append("TWIN_RUN_IDS_MUST_DIFFER")
 
     comparable_fields = (
-        ("DATASET_MISMATCH", baseline.period_report.dataset_id, with_candidate.period_report.dataset_id),
+        (
+            "DATASET_MISMATCH",
+            baseline.period_report.dataset_id,
+            with_candidate.period_report.dataset_id,
+        ),
         ("PERIOD_ROLE_MISMATCH", baseline.period_report.role, with_candidate.period_report.role),
-        ("PERIOD_START_MISMATCH", baseline.period_report.period_start, with_candidate.period_report.period_start),
-        ("PERIOD_END_MISMATCH", baseline.period_report.period_end, with_candidate.period_report.period_end),
+        (
+            "PERIOD_START_MISMATCH",
+            baseline.period_report.period_start,
+            with_candidate.period_report.period_start,
+        ),
+        (
+            "PERIOD_END_MISMATCH",
+            baseline.period_report.period_end,
+            with_candidate.period_report.period_end,
+        ),
         (
             "PROCESSED_CANDLES_MISMATCH",
             baseline.period_report.processed_candles,

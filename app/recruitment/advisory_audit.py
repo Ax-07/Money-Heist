@@ -234,7 +234,9 @@ def _assert_current_chain(
         planning.recruitment_id,
     }
     if len(ids) != 1:
-        raise ValueError("candidate, evidence, lifecycle, advisory and planning must target one recruitment_id")
+        raise ValueError(
+            "candidate, evidence, lifecycle, advisory and planning must target one recruitment_id"
+        )
     agent_id = candidate_runtime_agent_id(candidate)
     if package.candidate_agent_id != agent_id:
         raise ValueError("candidate runtime identity does not match evidence package")
@@ -246,9 +248,15 @@ def _assert_current_chain(
         raise ValueError("planning does not reference supplied evidence package")
     if planning.advisory_fingerprint_sha256 != advisory.audit_fingerprint_sha256:
         raise ValueError("planning does not reference supplied advisory")
-    if advisory.lifecycle_revision != lifecycle.revision or planning.lifecycle_revision != lifecycle.revision:
+    if (
+        advisory.lifecycle_revision != lifecycle.revision
+        or planning.lifecycle_revision != lifecycle.revision
+    ):
         raise ValueError("stale lifecycle revision in advisory lineage")
-    if advisory.current_state is not lifecycle.current_state or planning.current_state is not lifecycle.current_state:
+    if (
+        advisory.current_state is not lifecycle.current_state
+        or planning.current_state is not lifecycle.current_state
+    ):
         raise ValueError("stale lifecycle state in advisory lineage")
 
 
@@ -274,7 +282,9 @@ def build_recruitment_advisory_audit(
         snapshot=snapshot,
     )
     if reproduced != planning:
-        raise ValueError("supplied advisory transition plan is not reproducible from current context")
+        raise ValueError(
+            "supplied advisory transition plan is not reproducible from current context"
+        )
 
     candidate_fingerprint = _candidate_spec_fingerprint(candidate)
     if candidate_fingerprint != package.lineage.candidate_spec_fingerprint_sha256:
@@ -284,9 +294,7 @@ def build_recruitment_advisory_audit(
         raise ValueError("planning capacity context does not match supplied policy and snapshot")
 
     transition_id = (
-        planning.transition_plan.transition_id
-        if planning.transition_plan is not None
-        else None
+        planning.transition_plan.transition_id if planning.transition_plan is not None else None
     )
     fingerprint = _audit_fingerprint(
         recruitment_id=candidate.recruitment_id,
@@ -366,9 +374,7 @@ def revalidate_recruitment_advisory_audit(
     if planning.status is not audit.planning_status:
         reasons.add("PLANNING_STATUS_CHANGED")
     current_transition_id = (
-        planning.transition_plan.transition_id
-        if planning.transition_plan is not None
-        else None
+        planning.transition_plan.transition_id if planning.transition_plan is not None else None
     )
     if current_transition_id != audit.transition_id:
         reasons.add("TRANSITION_ID_CHANGED")
@@ -413,9 +419,7 @@ def require_fresh_recruitment_advisory_audit(
         snapshot=snapshot,
     )
     if validation.freshness is RecruitmentAdvisoryAuditFreshness.STALE:
-        raise ValueError(
-            "stale recruitment advisory audit: " + ",".join(validation.reason_codes)
-        )
+        raise ValueError("stale recruitment advisory audit: " + ",".join(validation.reason_codes))
     return validation
 
 

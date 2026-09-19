@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from .models import (
+    ZERO,
     AgentCallEntry,
     AgentObservation,
     AIUsageEntry,
@@ -13,7 +14,6 @@ from .models import (
     EvaluationSource,
     ExecutionRecord,
     OpportunityTrace,
-    ZERO,
 )
 
 BPS_DENOMINATOR = Decimal("10000")

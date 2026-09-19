@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import defaultdict, deque
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from app.intelligence.ai_gateway.budget import AIBudgetLedger
@@ -28,8 +28,7 @@ from app.trading.risk.engine import RiskEngine
 from app.trading.risk.models import KillSwitchState, MarketConstraints, PortfolioRiskState
 from app.trading.risk.profiles import demo_profile
 
-
-NOW = datetime(2026, 9, 7, 16, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 16, 0, tzinfo=UTC)
 
 
 def sync_test(func):

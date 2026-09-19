@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -43,7 +43,7 @@ def _parse_timestamp(raw: str) -> datetime:
         value = float(numeric)
         if abs(value) >= 100_000_000_000:
             value /= 1000.0
-        return datetime.fromtimestamp(value, tz=timezone.utc)
+        return datetime.fromtimestamp(value, tz=UTC)
 
     normalized = raw.replace("Z", "+00:00")
     try:
@@ -53,7 +53,7 @@ def _parse_timestamp(raw: str) -> datetime:
 
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise HistoricalImportError("historical timestamps must include a timezone")
-    return parsed.astimezone(timezone.utc)
+    return parsed.astimezone(UTC)
 
 
 def _parse_decimal(raw: str, field: str) -> Decimal:

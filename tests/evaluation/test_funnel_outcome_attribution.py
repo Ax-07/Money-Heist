@@ -3,18 +3,17 @@ from decimal import Decimal
 
 from app.evaluation.forward_outcomes import (
     ForwardOutcomeHorizon,
+    ForwardOutcomeHorizonSummary,
     ForwardOutcomeRecord,
     ForwardOutcomeReport,
-    ForwardOutcomeSummary,
-    ForwardOutcomeHorizonSummary,
     ForwardOutcomeStatusCount,
+    ForwardOutcomeSummary,
 )
 from app.evaluation.funnel_outcome_attribution import (
     FunnelAttributionDimension,
     FunnelOutcomeSubject,
     aggregate_funnel_outcome_attribution,
 )
-
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 

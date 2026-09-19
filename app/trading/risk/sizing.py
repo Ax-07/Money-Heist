@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 
-from .models import MarketConstraints, RiskReasonCode, ZERO
+from .models import ZERO, MarketConstraints, RiskReasonCode
 
 
 def floor_to_step(value: Decimal, step: Decimal) -> Decimal:

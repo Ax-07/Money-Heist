@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import socket
 import time
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.message import Message
-from typing import Any, Awaitable, Callable, Mapping, Protocol
+from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
@@ -92,7 +92,7 @@ class StdlibJsonTransport:
         try:
             with urlopen(request, timeout=timeout_seconds) as response:
                 body = response.read()
-                received_at = datetime.now(timezone.utc)
+                received_at = datetime.now(UTC)
                 return PublicHttpResponse(
                     status_code=int(response.status),
                     payload=self._decode_json(body),
@@ -101,7 +101,7 @@ class StdlibJsonTransport:
                 )
         except HTTPError as exc:
             body = exc.read()
-            received_at = datetime.now(timezone.utc)
+            received_at = datetime.now(UTC)
             try:
                 payload = self._decode_json(body)
             except TransportInvalidJsonError:
@@ -112,7 +112,7 @@ class StdlibJsonTransport:
                 headers=_headers_to_dict(exc.headers),
                 received_at=received_at,
             )
-        except (URLError, TimeoutError, socket.timeout, OSError) as exc:
+        except (URLError, TimeoutError, OSError) as exc:
             raise TransportNetworkError(str(exc)) from exc
 
     @staticmethod

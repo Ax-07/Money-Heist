@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -9,8 +9,7 @@ from app.api.routes.dashboard import router
 from app.dashboard.projection import seeded_dashboard_snapshot
 from app.dashboard.store import DashboardStore
 
-
-NOW = datetime(2026, 9, 7, 18, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 18, 0, tzinfo=UTC)
 
 
 def client() -> TestClient:

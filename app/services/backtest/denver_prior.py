@@ -16,7 +16,6 @@ from .setup_stats import (
 )
 from .splits import BacktestPeriodRole
 
-
 FROZEN_DENVER_PRIOR_VERSION = "frozen-denver-prior-v1"
 FROZEN_DENVER_PRIOR_SCHEMA = "money-heist.denver-prior.v1"
 FROZEN_DENVER_CONTEXT_BINDING_VERSION = "frozen-denver-decision-context-v1"
@@ -150,7 +149,7 @@ class FrozenDenverPriorCatalog:
         return canonical_json(payload)
 
     @classmethod
-    def from_json(cls, payload: str) -> "FrozenDenverPriorCatalog":
+    def from_json(cls, payload: str) -> FrozenDenverPriorCatalog:
         raw = json.loads(payload)
         if raw.get("schema") != FROZEN_DENVER_PRIOR_SCHEMA:
             raise ValueError("unsupported frozen Denver prior schema")
@@ -236,7 +235,7 @@ class FrozenDenverPriorContextProvider:
         config: Any,
         period_start: datetime,
         formal_oos: bool,
-    ) -> "FrozenDenverPriorContextProvider":
+    ) -> FrozenDenverPriorContextProvider:
         prior.validate_for_target(
             period_start=period_start,
             formal_oos=formal_oos,

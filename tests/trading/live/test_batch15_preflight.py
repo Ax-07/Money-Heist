@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.domain.enums import SystemMode
 from app.trading.live.activation import (
@@ -8,19 +8,19 @@ from app.trading.live.activation import (
 )
 from app.trading.live.preflight import (
     INITIAL_LIVE_SYMBOLS,
+    REQUIRED_KRAKEN_PERMISSIONS,
     LiveCheckState,
     LivePreflight,
     LivePreflightContext,
     LivePreflightReasonCode,
     LivePreflightStatus,
     MarketReadiness,
-    REQUIRED_KRAKEN_PERMISSIONS,
 )
 from app.trading.live.store import InMemoryLiveAuditSink
 from app.trading.risk.kill_switch import KillSwitch
 from app.trading.risk.profiles import demo_profile, unresolved_profile
 
-NOW = datetime(2026, 9, 7, 22, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 22, 0, tzinfo=UTC)
 
 
 def ready_market():

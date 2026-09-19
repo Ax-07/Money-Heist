@@ -9,7 +9,6 @@ from app.evaluation.forward_outcomes import (
     compute_forward_outcomes,
 )
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 INTERVAL = timedelta(hours=1)
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-import hashlib
 from types import SimpleNamespace
 
 from app.agents.models import AgentRegistryEntry, AgentRole, AgentState

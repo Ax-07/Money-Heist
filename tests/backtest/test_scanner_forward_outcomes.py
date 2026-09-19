@@ -9,7 +9,6 @@ from app.services.backtest.scanner_forward_outcomes import (
     build_scanner_forward_outcomes_report,
 )
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 

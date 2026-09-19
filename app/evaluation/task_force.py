@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import MappingProxyType
-from typing import Mapping
 
 from app.task_force.aggregation import (
     TaskForceReport,
@@ -17,7 +17,7 @@ from app.task_force.execution_runtime import (
     TaskForceMultiMemberExecution,
 )
 
-from .models import Metric, MetricStatus, ZERO
+from .models import ZERO, Metric, MetricStatus
 
 
 @dataclass(frozen=True, slots=True)

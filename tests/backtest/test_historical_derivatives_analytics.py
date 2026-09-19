@@ -8,7 +8,6 @@ from app.services.backtest.historical_derivatives_analytics import (
     HistoricalDerivativesAnalyticsArchive,
 )
 
-
 START = datetime(2025, 9, 11, tzinfo=UTC)
 
 

@@ -16,10 +16,10 @@ from app.market.historical import import_candles_csv
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
 from app.market.structure import build_market_structure_context
 from app.services.decision_context import (
+    RISK_CONTEXT_BINDING_VERSION,
     ContextAvailability,
     OptionalContextSection,
     ProvenanceRecord,
-    RISK_CONTEXT_BINDING_VERSION,
     build_decision_context,
 )
 from app.trading.risk.models import MarketConstraints, PortfolioRiskState

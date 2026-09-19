@@ -15,12 +15,6 @@ from .composition import (
     TaskForceReputationSnapshot,
     compose_task_force_members,
 )
-from .composition_closure import (
-    TaskForceCompositionClosure,
-    TaskForceCompositionClosureManifest,
-    close_task_force_composition,
-    task_force_plan_fingerprint,
-)
 from .composition_audit import (
     TaskForceCompositionAudit,
     TaskForceCompositionAuditStatus,
@@ -31,6 +25,12 @@ from .composition_audit import (
     task_force_composition_policy_fingerprint,
     task_force_registry_fingerprint,
     task_force_reputation_evidence_fingerprint,
+)
+from .composition_closure import (
+    TaskForceCompositionClosure,
+    TaskForceCompositionClosureManifest,
+    close_task_force_composition,
+    task_force_plan_fingerprint,
 )
 from .execution import (
     TaskForceExecutionContract,

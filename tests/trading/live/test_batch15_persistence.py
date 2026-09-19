@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -18,7 +18,7 @@ from app.trading.live.models import (
 from app.trading.live.store import SqlAlchemyLiveAuditSink, SqlAlchemyLiveOrderStore
 from app.trading.paper.models import OrderSide, OrderType
 
-NOW = datetime(2026, 9, 7, 20, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 20, 0, tzinfo=UTC)
 
 
 def intent():

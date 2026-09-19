@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -20,7 +20,7 @@ class Candle:
 
 
 def make_candles(count: int = 60, *, trend: float = 0.5) -> list[Candle]:
-    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    start = datetime(2026, 1, 1, tzinfo=UTC)
     candles: list[Candle] = []
     for index in range(count):
         close = 100.0 + trend * index
@@ -100,5 +100,7 @@ def test_duplicate_timestamps_are_rejected() -> None:
 
 
 def test_market_regime_is_bullish_on_strong_uptrend() -> None:
-    snapshot = FeatureEngine().compute(make_candles(80, trend=1.0), symbol="BTCUSDT", timeframe="5m")
+    snapshot = FeatureEngine().compute(
+        make_candles(80, trend=1.0), symbol="BTCUSDT", timeframe="5m"
+    )
     assert snapshot.regime == MarketRegime.BULLISH_TREND

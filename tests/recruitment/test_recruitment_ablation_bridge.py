@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 
 from app.recruitment import (
+    RecruitmentAblationSemantics,
     RecruitmentBaselineSpec,
     RecruitmentCampaignExecutionReport,
     RecruitmentEvidencePurpose,
@@ -14,7 +15,6 @@ from app.recruitment import (
     RecruitmentProposal,
     RecruitmentSuccessCriterion,
     RecruitmentVariantExecution,
-    RecruitmentAblationSemantics,
     bridge_recruitment_to_ablation,
     build_recruitment_campaign,
     evaluate_recruitment_evidence,
@@ -172,7 +172,10 @@ def test_oos_promotion_evidence_bridges_to_batch18_ablation_semantics() -> None:
     bridged = bridge_recruitment_to_ablation(plan, candidate, execution, gate)
     comparison = bridged.comparison
 
-    assert bridged.semantics is RecruitmentAblationSemantics.FULL_WITH_CANDIDATE_VS_WITHOUT_CANDIDATE_BASELINE
+    assert (
+        bridged.semantics
+        is RecruitmentAblationSemantics.FULL_WITH_CANDIDATE_VS_WITHOUT_CANDIDATE_BASELINE
+    )
     assert comparison.agent_id == plan.candidate_agent_id
     assert comparison.baseline_run_id == plan.with_candidate.run.run_id
     assert comparison.ablated_run_id == plan.baseline.run.run_id

@@ -14,7 +14,6 @@ from uuid import NAMESPACE_URL, uuid5
 from app.market.features.multitimeframe import MultiTimeframeFeatureContext
 from app.trading.risk.models import MarketConstraints, PortfolioRiskState
 
-
 AGENT_CONTEXT_BINDING_VERSION = "decision-context-agent-binding-v1"
 RISK_CONTEXT_BINDING_VERSION = "portfolio-market-constraints-v1"
 
@@ -46,9 +45,7 @@ def _canonicalize(value: Any) -> Any:
             return "0"
         return format(value.normalize(), "f")
     if isinstance(value, datetime):
-        return _as_utc(value, field="canonical datetime").isoformat().replace(
-            "+00:00", "Z"
-        )
+        return _as_utc(value, field="canonical datetime").isoformat().replace("+00:00", "Z")
     if isinstance(value, StrEnum):
         return value.value
     if isinstance(value, Mapping):
@@ -90,9 +87,7 @@ def _json_safe_payload(value: Any) -> Any:
             raise ValueError("payload decimals must be finite")
         return format(value, "f")
     if isinstance(value, datetime):
-        return _as_utc(value, field="payload datetime").isoformat().replace(
-            "+00:00", "Z"
-        )
+        return _as_utc(value, field="payload datetime").isoformat().replace("+00:00", "Z")
     if isinstance(value, StrEnum):
         return value.value
     if isinstance(value, Mapping):
@@ -116,6 +111,7 @@ def decision_context_payload(context: DecisionContextV1) -> dict[str, Any]:
         raise TypeError("DecisionContext payload must serialize to a mapping")
     return payload
 
+
 @dataclass(frozen=True, slots=True)
 class ProvenanceRecord:
     component: str
@@ -132,7 +128,9 @@ class ProvenanceRecord:
         quality = self.quality.strip().upper()
         observed_at = _as_utc(self.observed_at, field="observed_at")
         available_at = _as_utc(self.available_at, field="available_at")
-        missing = tuple(sorted(str(item).strip() for item in self.missing_fields if str(item).strip()))
+        missing = tuple(
+            sorted(str(item).strip() for item in self.missing_fields if str(item).strip())
+        )
 
         if not component:
             raise ValueError("provenance component must not be empty")
@@ -147,9 +145,7 @@ class ProvenanceRecord:
             if len(fingerprint) != 64 or any(
                 char not in "0123456789abcdef" for char in fingerprint
             ):
-                raise ValueError(
-                    "source_fingerprint must be a 64-character hex digest"
-                )
+                raise ValueError("source_fingerprint must be a 64-character hex digest")
             object.__setattr__(self, "source_fingerprint", fingerprint)
 
         object.__setattr__(self, "component", component)
@@ -281,9 +277,7 @@ class DecisionContextV1:
         frozen_provenance = MappingProxyType(dict(sorted(self.provenance.items())))
         for key, record in frozen_provenance.items():
             if record.component != key:
-                raise ValueError(
-                    "provenance mapping key must match ProvenanceRecord.component"
-                )
+                raise ValueError("provenance mapping key must match ProvenanceRecord.component")
             if record.available_at > as_of:
                 raise ValueError(
                     f"lookahead rejected: {key}.available_at is later than DecisionContext.as_of"
@@ -292,28 +286,16 @@ class DecisionContextV1:
         market_provenance = frozen_provenance.get("market")
         if market_provenance is None:
             raise ValueError("DecisionContext requires market provenance")
-        if (
-            market_provenance.source_fingerprint
-            != self.market.context_fingerprint
-        ):
-            raise ValueError(
-                "market provenance fingerprint must match MTF feature context"
-            )
+        if market_provenance.source_fingerprint != self.market.context_fingerprint:
+            raise ValueError("market provenance fingerprint must match MTF feature context")
         if self.portfolio_summary is not None and "portfolio_summary" not in frozen_provenance:
-            raise ValueError(
-                "portfolio_summary requires provenance"
-            )
+            raise ValueError("portfolio_summary requires provenance")
         if self.market_constraints is not None and "market_constraints" not in frozen_provenance:
-            raise ValueError(
-                "market_constraints requires provenance"
-            )
+            raise ValueError("market_constraints requires provenance")
 
         for name in ("structure", "derivatives", "statistics", "microstructure"):
             section = getattr(self, name)
-            if (
-                section.status is ContextAvailability.AVAILABLE
-                and name not in frozen_provenance
-            ):
+            if section.status is ContextAvailability.AVAILABLE and name not in frozen_provenance:
                 raise ValueError(f"{name} requires provenance")
 
         expected_missing = set()
@@ -438,9 +420,7 @@ def build_decision_context(
 
     as_of = _as_utc(as_of, field="as_of")
     if market.observed_at != as_of:
-        raise ValueError(
-            "market.observed_at must equal DecisionContext as_of"
-        )
+        raise ValueError("market.observed_at must equal DecisionContext as_of")
 
     structure = structure or OptionalContextSection.unavailable(
         "market-structure parity not wired yet"
@@ -456,9 +436,7 @@ def build_decision_context(
     )
 
     portfolio_summary = (
-        PortfolioSummary.from_state(portfolio_state)
-        if portfolio_state is not None
-        else None
+        PortfolioSummary.from_state(portfolio_state) if portfolio_state is not None else None
     )
     constraints_summary = (
         MarketConstraintsSummary.from_constraints(market_constraints)
@@ -466,17 +444,10 @@ def build_decision_context(
         else None
     )
 
-    quality = (
-        "COMPLETE"
-        if market.all_warmups_complete
-        else "PARTIAL"
-    )
+    quality = "COMPLETE" if market.all_warmups_complete else "PARTIAL"
     market_missing = tuple(
         [f"missing:{item}" for item in market.missing_timeframes]
-        + [
-            f"warmup:{item}"
-            for item in market.warmup_incomplete_timeframes
-        ]
+        + [f"warmup:{item}" for item in market.warmup_incomplete_timeframes]
     )
     provenance_map: dict[str, ProvenanceRecord] = {
         "market": ProvenanceRecord(

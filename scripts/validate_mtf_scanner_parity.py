@@ -113,7 +113,7 @@ def main() -> int:
         mismatch = next(
             index
             for index, pair in enumerate(
-                zip(native_signature, derived_signature)
+                zip(native_signature, derived_signature, strict=False)
             )
             if pair[0] != pair[1]
         )

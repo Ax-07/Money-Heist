@@ -265,7 +265,9 @@ def _assert_identity_and_lineage(
         advisory.recruitment_id,
     }
     if len(ids) != 1:
-        raise ValueError("candidate, package, lifecycle and advisory must target one recruitment_id")
+        raise ValueError(
+            "candidate, package, lifecycle and advisory must target one recruitment_id"
+        )
     if candidate_runtime_agent_id(candidate) != advisory.candidate_agent_id:
         raise ValueError("candidate runtime identity does not match advisory")
     if package.candidate_agent_id != advisory.candidate_agent_id:

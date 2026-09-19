@@ -9,7 +9,6 @@ from app.services.backtest.historical_derivatives import (
     normalize_kraken_funding_csv,
 )
 
-
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
 

@@ -11,7 +11,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.agents.models import AgentRegistryEntry, AgentRole, AgentState
 
-
 _UNSAFE_TOOL_FRAGMENTS = (
     "broker",
     "exchange",

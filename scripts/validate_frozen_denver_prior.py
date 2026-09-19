@@ -45,9 +45,8 @@ def main() -> int:
     elif args.formal_oos:
         raise SystemExit("--formal-oos requires --target-start")
 
-    if prior.policy is DenverPriorPolicy.STRICT_PRE_OOS:
-        if "OOS" in prior.source_period_roles:
-            raise SystemExit("STRICT_PRE_OOS prior contains OOS observations")
+    if prior.policy is DenverPriorPolicy.STRICT_PRE_OOS and "OOS" in prior.source_period_roles:
+        raise SystemExit("STRICT_PRE_OOS prior contains OOS observations")
 
     if any(
         item.closed_at > prior.cutoff

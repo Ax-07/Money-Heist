@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import contextlib
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from app.market.features.models import FeatureSnapshot
 from app.market.scanner.models import CandidateOpportunity
@@ -64,7 +66,7 @@ class PaperTradingPipeline:
         self.market_constraints_provider = market_constraints_provider
         self.kill_switch_provider = kill_switch_provider
         self.journal = journal
-        self._clock = clock or (lambda: datetime.now(timezone.utc))
+        self._clock = clock or (lambda: datetime.now(UTC))
 
     async def run(
         self,
@@ -90,10 +92,11 @@ class PaperTradingPipeline:
         position_after = None
 
         effective_now = now or self._clock()
-        if effective_now.tzinfo is None:
-            effective_now = effective_now.replace(tzinfo=timezone.utc)
-        else:
-            effective_now = effective_now.astimezone(timezone.utc)
+        effective_now = (
+            effective_now.replace(tzinfo=UTC)
+            if effective_now.tzinfo is None
+            else effective_now.astimezone(UTC)
+        )
 
         def result(
             status: PaperPipelineStatus,
@@ -161,14 +164,10 @@ class PaperTradingPipeline:
                 orchestration_kwargs["decision_context"] = decision_context
             if specialist_contexts is not None:
                 orchestration_kwargs["specialist_contexts"] = specialist_contexts
-            orchestration_result = await self.orchestration.run(
-                **orchestration_kwargs
-            )
+            orchestration_result = await self.orchestration.run(**orchestration_kwargs)
         except Exception as exc:
-            try:
+            with contextlib.suppress(Exception):
                 emit("orchestration", "FAILED", error=type(exc).__name__)
-            except Exception:
-                pass
             return fail(
                 PaperPipelineFailureCode.ORCHESTRATION_UNAVAILABLE,
                 "orchestration",
@@ -377,15 +376,13 @@ class PaperTradingPipeline:
             return fail(PaperPipelineFailureCode.AUDIT_UNAVAILABLE, "execution_claim", str(exc))
 
         if not claimed:
-            try:
+            with contextlib.suppress(Exception):
                 emit(
                     "execution_claim",
                     "SKIPPED",
                     proposal_id=proposal_id,
                     reason="duplicate_opportunity_or_proposal",
                 )
-            except Exception:
-                pass
             return result(
                 PaperPipelineStatus.DUPLICATE_BLOCKED,
                 failure=PaperPipelineFailure(
@@ -457,9 +454,7 @@ class PaperTradingPipeline:
                 filled_quantity=str(fill.quantity),
                 fill_price=str(fill.price),
                 position_side=(
-                    position_after.side.value
-                    if position_after and position_after.side
-                    else "FLAT"
+                    position_after.side.value if position_after and position_after.side else "FLAT"
                 ),
                 position_quantity=(str(position_after.quantity) if position_after else "0"),
             )

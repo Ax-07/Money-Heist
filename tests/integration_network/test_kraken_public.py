@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -15,7 +15,6 @@ from app.market.exchange import (
     StdlibJsonTransport,
 )
 from app.market.quality import FreshnessPolicy
-
 
 pytestmark = pytest.mark.skipif(
     os.getenv("MONEY_HEIST_RUN_NETWORK_TESTS") != "1",
@@ -59,6 +58,6 @@ def test_kraken_public_metadata_price_and_ohlc_smoke():
     assert metadata.min_qty > Decimal("0")
     assert metadata.min_notional > Decimal("0")
     assert current.price > Decimal("0")
-    assert current.observed_at <= datetime.now(timezone.utc) + timedelta(seconds=5)
+    assert current.observed_at <= datetime.now(UTC) + timedelta(seconds=5)
     assert candles
     assert candles[-1].is_closed is False

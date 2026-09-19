@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from math import isfinite
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any
 
 from app.market.models import Candle, MarketSnapshot
 from app.market.quality import (
@@ -25,7 +26,6 @@ from .models import (
     UnsafeMarketDataError,
 )
 from .transport import ResilientPublicHttpClient
-
 
 KRAKEN_PUBLIC_BASE_URL = "https://api.kraken.com/0/public"
 KRAKEN_SOURCE = "kraken_spot"
@@ -80,7 +80,7 @@ class KrakenPublicMarketDataProvider:
         client: ResilientPublicHttpClient,
         *,
         config: KrakenAdapterConfig,
-        now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._client = client
         self.config = config
@@ -432,7 +432,7 @@ class KrakenPublicMarketDataProvider:
         if not isfinite(seconds) or seconds <= 0:
             raise ExchangePayloadError(f"Kraken {field} must be a positive finite timestamp")
         try:
-            return datetime.fromtimestamp(seconds, tz=timezone.utc)
+            return datetime.fromtimestamp(seconds, tz=UTC)
         except (OverflowError, OSError, ValueError) as exc:
             raise ExchangePayloadError(f"Kraken {field} is out of range") from exc
 
@@ -448,5 +448,5 @@ class KrakenPublicMarketDataProvider:
         value = self._now()
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("now() must return a timezone-aware datetime")
-        return value.astimezone(timezone.utc)
+        return value.astimezone(UTC)
 

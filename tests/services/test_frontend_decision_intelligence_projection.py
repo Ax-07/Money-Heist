@@ -155,7 +155,9 @@ def test_old_campaign_without_analytics_is_explicitly_available_false() -> None:
 
 def test_bundle_round_trip_and_opportunity_detail_are_deterministic() -> None:
     bundle = _bundle()
-    service = FrontendDecisionIntelligenceProjectionService(FakeStore(payload=bundle_to_json(bundle)))
+    service = FrontendDecisionIntelligenceProjectionService(
+        FakeStore(payload=bundle_to_json(bundle))
+    )
 
     first = service.decision_detail("campaign-1", "OOS", "opp-1")
     second = service.decision_detail("campaign-1", "OOS", "opp-1")
@@ -169,7 +171,9 @@ def test_bundle_round_trip_and_opportunity_detail_are_deterministic() -> None:
 
 
 def test_unknown_opportunity_is_not_hidden_when_bundle_exists() -> None:
-    service = FrontendDecisionIntelligenceProjectionService(FakeStore(payload=bundle_to_json(_bundle())))
+    service = FrontendDecisionIntelligenceProjectionService(
+        FakeStore(payload=bundle_to_json(_bundle()))
+    )
     with pytest.raises(OpportunityNotFoundError):
         service.decision_detail("campaign-1", "OOS", "missing-opportunity")
 

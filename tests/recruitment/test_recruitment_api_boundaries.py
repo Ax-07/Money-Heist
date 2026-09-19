@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 ROUTE = ROOT / "app" / "api" / "routes" / "recruitment.py"
 API = ROOT / "app" / "recruitment" / "api.py"

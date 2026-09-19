@@ -4,7 +4,6 @@ from decimal import Decimal
 
 from .models import RiskProfile
 
-
 # Source-of-truth note:
 # The project documentation deliberately leaves the numeric risk limits open.
 # Therefore Batch 05 does NOT ship an implicitly LIVE-authorized Balanced

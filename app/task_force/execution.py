@@ -25,7 +25,6 @@ from .models import (
     task_force_request_fingerprint,
 )
 
-
 TASK_FORCE_MEMBER_INSTRUCTIONS_FR_V1 = (
     "Retourne uniquement un TaskForceMemberAnalysis consultatif et fondé sur les données fournies. "
     "Utilise uniquement le contexte fourni et identifie explicitement les incertitudes. Ne crée "

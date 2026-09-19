@@ -8,7 +8,6 @@ from app.services.decision_context import (
     RISK_CONTEXT_BINDING_VERSION,
 )
 
-
 MTF_RUNTIME_VERSION = "historical-mtf-runtime-v1"
 MTF_DECISION_TIMEFRAME = "1h"
 MTF_TIMEFRAMES = ("15m", "1h", "4h", "1d")

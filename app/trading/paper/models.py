@@ -5,7 +5,6 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 
-
 ZERO = Decimal("0")
 
 
@@ -81,7 +80,7 @@ class BrokerOrder:
     reject_reason: str | None = None
     trigger: str | None = None
 
-    def with_update(self, **changes: object) -> "BrokerOrder":
+    def with_update(self, **changes: object) -> BrokerOrder:
         return replace(self, **changes)
 
 

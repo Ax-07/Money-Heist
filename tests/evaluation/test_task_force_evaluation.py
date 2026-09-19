@@ -29,7 +29,6 @@ from app.task_force.execution_runtime import (
     TaskForceMultiMemberExecution,
 )
 
-
 SHA_A = "a" * 64
 SHA_B = "b" * 64
 SHA_C = "c" * 64

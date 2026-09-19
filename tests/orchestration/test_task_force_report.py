@@ -17,7 +17,6 @@ from app.task_force.aggregation import (
     TaskForceReport,
 )
 
-
 NOW = datetime(2026, 9, 9, 15, 0, tzinfo=UTC)
 
 

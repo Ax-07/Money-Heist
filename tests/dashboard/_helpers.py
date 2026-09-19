@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 
 from app.services.shadow.identities import default_shadow_systems
 
-
-NOW = datetime(2026, 9, 7, 17, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 7, 17, 0, tzinfo=UTC)
 
 
 def ns(**kwargs):

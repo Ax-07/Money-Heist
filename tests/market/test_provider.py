@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -11,8 +11,8 @@ def test_in_memory_provider_implements_market_data_protocol():
     snapshot = MarketSnapshot(
         symbol="BTCUSDT",
         source="test",
-        observed_at=datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc),
-        received_at=datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc),
+        observed_at=datetime(2026, 9, 7, 12, 0, tzinfo=UTC),
+        received_at=datetime(2026, 9, 7, 12, 0, tzinfo=UTC),
         quality=SnapshotQuality(),
     )
     provider = InMemoryMarketDataProvider(snapshots={"BTCUSDT": snapshot})
