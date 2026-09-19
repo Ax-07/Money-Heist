@@ -15,6 +15,17 @@ class TradeSide(StrEnum):
     SHORT = "SHORT"
 
 
+class MarketPositioningMode(StrEnum):
+    """Whether the market can open net short exposure."""
+
+    SPOT_LONG_ONLY = "SPOT_LONG_ONLY"
+    LONG_SHORT = "LONG_SHORT"
+
+    @property
+    def allows_short(self) -> bool:
+        return self is MarketPositioningMode.LONG_SHORT
+
+
 class RiskDecisionStatus(StrEnum):
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
@@ -45,6 +56,7 @@ class RiskReasonCode(StrEnum):
     MAX_LEVERAGE = "MAX_LEVERAGE"
     MIN_EXPECTED_RR = "MIN_EXPECTED_RR"
     INVALID_MARKET_CONSTRAINTS = "INVALID_MARKET_CONSTRAINTS"
+    SHORT_NOT_SUPPORTED = "SHORT_NOT_SUPPORTED"
     MIN_QUANTITY = "MIN_QUANTITY"
     MIN_NOTIONAL = "MIN_NOTIONAL"
     NO_RISK_BUDGET = "NO_RISK_BUDGET"
@@ -126,6 +138,7 @@ class MarketConstraints:
     min_notional: Decimal
     max_qty: Decimal | None = None
     max_leverage: Decimal | None = None
+    positioning_mode: MarketPositioningMode = MarketPositioningMode.LONG_SHORT
 
 
 @dataclass(frozen=True, slots=True)

@@ -9,6 +9,7 @@ import pytest
 from app.trading.risk import (
     KillSwitchState,
     MarketConstraints,
+    MarketPositioningMode,
     PortfolioRiskState,
     RiskDecisionStatus,
     RiskEngine,
@@ -150,6 +151,20 @@ def test_short_trade_with_stop_above_entry_is_valid(engine, proposal, portfolio,
         now=NOW,
     )
     assert decision.is_authorized is True
+
+
+def test_spot_long_only_rejects_short_entry(engine, proposal, portfolio, market) -> None:
+    short = replace(proposal, side=TradeSide.SHORT, stop_price=Decimal("102"))
+    spot = replace(market, positioning_mode=MarketPositioningMode.SPOT_LONG_ONLY)
+    decision = engine.evaluate(
+        proposal=short,
+        portfolio=portfolio,
+        profile=demo_profile(),
+        market=spot,
+        now=NOW,
+    )
+    assert decision.status is RiskDecisionStatus.REJECTED
+    assert decision.reason_codes == (RiskReasonCode.SHORT_NOT_SUPPORTED,)
 
 
 def test_rejects_expired_signal(engine, proposal, portfolio, market) -> None:

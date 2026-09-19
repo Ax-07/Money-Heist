@@ -159,6 +159,7 @@ class PaperAblationRuntimeFactory:
                 maker_fee_bps=run.config.maker_fee_bps,
                 taker_fee_bps=run.config.taker_fee_bps,
                 market_slippage_bps=run.config.market_slippage_bps,
+                allow_short=self.settings.market_constraints.positioning_mode.allows_short,
             ),
             id_factory=ReplayIdFactory(run.run_id),
             clock=clock,
@@ -179,11 +180,17 @@ class PaperAblationRuntimeFactory:
         specialist_instances = {
             agent_id: factory(gateway) for agent_id, factory in specialists.items()
         }
+        allowed_trade_directions = (
+            ("LONG", "SHORT")
+            if self.settings.market_constraints.positioning_mode.allows_short
+            else ("LONG",)
+        )
         orchestration = OrchestrationPipeline(
             gateway=gateway,
             budget=budget,
             specialists=specialist_instances,
             specialist_context_provider=self.settings.specialist_context_provider,
+            allowed_trade_directions=allowed_trade_directions,
         )
         market_constraints_provider = InMemoryMarketConstraintsProvider(
             {run.dataset.symbol: self.settings.market_constraints}

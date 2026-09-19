@@ -289,6 +289,7 @@ class MarketCandlesView(FrozenModel):
 class MarketConstraintsView(FrozenModel):
     symbol: str
     source: str = "kraken_spot"
+    positioning_mode: Literal["SPOT_LONG_ONLY", "LONG_SHORT"] = "SPOT_LONG_ONLY"
     tick_size: str
     qty_step: str
     min_qty: str

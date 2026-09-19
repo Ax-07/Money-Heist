@@ -10,7 +10,7 @@ from app.task_force.execution import TASK_FORCE_MEMBER_INSTRUCTIONS_FR_V1
 
 
 def test_active_core_prompt_versions_are_native_french() -> None:
-    expected = {"professor": "v7", "palermo": "v4", "lisbon": "v2"}
+    expected = {"professor": "v8", "palermo": "v4", "lisbon": "v2"}
     actual = {entry.agent_id: entry.prompt_version for entry in CORE_AGENT_REGISTRY.list()}
     assert actual == expected
     for agent_id, version in expected.items():
@@ -42,7 +42,7 @@ def test_historical_english_prompts_remain_addressable() -> None:
 
 
 def test_machine_contract_tokens_remain_canonical() -> None:
-    professor = CORE_PROMPTS.get("professor", "v7").instructions
+    professor = CORE_PROMPTS.get("professor", "v8").instructions
     berlin = SPECIALIST_PROMPTS.get("berlin", "v6").instructions
     for token in (
         "LONG",
@@ -52,6 +52,8 @@ def test_machine_contract_tokens_remain_canonical() -> None:
         "source_index",
         "source_key",
         "evidence_source_catalog",
+        "execution_constraints",
+        "allowed_trade_directions",
     ):
         assert token in professor
     for token in ("UNKNOWN", "NEUTRAL", "source_index", "source_key", "data_gaps"):

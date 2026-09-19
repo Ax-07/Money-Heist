@@ -99,7 +99,13 @@ from app.services.paper_pipeline.providers import (
     InMemoryRiskProfileProvider,
 )
 from app.trading.paper import PaperBroker, PaperBrokerConfig
-from app.trading.risk import KillSwitchState, MarketConstraints, RiskEngine, RiskProfile
+from app.trading.risk import (
+    KillSwitchState,
+    MarketConstraints,
+    MarketPositioningMode,
+    RiskEngine,
+    RiskProfile,
+)
 
 MAX_CSV_BYTES = 25_000_000
 DATASET_CSV_DEFAULT_MAX_MB = 256
@@ -229,6 +235,10 @@ class MarketConstraintsInput(FrozenModel):
     min_notional: Decimal = Field(gt=0)
     max_qty: Decimal | None = Field(default=None, gt=0)
     max_leverage: Decimal | None = Field(default=Decimal("1"), gt=0)
+    # Backward-compatible domain default: old persisted campaigns omitted this field
+    # and historically allowed synthetic shorts. Frontend V2 now sends SPOT_LONG_ONLY
+    # explicitly for new Spot campaigns.
+    positioning_mode: MarketPositioningMode = MarketPositioningMode.LONG_SHORT
 
 
 class AIInput(FrozenModel):
@@ -739,7 +749,19 @@ class DeterministicBacktestMockProvider:
         close = Decimal(str(market.get("close") or "0"))
         analyses = payload.get("specialist_analyses") or []
         direction = analyses[0].get("stance") if analyses else cls._stance(payload)
-        if direction not in {"LONG", "SHORT"} or close <= 0:
+        raw_constraints = payload.get("execution_constraints")
+        allowed_directions = {"LONG", "SHORT"}
+        if isinstance(raw_constraints, dict):
+            raw_allowed = raw_constraints.get("allowed_trade_directions")
+            if isinstance(raw_allowed, list):
+                allowed_directions = {
+                    str(item) for item in raw_allowed if str(item) in {"LONG", "SHORT"}
+                }
+        if (
+            direction not in {"LONG", "SHORT"}
+            or direction not in allowed_directions
+            or close <= 0
+        ):
             return {
                 "direction": "NO_TRADE",
                 "confidence": 0.5,
@@ -1395,6 +1417,7 @@ class BacktestDashboardService:
             min_notional=request.min_notional,
             max_qty=request.max_qty,
             max_leverage=request.max_leverage,
+            positioning_mode=request.positioning_mode,
         )
 
     @staticmethod
@@ -1429,6 +1452,7 @@ class BacktestDashboardService:
             "market_min_notional": str(request.market.min_notional),
             "market_max_qty": str(request.market.max_qty),
             "market_max_leverage": str(request.market.max_leverage),
+            "market_positioning_mode": request.market.positioning_mode.value,
             "ai_hard_budget_eur": str(request.ai.hard_budget_eur),
             "ai_reasoning_effort": request.ai.reasoning_effort,
             "ai_input_per_million_eur": str(request.ai.input_per_million_eur),
@@ -1635,6 +1659,7 @@ class BacktestDashboardService:
                 maker_fee_bps=run.config.maker_fee_bps,
                 taker_fee_bps=run.config.taker_fee_bps,
                 market_slippage_bps=run.config.market_slippage_bps,
+                allow_short=market_constraints.positioning_mode.allows_short,
             ),
             id_factory=ReplayIdFactory(run.run_id),
             clock=clock,
@@ -1711,7 +1736,16 @@ class BacktestDashboardService:
             retry_backoff_seconds=0,
             usage_recorder=usage,
         )
-        orchestration = OrchestrationPipeline(gateway=gateway, budget=budget)
+        allowed_trade_directions = (
+            ("LONG", "SHORT")
+            if market_constraints.positioning_mode.allows_short
+            else ("LONG",)
+        )
+        orchestration = OrchestrationPipeline(
+            gateway=gateway,
+            budget=budget,
+            allowed_trade_directions=allowed_trade_directions,
+        )
         market_constraints_provider = InMemoryMarketConstraintsProvider(
             {run.dataset.symbol: market_constraints}
         )

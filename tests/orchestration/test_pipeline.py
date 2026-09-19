@@ -230,6 +230,28 @@ def final_no_trade() -> str:
     )
 
 
+def final_short() -> str:
+    return dumps(
+        {
+            "direction": "SHORT",
+            "confidence": 0.72,
+            "thesis": ["bearish evidence supports a conditional short"],
+            "counter_evidence": [],
+            "invalidation": ["price above 105"],
+            "evidence": [
+                {"source_key": "market_context.close", "observation": "close supplied at 100"}
+            ],
+            "trade": {
+                "entry_price": "100",
+                "stop_price": "105",
+                "targets": ["90"],
+                "expected_rr": "2.0",
+            },
+        }
+    )
+
+
+
 def make_context(*, rsi: float | None = 62.0) -> FeatureSnapshot:
     return FeatureSnapshot(
         feature_version="features-v1",
@@ -279,6 +301,7 @@ def make_pipeline(
     max_attempts=1,
     gate_policy=None,
     client_cls=ScriptedClient,
+    allowed_trade_directions=("LONG", "SHORT"),
 ):
     ledger = AIBudgetLedger(budget)
     client = client_cls(scripted)
@@ -312,7 +335,12 @@ def make_pipeline(
         retry_backoff_seconds=0,
     )
     gate = ComputeGate(ledger, gate_policy) if gate_policy else ComputeGate(ledger)
-    return OrchestrationPipeline(gateway=gateway, budget=ledger, compute_gate=gate), client, ledger
+    return OrchestrationPipeline(
+        gateway=gateway,
+        budget=ledger,
+        compute_gate=gate,
+        allowed_trade_directions=allowed_trade_directions,
+    ), client, ledger
 
 
 def nominal_script(plan=None, final=None):
@@ -812,3 +840,30 @@ async def test_incoherent_decision_context_fails_before_any_ai_call():
     assert result.status is PipelineStatus.FAILED
     assert result.failure.code is PipelineFailureCode.INVALID_CONTEXT
     assert client.requests == []
+
+
+@sync_test
+async def test_spot_long_only_rejects_forbidden_professor_short():
+    pipeline, client, _ = make_pipeline(
+        nominal_script(final=final_short()),
+        allowed_trade_directions=("LONG",),
+    )
+    result = await pipeline.run(opportunity=make_opportunity(), market_context=make_context())
+
+    assert result.status is PipelineStatus.FAILED
+    assert result.trade_proposal is None
+    assert result.failure is not None
+    assert result.failure.code is PipelineFailureCode.INVALID_PROFESSOR_OUTPUT
+    assert "forbidden by execution constraints" in result.failure.message
+
+    final_request = next(
+        request for request in client.requests
+        if request.agent_id == "professor" and request.metadata["phase"] == "finalize"
+    )
+    payload = json.loads(final_request.input_text)
+    assert payload["execution_constraints"] == {
+        "allowed_trade_directions": ["LONG"],
+        "no_trade_allowed": True,
+    }
+    catalog_keys = {entry["source_key"] for entry in payload["evidence_source_catalog"]}
+    assert not any(key.startswith("execution_constraints") for key in catalog_keys)

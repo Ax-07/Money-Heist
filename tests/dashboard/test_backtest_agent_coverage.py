@@ -199,3 +199,41 @@ def test_deterministic_mock_v5_uses_indexed_professor_final_evidence() -> None:
 
     asyncio.run(scenario())
 
+
+
+def test_deterministic_mock_v8_spot_long_only_converts_bearish_to_no_trade() -> None:
+    async def scenario() -> None:
+        provider = DeterministicBacktestMockProvider()
+        request = ProviderRequest(
+            request_id=uuid4(),
+            system_id="balanced_v1",
+            agent_id="professor",
+            model_id="mock-backtest-v1",
+            input_text=json.dumps(
+                {
+                    "evidence_source_catalog": [
+                        {"source_index": 0, "source_key": "market_context.close"}
+                    ],
+                    "market_context": {"close": 100.0, "regime": "BEARISH_TREND"},
+                    "specialist_analyses": [{"stance": "SHORT"}],
+                    "execution_constraints": {
+                        "allowed_trade_directions": ["LONG"],
+                        "no_trade_allowed": True,
+                    },
+                },
+                sort_keys=True,
+            ),
+            schema_name="ProfessorFinalDecision",
+            json_schema={},
+            max_output_tokens=1200,
+            timeout_seconds=5,
+            metadata={"phase": "finalize", "prompt_version": "v8"},
+        )
+
+        response = await provider.complete(request)
+        payload = json.loads(response.output_text)
+        assert payload["direction"] == "NO_TRADE"
+        assert payload["trade"] is None
+        assert payload["evidence"] == []
+
+    asyncio.run(scenario())

@@ -1190,3 +1190,24 @@ Une nouvelle conversation ne doit pas reconstruire l'état du projet uniquement 
 - `04` et `07` passent du statut historique « spécification initiale » à « référence active » ;
 - les documents de batch restent disponibles sous `docs/archives/` mais ne sont pas une source d'état courant ;
 - aucune autorité Scanner, Agents, Risk, PAPER ou LIVE n'est modifiée par ce réalignement.
+
+### ADR-048 — Positionnement marché explicite et Spot long-only
+
+**Date :** 2026-09-19
+**Statut :** ACCEPTED
+
+**Décision :**
+Toute campagne historique destinée à représenter le premier marché Spot déclare explicitement `SPOT_LONG_ONLY`. Le mode générique `LONG_SHORT` reste disponible uniquement pour les marchés/runtimes qui autorisent réellement l’ouverture d’une exposition nette short.
+
+Pour `SPOT_LONG_ONLY` :
+- Professor FINAL reçoit `allowed_trade_directions=[LONG]` et doit produire `LONG` ou `NO_TRADE` ;
+- une direction interdite n’est jamais convertie automatiquement en LONG ;
+- le Risk Engine rejette défensivement toute proposition SHORT avec `SHORT_NOT_SUPPORTED` ;
+- le PaperBroker est configuré `allow_short=False`, ce qui interdit l’ouverture nette SHORT tout en autorisant une vente qui réduit/clôture un LONG existant ;
+- la capability entre dans les hypothèses matérielles de `BacktestConfig` et modifie le `run_id`.
+
+**Raison :**
+Aligner les preuves historiques avec ADR-020 et le premier LIVE Kraken Spot, qui refuse déjà les entrées SHORT. Une campagne autorisant des shorts mesure une stratégie inexécutable telle quelle sur cette cible.
+
+**Conséquence :**
+La première campagne 1 mois exécutée avant ADR-048 reste un smoke technique valide de la chaîne, mais ne constitue pas une baseline économique Spot. Elle doit être rejouée en `SPOT_LONG_ONLY` avant les campagnes empiriques 3/6/9/12 mois.

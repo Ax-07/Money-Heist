@@ -232,6 +232,7 @@ class TheProfessor(CoreAgent):
         palermo_review: dict[str, Any],
         output_model: type[T],
         task_force_report: dict[str, Any] | None = None,
+        execution_constraints: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[T]:
         """Finalize through an explicit strict schema while preserving the existing API."""
@@ -244,15 +245,22 @@ class TheProfessor(CoreAgent):
         }
         if task_force_report is not None:
             payload["task_force_report"] = task_force_report
+        if execution_constraints is not None:
+            payload["execution_constraints"] = execution_constraints
 
         provider_output_model = output_model
         allowed_source_keys: tuple[str, ...] | None = None
 
         # Keep historical Professor v4 behavior addressable, while production
         # v5 exposes only atomic leaf paths with explicit index->path mapping.
-        if self.prompt.version in {"v5", "v6", "v7"}:
+        if self.prompt.version in {"v5", "v6", "v7", "v8"}:
+            evidence_payload = {
+                key: value
+                for key, value in payload.items()
+                if key != "execution_constraints"
+            }
             allowed_source_keys = tuple(
-                sorted(_grounded_json_leaf_paths(payload))
+                sorted(_grounded_json_leaf_paths(evidence_payload))
             )
             payload["evidence_source_catalog"] = [
                 {
@@ -283,7 +291,7 @@ class TheProfessor(CoreAgent):
         # Lightweight custom gateways used by older tests may return the
         # canonical model directly; the downstream grounding validator remains.
         if (
-            self.prompt.version in {"v5", "v6", "v7"}
+            self.prompt.version in {"v5", "v6", "v7", "v8"}
             and allowed_source_keys is not None
             and result is not None
             and result.output.__class__ is provider_output_model
@@ -304,6 +312,7 @@ class TheProfessor(CoreAgent):
         specialist_analyses: list[dict[str, Any]],
         palermo_review: dict[str, Any],
         task_force_report: dict[str, Any] | None = None,
+        execution_constraints: dict[str, Any] | None = None,
         opportunity_id: UUID | None = None,
     ) -> AIGatewayResult[ProfessorDecision]:
         return await self.finalize_with_schema(
@@ -314,6 +323,7 @@ class TheProfessor(CoreAgent):
             palermo_review=palermo_review,
             output_model=ProfessorDecision,
             task_force_report=task_force_report,
+            execution_constraints=execution_constraints,
             opportunity_id=opportunity_id,
         )
 

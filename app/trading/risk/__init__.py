@@ -3,6 +3,7 @@ from .kill_switch import KillSwitch
 from .models import (
     KillSwitchState,
     MarketConstraints,
+    MarketPositioningMode,
     PortfolioRiskState,
     RiskDecision,
     RiskDecisionStatus,
@@ -18,6 +19,7 @@ __all__ = [
     "KillSwitch",
     "KillSwitchState",
     "MarketConstraints",
+    "MarketPositioningMode",
     "PortfolioRiskState",
     "RiskDecision",
     "RiskDecisionStatus",

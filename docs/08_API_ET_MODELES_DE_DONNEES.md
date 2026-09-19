@@ -889,3 +889,7 @@ GET /api/frontend/v2/backtests/runs/{campaign_id}/research/evidence?report_type=
 Le premier retourne la projection persistée Decision Quality d'un rôle et agrège les rapports descriptifs Scanner Filtering / Funnel Decision Quality disponibles. Le second pagine l'Evidence Index pour une cohorte sélectionnée ; `stage` est optionnel et `page_size` est borné.
 
 Ces endpoints lisent uniquement les sidecars déjà produits par le post-run 24D.4. Ils ne recalculent ni Forward Outcomes, ni Analytics, ni Decision Intelligence et ne produisent aucune recommandation de tuning. Une campagne historique sans sidecars Research reste explicitement indisponible.
+
+## Addendum 2026-09-19 — `positioning_mode`
+
+`MarketConstraintsInput` accepte `positioning_mode` avec les valeurs `SPOT_LONG_ONLY` ou `LONG_SHORT`. Frontend V2 envoie ce champ explicitement et `GET /api/frontend/v2/market/constraints` publie `SPOT_LONG_ONLY` pour Kraken Spot. Pour compatibilité de relecture, les anciens payloads persistés qui ne possèdent pas ce champ conservent la sémantique historique `LONG_SHORT` ; toute nouvelle campagne Spot du cockpit est explicite.

@@ -60,6 +60,10 @@ class InvalidPipelineContextError(ValueError):
     pass
 
 
+class InvalidProfessorFinalDecisionError(ValueError):
+    pass
+
+
 def _grounded_json_paths(value: Any, prefix: str = "") -> set[str]:
     # Return every real JSON path, including containers.
     paths: set[str] = set()
@@ -153,7 +157,14 @@ class OrchestrationPipeline:
         palermo: Palermo | None = None,
         specialists: Mapping[str, SpecialistAgent] | None = None,
         specialist_context_provider: SpecialistContextProvider | None = None,
+        allowed_trade_directions: tuple[str, ...] = ("LONG", "SHORT"),
     ) -> None:
+        normalized_directions = tuple(dict.fromkeys(allowed_trade_directions))
+        if not normalized_directions or any(
+            direction not in {"LONG", "SHORT"} for direction in normalized_directions
+        ):
+            raise ValueError("allowed_trade_directions must contain LONG and/or SHORT")
+        self.allowed_trade_directions = normalized_directions
         self._budget = budget
         self.compute_gate = compute_gate or ComputeGate(budget)
         self.professor = professor or TheProfessor(gateway)
@@ -640,9 +651,21 @@ class OrchestrationPipeline:
                 palermo_review=palermo_run.review.model_dump(mode="json"),
                 output_model=ProfessorFinalDecision,
                 task_force_report=task_force_payload,
+                execution_constraints={
+                    "allowed_trade_directions": list(self.allowed_trade_directions),
+                    "no_trade_allowed": True,
+                },
                 opportunity_id=opportunity_uuid,
             )
             final_decision = final_result.output
+            if (
+                final_decision.direction != "NO_TRADE"
+                and final_decision.direction not in self.allowed_trade_directions
+            ):
+                raise InvalidProfessorFinalDecisionError(
+                    "Professor FINAL direction is forbidden by execution constraints: "
+                    + final_decision.direction
+                )
             _assert_grounded_final_evidence(
                 final_decision.evidence,
                 opportunity=opportunity_payload,
@@ -672,7 +695,7 @@ class OrchestrationPipeline:
                 calls,
                 events,
             )
-        except StructuredOutputError as exc:
+        except (StructuredOutputError, InvalidProfessorFinalDecisionError) as exc:
             event("professor_finalize", "FAILED", reason=type(exc).__name__)
             return self._failed(
                 opportunity=opportunity,

@@ -768,3 +768,16 @@ Fill filled_at                    : 12:00:07
 
 Les trois timestamps opérationnels ultérieurs restent rattachés à l'`AnalyticsSnapshot @
 12:00:00` lorsque 24B.1 a établi ce match. Aucun nearest-time lookup n'est autorisé.
+
+## Addendum 2026-09-19 — capacité directionnelle du marché
+
+Une campagne historique porte désormais une capacité de positionnement explicite :
+
+```text
+SPOT_LONG_ONLY
+LONG_SHORT
+```
+
+Cette capacité est matérielle : elle est figée dans les hypothèses d’exécution du `BacktestConfig` et change l’identité du run. Pour `SPOT_LONG_ONLY`, Professor FINAL ne peut proposer que `LONG` ou `NO_TRADE`, le Risk Engine rejette défensivement `SHORT_NOT_SUPPORTED`, et le PaperBroker utilise `allow_short=False`. Une vente de clôture/réduction d’un LONG reste valide ; seule l’ouverture ou l’augmentation d’une exposition nette SHORT est interdite.
+
+Le mode bas niveau `LONG_SHORT` est conservé pour les expériences dérivés explicitement compatibles. Les nouvelles campagnes Frontend V2 visant la cible Spot utilisent `SPOT_LONG_ONLY` par défaut.

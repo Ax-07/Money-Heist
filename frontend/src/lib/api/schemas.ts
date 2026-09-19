@@ -111,7 +111,7 @@ export const candleSchema = z.object({
   time: z.number(), open_time: z.string(), close_time: z.string(), open: decimal, high: decimal, low: decimal, close: decimal, volume: decimal, is_closed: z.boolean()
 });
 export const marketCandlesSchema = z.object({symbol: z.string(), timeframe: z.string(), source: z.string(), candles: z.array(candleSchema)});
-export const marketConstraintsSchema = z.object({symbol:z.string(),source:z.string(),tick_size:decimal,qty_step:decimal,min_qty:decimal,min_notional:decimal,max_leverage:decimal,price_precision:z.number(),quantity_precision:z.number(),status:z.string()});
+export const marketConstraintsSchema = z.object({symbol:z.string(),source:z.string(),positioning_mode:z.enum(["SPOT_LONG_ONLY","LONG_SHORT"]),tick_size:decimal,qty_step:decimal,min_qty:decimal,min_notional:decimal,max_leverage:decimal,price_precision:z.number(),quantity_precision:z.number(),status:z.string()});
 
 export const agentTraceSchema = z.object({
   sequence: z.number(), observed_at: z.string(), role: periodRole, opportunity_id: z.string(), agent: z.string(), phase: z.string(), title: z.string(),
@@ -193,7 +193,7 @@ export const riskInputSchema = z.object({
   risk_profile_id: z.string(), risk_version: z.string(), max_risk_per_trade_pct: z.string(), max_daily_loss_pct: z.string(), max_drawdown_pct: z.string(),
   max_portfolio_risk_pct: z.string(), max_positions: z.number().int().positive(), max_leverage: z.string(), max_correlated_exposure_pct: z.string(), min_expected_rr: z.string().nullable()
 });
-export const marketInputSchema = z.object({qty_step: z.string(), min_qty: z.string(), min_notional: z.string(), max_qty: z.string().nullable(), max_leverage: z.string().nullable()});
+export const marketInputSchema = z.object({qty_step: z.string(), min_qty: z.string(), min_notional: z.string(), max_qty: z.string().nullable(), max_leverage: z.string().nullable(), positioning_mode: z.enum(["SPOT_LONG_ONLY","LONG_SHORT"])});
 export const legacyAiInputSchema = z.object({
   mode: z.enum(["MOCK", "CACHED", "LIVE_EVAL"]), hard_budget_eur: z.string(), model_id: z.string(), reasoning_effort: reasoningEffortSchema,
   input_per_million_eur: z.string(), output_per_million_eur: z.string(), cached_input_per_million_eur: z.string().nullable(), mock_agent_coverage: z.boolean()

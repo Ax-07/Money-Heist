@@ -386,3 +386,9 @@ La projection Decision Quality conserve la séparation `DESIGN / VALIDATION / OO
 Le frontend ne calcule aucun Forward Outcome, n'infère aucun seuil et ne transforme pas une cohorte descriptive en recommandation. Les sélections Research restent UI-only. Une campagne ancienne dépourvue de sidecars 24D affiche explicitement l'indisponibilité au lieu de lancer un calcul tardif.
 
 Cette couche complète Decision Intelligence 24C mais ne modifie aucune autorité Scanner, Agents, Risk, PAPER ou LIVE.
+
+## Addendum 2026-09-19 — positionnement Spot dans le Backtest Cockpit
+
+Le Backtest Cockpit expose la capacité directionnelle du marché dans les contraintes de campagne. Les presets Spot BTC/USDC et les contraintes publiques Kraken utilisent `SPOT_LONG_ONLY` par défaut. L’opérateur voit explicitement `SPOT · LONG ONLY` dans la configuration et la revue finale. `LONG_SHORT` reste sélectionnable uniquement pour une expérience dont le marché sous-jacent le permet réellement.
+
+Le frontend ne filtre aucun trade après coup : il transmet la capability au backend, qui reste l’autorité sur Professor/Risk/PAPER.

@@ -28,6 +28,7 @@ describe("backtest config",()=>{
   it("uses BTC/USDC as a first-class historical symbol",()=>{
     expect(HISTORICAL_DATASET_SYMBOLS[0]).toBe("BTC/USDC");
     expect(historicalMarketPreset("BTC/USDC")?.minNotional).toBe("5");
+    expect(historicalMarketPreset("BTC/USDC")?.positioningMode).toBe("SPOT_LONG_ONLY");
   });
   it("detects BTC/USDC and 1m from historical dataset filenames",()=>{
     expect(detectHistoricalDatasetIdentity("btc_usdc_1m_2025-09-11_2026-09-11.csv")).toEqual({symbol:"BTC/USDC",timeframe:"1m"});
@@ -74,6 +75,7 @@ describe("backtest config",()=>{
     const config=buildCampaignConfig(preview,{design_start:0,design_end:1,validation_start:2,validation_end:3,oos_start:4,oos_end:5},form);
     expect(config.risk.max_risk_per_trade_pct).toBe("0.01");
     expect(config.execution.code_version).toBe("deadbeef");
+    expect(config.market.positioning_mode).toBe("SPOT_LONG_ONLY");
     expect(config.walk_forward.enabled).toBe(false);
     expect(config.ai.hard_budget_usd).toBe("1");
     expect("input_per_million_eur" in config.ai).toBe(false);

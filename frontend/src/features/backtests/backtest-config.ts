@@ -2,6 +2,7 @@ import type { CampaignConfig, DatasetPreview, SplitIndices } from "@/lib/api/sch
 
 export type AiMode = "MOCK" | "CACHED" | "LIVE_EVAL";
 export type ReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh" | "max";
+export type PositioningMode = "SPOT_LONG_ONLY" | "LONG_SHORT";
 
 export const HISTORICAL_DATASET_TIMEFRAMES = [
   "1m",
@@ -30,6 +31,7 @@ export type HistoricalMarketPreset = {
   minNotional: string;
   maxQty: string;
   maxLeverage: string;
+  positioningMode: PositioningMode;
 };
 
 const HISTORICAL_MARKET_PRESETS: Record<string, HistoricalMarketPreset> = {
@@ -40,6 +42,7 @@ const HISTORICAL_MARKET_PRESETS: Record<string, HistoricalMarketPreset> = {
     minNotional: "5",
     maxQty: "9000",
     maxLeverage: "1",
+    positioningMode: "SPOT_LONG_ONLY",
   },
 };
 
@@ -121,6 +124,7 @@ export type BacktestFormState = {
   minNotional: string;
   maxQty: string;
   marketMaxLeverage: string;
+  positioningMode: PositioningMode;
   derivativesEnabled: boolean;
   derivativesCsvText: string;
   derivativesMaxAgeSeconds: string;
@@ -163,6 +167,7 @@ export const defaultBacktestForm = (systemId = "balanced_v1"): BacktestFormState
   minNotional: "",
   maxQty: "",
   marketMaxLeverage: "1",
+  positioningMode: "SPOT_LONG_ONLY",
   derivativesEnabled: false,
   derivativesCsvText: "",
   derivativesMaxAgeSeconds: "7200",
@@ -359,7 +364,8 @@ export function buildCampaignConfig(preview: DatasetPreview, indices: SplitIndic
       min_qty: requirePositive(form.minQty, "min_qty"),
       min_notional: requirePositive(form.minNotional, "min_notional"),
       max_qty: form.maxQty.trim() ? requirePositive(form.maxQty, "max_qty") : null,
-      max_leverage: requirePositive(form.marketMaxLeverage, "market max leverage")
+      max_leverage: requirePositive(form.marketMaxLeverage, "market max leverage"),
+      positioning_mode: form.positioningMode
     },
     ai: {
       mode: form.aiMode,

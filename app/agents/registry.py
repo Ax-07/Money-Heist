@@ -31,7 +31,7 @@ CORE_AGENT_REGISTRY = AgentRegistry(
             agent_id="professor",
             role=AgentRole.ORCHESTRATION,
             state=AgentState.ACTIVE,
-            prompt_version="v7",
+            prompt_version="v8",
             model_route="core_reasoning",
             allowed_tools=(),
         ),

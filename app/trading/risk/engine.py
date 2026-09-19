@@ -7,6 +7,7 @@ from .models import (
     ZERO,
     KillSwitchState,
     MarketConstraints,
+    MarketPositioningMode,
     PortfolioRiskState,
     RiskDecision,
     RiskDecisionStatus,
@@ -201,6 +202,9 @@ class RiskEngine:
         if not self._valid_market(market):
             return self._reject(proposal, RiskReasonCode.INVALID_MARKET_CONSTRAINTS, now=now)
 
+        if proposal.side is TradeSide.SHORT and not market.positioning_mode.allows_short:
+            return self._reject(proposal, RiskReasonCode.SHORT_NOT_SUPPORTED, now=now)
+
         daily_loss_limit = portfolio.day_start_equity * profile.max_daily_loss_pct
         if portfolio.daily_pnl <= -daily_loss_limit:
             return self._reject(proposal, RiskReasonCode.DAILY_LOSS_LIMIT, now=now)
@@ -293,6 +297,8 @@ class RiskEngine:
 
     @classmethod
     def _valid_market(cls, market: MarketConstraints) -> bool:
+        if not isinstance(market.positioning_mode, MarketPositioningMode):
+            return False
         if not cls._positive_decimal(market.qty_step):
             return False
         if not cls._non_negative_finite_decimal(market.min_qty):

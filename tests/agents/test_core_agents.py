@@ -80,12 +80,16 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
             market_context={},
             specialist_analyses=[],
             palermo_review={"verdict": "CAUTION"},
+            execution_constraints={
+                "allowed_trade_directions": ["LONG"],
+                "no_trade_allowed": True,
+            },
             opportunity_id=opportunity_id,
         )
 
         assert plan.output.decision == "MINI_CREW"
         assert final.output.direction == "NO_TRADE"
-        assert [request.prompt_version for request in gateway.requests] == ["v7", "v7"]
+        assert [request.prompt_version for request in gateway.requests] == ["v8", "v8"]
         assert all(request.agent_id == "professor" for request in gateway.requests)
         assert gateway.requests[0].opportunity_id == opportunity_id
         plan_payload = json.loads(gateway.requests[0].input_text)
@@ -107,6 +111,11 @@ def test_professor_plan_and_finalize_are_structured_and_versioned():
         assert "opportunity" not in keys
         assert "palermo_review" not in keys
         assert "evidence_source_catalog" not in keys
+        assert final_payload["execution_constraints"] == {
+            "allowed_trade_directions": ["LONG"],
+            "no_trade_allowed": True,
+        }
+        assert not any(key.startswith("execution_constraints") for key in keys)
 
     asyncio.run(scenario())
 
@@ -408,7 +417,7 @@ def test_registry_core_roles_and_prompt_versions_are_safe():
     assert CORE_AGENT_REGISTRY.get("professor").state.value == "ACTIVE"
     assert CORE_AGENT_REGISTRY.get("palermo").state.value == "ACTIVE"
 
-    expected_versions = {"professor": "v7", "palermo": "v4", "lisbon": "v2"}
+    expected_versions = {"professor": "v8", "palermo": "v4", "lisbon": "v2"}
     for entry in CORE_AGENT_REGISTRY.list():
         assert entry.core is True
         assert entry.allowed_tools == ()
@@ -424,14 +433,14 @@ def test_prompt_registry_rejects_unknown_version():
 
 
 def test_decision_contract_v2_is_versioned_and_preserves_v1():
-    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4", "v5", "v6", "v7")
+    assert CORE_PROMPTS.versions("professor") == ("v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8")
     assert CORE_PROMPTS.versions("palermo") == ("v1", "v2", "v3", "v4")
 
     # Historical prompt versions remain immutable and addressable.
     assert CORE_PROMPTS.get("professor", "v4").version == "v4"
     assert CORE_PROMPTS.get("palermo", "v2").version == "v2"
 
-    professor = CORE_PROMPTS.get("professor", "v7").instructions
+    professor = CORE_PROMPTS.get("professor", "v8").instructions
     palermo = CORE_PROMPTS.get("palermo", "v4").instructions
 
     assert "planning_constraints" in professor
@@ -442,6 +451,8 @@ def test_decision_contract_v2_is_versioned_and_preserves_v1():
     assert "entry_price" in professor
     assert "Risk Engine déterministe" in professor
     assert "evidence_source_catalog" in professor
+    assert "execution_constraints" in professor
+    assert "allowed_trade_directions" in professor
     assert "source_index" in professor
     assert "chemins JSON" in professor
     assert "NE DOIT PAS émettre source_key" in professor

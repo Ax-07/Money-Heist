@@ -376,3 +376,9 @@ Avant activation LIVE :
 - gestion des positions lors d’un kill switch.
 
 Ces décisions seront consignées dans `10_DECISIONS_ET_CHANGELOG.md`.
+
+## Addendum 2026-09-19 — Spot long-only
+
+Le premier LIVE Kraken Spot reste sans marge, sans levier et sans entrée SHORT. Le même contrat directionnel doit être utilisé par les campagnes historiques destinées à représenter ce marché. `SPOT_LONG_ONLY` autorise l’ouverture LONG et les ventes de réduction/clôture d’une position LONG existante ; il interdit l’ouverture d’une exposition nette SHORT.
+
+Cette règle est défendue à plusieurs frontières indépendantes : contrainte de FINALIZE du Professor, Risk Engine déterministe, PaperBroker historique et, en LIVE, preflight/OrderIntent. Aucune couche ne transforme automatiquement une proposition SHORT interdite en LONG.

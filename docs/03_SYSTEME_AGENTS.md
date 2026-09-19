@@ -638,7 +638,11 @@ Le changement est porté par `prompt_render_version=money-heist.prompt-transport
 
 ### Batch 24-FR.2 — prompts natifs français
 
-Les versions actives sont maintenues en français : Professor v7, Palermo v4, Lisbon v2 et spécialistes
+Les versions actives sont maintenues en français : Professor v8, Palermo v4, Lisbon v2 et spécialistes
 v6. Les anciennes versions anglaises restent adressables. Les clés JSON, enums, `source_index`,
 `source_key`, identifiants et tokens comme `LONG`, `SHORT`, `NO_TRADE`, `CAUTION` ou `REJECT` ne sont
 jamais traduits.
+
+## Addendum 2026-09-19 — Professor v8 et contraintes d’exécution
+
+Professor v8 conserve le contrat causal/grounded de v7 et ajoute une contrainte FINAL explicite `execution_constraints.allowed_trade_directions`. Pour une campagne `SPOT_LONG_ONLY`, seule la direction `LONG` est autorisée ; si aucune thèse LONG n’est suffisamment justifiée, le résultat attendu est `NO_TRADE`. Une direction interdite ne doit jamais être convertie automatiquement en une direction autorisée et `execution_constraints` ne constitue pas une source d’evidence de marché.
