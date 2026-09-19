@@ -223,6 +223,8 @@ Elles réutilisent les services existants et n’exposent aucun secret ou chemin
 
 Aucun WebSocket/SSE opérateur n’a été trouvé dans la baseline auditée. Le choix V2 est donc un polling centralisé via TanStack Query. Cette décision est volontairement minimale. Une migration WebSocket future devra conserver un manager unique et un normalizer d’événements.
 
+Pour que ce polling reste fiable pendant les campagnes longues, les étapes CPU post-replay (23A, exports, Analytics/Decision Intelligence/Research 24A → 24D) sont exécutées hors de l'event loop FastAPI. Le frontend ne compense pas un backend bloqué par des timeouts plus longs : `/progress` et `/capabilities` doivent rester réactifs pendant le calcul.
+
 ## 20. Sécurité
 
 - aucun secret dans `NEXT_PUBLIC_*` ;

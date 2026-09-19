@@ -781,3 +781,16 @@ LONG_SHORT
 Cette capacité est matérielle : elle est figée dans les hypothèses d’exécution du `BacktestConfig` et change l’identité du run. Pour `SPOT_LONG_ONLY`, Professor FINAL ne peut proposer que `LONG` ou `NO_TRADE`, le Risk Engine rejette défensivement `SHORT_NOT_SUPPORTED`, et le PaperBroker utilise `allow_short=False`. Une vente de clôture/réduction d’un LONG reste valide ; seule l’ouverture ou l’augmentation d’une exposition nette SHORT est interdite.
 
 Le mode bas niveau `LONG_SHORT` est conservé pour les expériences dérivés explicitement compatibles. Les nouvelles campagnes Frontend V2 visant la cible Spot utilisent `SPOT_LONG_ONLY` par défaut.
+
+## Addendum 2026-09-19 — réactivité du serveur pendant les campagnes longues
+
+Les campagnes V2 restent exécutées en tâche de fond, mais les étapes post-replay fortement CPU ne doivent pas monopoliser l'event loop FastAPI.
+
+Sont donc déportés via un worker thread :
+- parsing/préparation du dataset dans le job de fond ;
+- construction des artefacts 23A et Forward Outcomes ;
+- sérialisation des exports volumineux par rôle ;
+- catalogue Denver post-hoc ;
+- finalisation Analytics / Decision Intelligence / Decision Quality 24A → 24D.
+
+Le Historical Replay causal lui-même reste inchangé et conserve ses checkpoints coopératifs. Le déplacement vers un worker ne change ni Scanner, ni Professor, ni Risk, ni PaperBroker, ni les artefacts calculés, ni les fingerprints métier. Il garantit seulement que `/progress`, `/capabilities` et les autres routes read-only restent servables pendant les campagnes longues.

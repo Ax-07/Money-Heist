@@ -1018,7 +1018,9 @@ class BacktestDashboardService:
         _campaign_id: str | None = None,
     ) -> CampaignSummary:
         async with self._run_lock:
-            parsed = self._parse_dataset(request.dataset)
+            # Dataset parsing/import is CPU + filesystem work. Keep it off the FastAPI
+            # event loop so health/capabilities/progress remain responsive on long inputs.
+            parsed = await asyncio.to_thread(self._parse_dataset, request.dataset)
             if not parsed.preview.is_valid:
                 raise BacktestDashboardError(
                     "dataset quality is invalid; resolve gaps/duplicates/missing fields first"
@@ -1187,21 +1189,33 @@ class BacktestDashboardService:
             campaign_id = _campaign_id or str(uuid4())
             for role in BacktestPeriodRole:
                 execution = executions[role]
-                exports.update(
-                    build_frontend_postrun_exports(
-                        campaign_id=campaign_id,
-                        role=role,
-                        run=run_set.by_role(role),
-                        candles=parsed.candles,
-                        replay=execution.replay,
-                        decision_funnel_report=execution.decision_funnel,
-                        min_priority_score=int(
-                            execution.scanner_forward_outcomes.min_priority_score
-                        ),
-                        forward_outcomes=execution.forward_outcomes,
-                        scanner_forward_outcomes=execution.scanner_forward_outcomes,
+                if runtime is not None:
+                    if runtime.cancel_event.is_set():
+                        raise HistoricalReplayCancelledError(
+                            "historical replay cancelled during post-run finalization"
+                        )
+                    runtime.phase = "FINALIZING"
+                    runtime.current_role = role
+                    runtime.message = (
+                        f"Analytics / Decision Intelligence / Research {role.value} en cours."
                     )
+                # 24A -> 24D is pure post-hoc CPU work. Running it in the event loop
+                # made even /capabilities and /progress unreachable for minutes.
+                postrun_exports = await asyncio.to_thread(
+                    build_frontend_postrun_exports,
+                    campaign_id=campaign_id,
+                    role=role,
+                    run=run_set.by_role(role),
+                    candles=parsed.candles,
+                    replay=execution.replay,
+                    decision_funnel_report=execution.decision_funnel,
+                    min_priority_score=int(
+                        execution.scanner_forward_outcomes.min_priority_score
+                    ),
+                    forward_outcomes=execution.forward_outcomes,
+                    scanner_forward_outcomes=execution.scanner_forward_outcomes,
                 )
+                exports.update(postrun_exports)
 
             oos_equity = tuple(
                 EquityView(observed_at=point.observed_at, equity=str(point.equity))
@@ -1547,45 +1561,9 @@ class BacktestDashboardService:
                 runtime=runtime,
             )
             executions[role] = execution
-            prefix = role.value.lower()
-            manifest = build_run_manifest(execution.replay, execution.evaluation)
-            exports[f"{prefix}-manifest.json"] = (
-                "application/json",
-                manifest_to_json(manifest),
+            exports.update(
+                await asyncio.to_thread(self._build_role_exports, role, execution)
             )
-            exports[f"{prefix}-equity.csv"] = (
-                "text/csv",
-                equity_curve_to_csv(execution.evaluation.equity_points),
-            )
-            exports[f"{prefix}-closed-trades.csv"] = (
-                "text/csv",
-                closed_trades_to_csv(execution.evaluation.report),
-            )
-            exports[f"{prefix}-decision-funnel.json"] = (
-                "application/json",
-                decision_funnel_to_json(execution.decision_funnel),
-            )
-            exports[f"{prefix}-forward-outcomes.json"] = (
-                "application/json",
-                forward_outcomes_to_json(execution.forward_outcomes),
-            )
-            exports[f"{prefix}-funnel-outcome-attribution.json"] = (
-                "application/json",
-                funnel_outcome_attribution_to_json(execution.funnel_outcome_attribution),
-            )
-            exports[f"{prefix}-scanner-forward-outcomes.json"] = (
-                "application/json",
-                scanner_forward_outcomes_to_json(execution.scanner_forward_outcomes),
-            )
-            if execution.period.performance is not None:
-                exports[f"{prefix}-performance.json"] = (
-                    "application/json",
-                    json.dumps(
-                        execution.period.performance.model_dump(mode="json"),
-                        separators=(",", ":"),
-                        sort_keys=True,
-                    ),
-                )
 
         denver_sources = tuple(
             (
@@ -1596,7 +1574,10 @@ class BacktestDashboardService:
             for role in BacktestPeriodRole
         )
         try:
-            denver_catalog = catalog_from_historical_runs(denver_sources)
+            denver_catalog = await asyncio.to_thread(
+                catalog_from_historical_runs,
+                denver_sources,
+            )
         except HistoricalSetupAttributionError as exc:
             exports["denver-setup-stats-status.json"] = (
                 "application/json",
@@ -1834,21 +1815,27 @@ class BacktestDashboardService:
         evaluation_ms = max(int(round((perf_counter() - evaluation_started) * 1000)), 0)
 
         measurement_started = perf_counter()
-        decision_funnel = build_decision_funnel_report(replay, evaluation)
-        forward_outcomes = build_forward_outcomes_report(replay, candles)
-        funnel_outcome_attribution = build_funnel_outcome_attribution_report(
-            replay,
+        scanner_config = runner.scanner.config
+        if runtime is not None:
+            runtime.phase = f"{role.value}_MEASUREMENT_23A"
+            runtime.message = f"Mesure post-hoc 23A {role.value} en cours."
+        (
             decision_funnel,
             forward_outcomes,
-        )
-        scanner_config = runner.scanner.config
-        scanner_forward_outcomes = build_scanner_forward_outcomes_report(
-            replay,
-            candles,
-            decision_funnel,
+            funnel_outcome_attribution,
+            scanner_forward_outcomes,
+        ) = await asyncio.to_thread(
+            self._build_measurement_23a_artifacts,
+            replay=replay,
+            evaluation=evaluation,
+            candles=candles,
             scanner_version=str(scanner_config.scanner_version),
             min_priority_score=int(scanner_config.min_priority_score),
         )
+        if runtime is not None and runtime.cancel_event.is_set():
+            raise HistoricalReplayCancelledError(
+                "historical replay cancelled during post-run measurement"
+            )
         measurement_23a_ms = max(int(round((perf_counter() - measurement_started) * 1000)), 0)
         performance = PerformanceProfileView(
             wall_clock_ms=max(int(round((perf_counter() - run_started) * 1000)), 0),
@@ -1881,6 +1868,95 @@ class BacktestDashboardService:
             funnel_outcome_attribution=funnel_outcome_attribution,
             scanner_forward_outcomes=scanner_forward_outcomes,
         )
+
+    @staticmethod
+    def _build_measurement_23a_artifacts(
+        *,
+        replay: Any,
+        evaluation: Any,
+        candles: tuple[Any, ...],
+        scanner_version: str,
+        min_priority_score: int,
+    ) -> tuple[
+        DecisionFunnelReport,
+        ForwardOutcomeReport,
+        FunnelOutcomeAttributionReport,
+        ScannerForwardOutcomeReport,
+    ]:
+        # Observation-only 23A artifacts. Safe to compute outside the server event loop.
+        decision_funnel = build_decision_funnel_report(replay, evaluation)
+        forward_outcomes = build_forward_outcomes_report(replay, candles)
+        funnel_outcome_attribution = build_funnel_outcome_attribution_report(
+            replay,
+            decision_funnel,
+            forward_outcomes,
+        )
+        scanner_forward_outcomes = build_scanner_forward_outcomes_report(
+            replay,
+            candles,
+            decision_funnel,
+            scanner_version=scanner_version,
+            min_priority_score=min_priority_score,
+        )
+        return (
+            decision_funnel,
+            forward_outcomes,
+            funnel_outcome_attribution,
+            scanner_forward_outcomes,
+        )
+
+    @staticmethod
+    def _build_role_exports(
+        role: BacktestPeriodRole,
+        execution: _RunExecution,
+    ) -> dict[str, tuple[str, str]]:
+        # Serialize immutable role artifacts outside the server event loop.
+        prefix = role.value.lower()
+        manifest = build_run_manifest(execution.replay, execution.evaluation)
+        exports: dict[str, tuple[str, str]] = {
+            f"{prefix}-manifest.json": (
+                "application/json",
+                manifest_to_json(manifest),
+            ),
+            f"{prefix}-equity.csv": (
+                "text/csv",
+                equity_curve_to_csv(execution.evaluation.equity_points),
+            ),
+            f"{prefix}-closed-trades.csv": (
+                "text/csv",
+                closed_trades_to_csv(execution.evaluation.report),
+            ),
+            f"{prefix}-decision-funnel.json": (
+                "application/json",
+                decision_funnel_to_json(execution.decision_funnel),
+            ),
+            f"{prefix}-forward-outcomes.json": (
+                "application/json",
+                forward_outcomes_to_json(execution.forward_outcomes),
+            ),
+            f"{prefix}-funnel-outcome-attribution.json": (
+                "application/json",
+                funnel_outcome_attribution_to_json(
+                    execution.funnel_outcome_attribution
+                ),
+            ),
+            f"{prefix}-scanner-forward-outcomes.json": (
+                "application/json",
+                scanner_forward_outcomes_to_json(
+                    execution.scanner_forward_outcomes
+                ),
+            ),
+        }
+        if execution.period.performance is not None:
+            exports[f"{prefix}-performance.json"] = (
+                "application/json",
+                json.dumps(
+                    execution.period.performance.model_dump(mode="json"),
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            )
+        return exports
 
     @staticmethod
     def _run_work_units(candles: tuple[Any, ...], run: BacktestRun) -> int:

@@ -1236,3 +1236,21 @@ La page post-campagne avait accumulé résultat économique, diagnostics d'exéc
 - OOS reste explicitement identifié comme OUT-OF-SAMPLE ;
 - les artefacts Research restent observationnels ;
 - aucune autorité de tuning ou LIVE n'est ajoutée au frontend.
+
+### ADR-050 — Offload des calculs post-run pour préserver la réactivité FastAPI
+
+**Date :** 2026-09-19
+**Statut :** ACCEPTED
+
+**Décision :**
+Les calculs CPU post-replay d'une campagne Backtest ne doivent pas s'exécuter directement sur l'event loop FastAPI. Le parsing du dataset dans le job, les mesures 23A/Forward Outcomes, la sérialisation des exports, le catalogue Denver et la finalisation 24A → 24D sont déportés via `asyncio.to_thread`.
+
+**Raison :**
+Une campagne longue pouvait entrer en finalisation synchrone pendant plusieurs minutes. Pendant ce temps, même des routes read-only triviales telles que `/api/frontend/v2/capabilities` et `/progress` ne recevaient aucun header et le proxy Next.js finissait par lever `UND_ERR_HEADERS_TIMEOUT`.
+
+**Conséquences :**
+- le serveur reste réactif pendant PREPARING, mesure post-hoc et FINALIZING ;
+- le polling frontend et l'annulation coopérative redeviennent utilisables ;
+- les fonctions de calcul, artefacts, règles de trading et fingerprints métier restent inchangés ;
+- aucune autorité Scanner, Professor, Risk, PAPER ou LIVE n'est déplacée ;
+- augmenter artificiellement le timeout du proxy n'est pas la solution retenue.

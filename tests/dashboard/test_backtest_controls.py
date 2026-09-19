@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from time import perf_counter
 
 import pytest
 from fastapi import FastAPI
@@ -155,5 +157,59 @@ def test_operator_cancel_is_cooperative(monkeypatch: pytest.MonkeyPatch) -> None
         assert progress.result_available is False
         assert progress.can_cancel is False
         assert service.get_campaign(started.campaign_id) is None
+
+    asyncio.run(scenario())
+
+def test_postrun_finalization_keeps_event_loop_responsive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entered = threading.Event()
+    release = threading.Event()
+    entered_at: list[float] = []
+    calls = 0
+
+    def slow_postrun_exports(**_: object) -> dict[str, tuple[str, str]]:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            entered_at.append(perf_counter())
+            entered.set()
+            timer = threading.Timer(0.30, release.set)
+            timer.daemon = True
+            timer.start()
+            assert release.wait(timeout=1.0)
+        return {}
+
+    monkeypatch.setattr(
+        "app.dashboard.analytics_postrun.build_frontend_postrun_exports",
+        slow_postrun_exports,
+    )
+
+    async def scenario() -> None:
+        service = BacktestDashboardService(history_limit=5)
+        started = await service.start_campaign(request_for(service))
+
+        for _ in range(5000):
+            if entered.is_set():
+                break
+            await asyncio.sleep(0.001)
+        else:
+            pytest.fail("campaign never reached post-run finalization")
+
+        # If finalization runs directly on the event loop this coroutine cannot
+        # resume until the 300 ms blocking function returns.
+        assert entered_at
+        assert perf_counter() - entered_at[0] < 0.15
+
+        for _ in range(5000):
+            progress = service.get_campaign_progress(started.campaign_id)
+            assert progress is not None
+            if progress.status in {"COMPLETED", "FAILED", "CANCELLED"}:
+                break
+            await asyncio.sleep(0.001)
+        else:
+            pytest.fail("campaign did not finish after post-run finalization")
+
+        assert progress.status == "COMPLETED", progress.error
 
     asyncio.run(scenario())
