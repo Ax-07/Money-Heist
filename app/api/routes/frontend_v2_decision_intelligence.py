@@ -4,10 +4,16 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from app.api.routes.frontend_v2 import FrontendV2Store
+from app.api.routes.frontend_v2 import FrontendV2Store, _parse_replay_candles
 from app.services.frontend_v2.analytics_overlays import (
     FrontendAnalyticsOverlayProjectionService,
     FrontendAnalyticsOverlaysProjection,
+)
+from app.services.frontend_v2.decision_chart import (
+    DecisionChartUnavailableError,
+    FrontendDecisionChartProjection,
+    FrontendDecisionChartProjectionService,
+    build_frontend_decision_chart_projection,
 )
 from app.services.frontend_v2.decision_intelligence import (
     CampaignNotFoundError,
@@ -114,6 +120,49 @@ def analytics_overlays_projection(
         raise _not_found(exc) from exc
     except ValueError as exc:
         raise _projection_error(exc) from exc
+
+
+@router.get(
+    "/backtests/runs/{campaign_id}/decision-chart",
+    response_model=FrontendDecisionChartProjection,
+)
+def decision_chart_projection(
+    campaign_id: str,
+    service: ProjectionService,
+    store: Annotated[FrontendV2Store, Depends(_frontend_store)],
+    role: PeriodRoleQuery = "OOS",
+) -> FrontendDecisionChartProjection:
+    chart_service = FrontendDecisionChartProjectionService(store)
+    try:
+        persisted = chart_service.load(campaign_id, role)
+        if persisted is not None:
+            return persisted
+        bundle = service.load_bundle(campaign_id, role)
+        if bundle is None:
+            raise DecisionChartUnavailableError(
+                "DECISION_CHART_DECISION_INTELLIGENCE_UNAVAILABLE"
+            )
+        record = store.get(campaign_id)
+        if record is None:
+            raise CampaignNotFoundError(f"campaign not found: {campaign_id}")
+        source_candles = _parse_replay_candles(record.request.dataset)
+        projection = build_frontend_decision_chart_projection(
+            campaign_id=campaign_id,
+            role=role,
+            bundle=bundle,
+            source_candles=source_candles,
+        )
+        chart_service.persist(projection)
+        return projection
+    except CampaignNotFoundError as exc:
+        raise _not_found(exc) from exc
+    except DecisionChartUnavailableError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Decision Chart projection is invalid: {exc}",
+        ) from exc
 
 
 @router.get(

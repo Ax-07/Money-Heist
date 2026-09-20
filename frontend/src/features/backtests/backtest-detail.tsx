@@ -1,9 +1,10 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DecisionIndicatorSummary } from "@/components/chart/decision-indicator-summary";
+import { TradeTerminalBar } from "@/components/chart/trade-terminal-bar";
 import { EquityChart } from "@/components/chart/equity-chart";
-import { OverlayToolbar } from "@/components/chart/overlay-toolbar";
 import { TradingChart } from "@/components/chart/trading-chart";
 import { StatusBadge } from "@/components/ui/badge";
 import { DecisionIntelligenceInspector } from "@/components/inspector/decision-intelligence-inspector";
@@ -15,6 +16,7 @@ import {
   campaignConfigurationQuery,
   campaignProgressQuery,
   campaignQuery,
+  decisionChartQuery,
   replayQuery,
 } from "@/lib/api/queries";
 import type {
@@ -24,9 +26,9 @@ import type {
   CampaignSummary,
 } from "@/lib/api/schemas";
 import type { ResearchEvidenceItem } from "@/lib/api/research-schemas";
-import type { FilteredNavigationItem } from "@/lib/decision-intelligence-navigation";
 import { useAnalyticsOverlays } from "@/lib/hooks/use-analytics-overlays";
 import { evidenceToOverlaySelection } from "@/lib/research-navigation";
+import { selectedTradeFromContext, selectionForTrade, tradePlanForOpportunity, type DecisionChartDisplayMode, type ReplayTrade } from "@/lib/trade-terminal";
 import { useUiStore } from "@/lib/ui-store";
 import { formatDateTime } from "@/lib/utils";
 import { isTerminalCampaignStatus, shouldPollCampaignProgress } from "./campaign-progress";
@@ -70,45 +72,61 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
     enabled: advancedEnabled,
     retry: false,
   });
+  const decisionChart = useQuery({
+    queryKey: ["decision-chart", campaignId, role],
+    queryFn: () => decisionChartQuery(campaignId, role),
+    enabled: advancedEnabled,
+    retry: false,
+  });
   const overlays = useAnalyticsOverlays(campaignId, role, advancedEnabled);
   const setSelectedAnalyticsObject = useUiStore(state => state.setSelectedAnalyticsObject);
+  const selectedOpportunityId = useUiStore(state => state.selectedOpportunityId);
+  const selectedAnalyticsObject = useUiStore(state => state.selectedAnalyticsObject);
   const clearAnalyticsSelection = useUiStore(state => state.clearAnalyticsSelection);
   const clearResearchSelection = useUiStore(state => state.clearResearchSelection);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<ReplaySpeed>(1);
-  const [navigationScopeTime, setNavigationScopeTime] = useState<number | null>(null);
-  const cursorTime = replay.data?.candles[index]?.time ?? null;
+  const [decisionDisplayMode, setDecisionDisplayMode] = useState<DecisionChartDisplayMode>("MIXED");
+  const chartCandles = decisionChart.data?.candles;
+  const cursorTime = chartCandles?.[index]?.time ?? null;
+  const replayAtDecisionTimeframe: BacktestReplay | null = replay.data && decisionChart.data
+    ? { ...replay.data, timeframe: decisionChart.data.decision_timeframe, candles: decisionChart.data.candles }
+    : null;
   const summary = campaign.data;
+  const selectedTrade = useMemo(
+    () => replay.data
+      ? selectedTradeFromContext(replay.data, selectedOpportunityId, selectedAnalyticsObject)
+      : undefined,
+    [replay.data, selectedAnalyticsObject, selectedOpportunityId],
+  );
+  const selectedTradePlan = useMemo(
+    () => replay.data ? tradePlanForOpportunity(replay.data.traces, selectedOpportunityId) : null,
+    [replay.data, selectedOpportunityId],
+  );
 
   useEffect(() => {
     clearAnalyticsSelection();
     clearResearchSelection();
-    setNavigationScopeTime(null);
   }, [campaignId, clearAnalyticsSelection, clearResearchSelection]);
 
   const setReplayIndex = useCallback((nextIndex: number) => {
     setIndex(nextIndex);
-    const nextTime = replay.data?.candles[nextIndex]?.time ?? null;
-    setNavigationScopeTime(nextTime);
-  }, [replay.data]);
+  }, []);
 
-  const seekTo = useCallback((time: number, preserveNavigationScope = false) => {
-    if (!replay.data) return;
-    const target = replay.data.candles.findIndex(candle => candle.time >= time);
-    const nextIndex = target < 0 ? replay.data.candles.length - 1 : target;
+  const seekTo = useCallback((time: number) => {
+    if (!chartCandles || chartCandles.length === 0) return;
+    const target = chartCandles.findIndex(candle => candle.time >= time);
+    const nextIndex = target < 0 ? chartCandles.length - 1 : target;
     setIndex(nextIndex);
     setPlaying(false);
-    if (!preserveNavigationScope) {
-      setNavigationScopeTime(replay.data.candles[nextIndex]?.time ?? null);
-    }
-  }, [replay.data]);
+  }, [chartCandles]);
 
-  const navigateToItem = useCallback((item: FilteredNavigationItem) => {
-    setNavigationScopeTime(value => value ?? cursorTime);
-    setSelectedAnalyticsObject(item.selection);
-    seekTo(Math.floor(new Date(item.timestamp).getTime() / 1000), true);
-  }, [cursorTime, seekTo, setSelectedAnalyticsObject]);
+  const selectTrade = useCallback((trade: ReplayTrade) => {
+    if (!replay.data) return;
+    setSelectedAnalyticsObject(selectionForTrade(trade, replay.data.traces));
+    seekTo(Math.floor(new Date(trade.opened_at).getTime() / 1000));
+  }, [replay.data, seekTo, setSelectedAnalyticsObject]);
 
   const navigateToResearchEvidence = useCallback((item: ResearchEvidenceItem) => {
     const selection = evidenceToOverlaySelection(item);
@@ -156,7 +174,6 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
               setRole(value as typeof role);
               setIndex(0);
               setPlaying(false);
-              setNavigationScopeTime(null);
               clearAnalyticsSelection();
               clearResearchSelection();
             }}
@@ -165,46 +182,64 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
               {roles.map(value => <TabsTrigger key={value} value={value}>{value}{value === "OOS" ? " · OUT-OF-SAMPLE" : ""}</TabsTrigger>)}
             </TabsList>
           </Tabs>
-          {replay.isError ? (
+          {replay.isError || decisionChart.isError ? (
             <div className="panel p-6">
-              <p className="text-sm text-amber-200">Replay détaillé indisponible pour cette campagne.</p>
-              <p className="mt-2 text-xs leading-5 text-slate-500">Cette campagne ne possède pas les artefacts V2 nécessaires au replay détaillé. Les nouvelles campagnes V2 persistent désormais dataset, configuration, traces et exports côté backend.</p>
+              <p className="text-sm text-amber-200">Decision Chart indisponible pour cette campagne.</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Le backend refuse d’afficher des indicateurs qui ne peuvent pas être rattachés au timeframe et aux FeatureSnapshot du replay. Le reste des résultats de campagne reste inchangé.</p>
             </div>
-          ) : replay.isLoading ? (
-            <div className="panel p-8 text-sm text-slate-500">Chargement de l’analyse avancée…</div>
-          ) : replay.data && (
+          ) : replay.isLoading || decisionChart.isLoading ? (
+            <div className="panel p-8 text-sm text-slate-500">Chargement du Decision Chart…</div>
+          ) : replay.data && decisionChart.data && replayAtDecisionTimeframe && (
             <>
               <div className="grid min-h-[600px] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
                 <section className="panel overflow-hidden">
-                  <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
-                    <StatusBadge value="BACKTEST" />
-                    <span className="text-xs text-slate-400">{replay.data.symbol} · {replay.data.timeframe}</span>
-                    <span className="ml-auto text-[10px] text-slate-600">Données backend canoniques · replay causal au curseur</span>
+                  <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-4 py-3">
+                    <StatusBadge value="DECISION CHART" />
+                    <span className="text-xs text-slate-300">{decisionChart.data.symbol} · décision {decisionChart.data.decision_timeframe}</span>
+                    <span className="text-[10px] text-slate-600">source {decisionChart.data.source_timeframe}</span>
+                    <span className="ml-auto text-[10px] text-slate-600">EMA 12/26 · range 20 · marqueurs Professor FINAL sans libellé</span>
                   </div>
-                  <OverlayToolbar
-                    overlays={overlays.data}
-                    cursorTime={navigationScopeTime ?? cursorTime}
-                    onNavigate={navigateToItem}
+                  <div className="border-b border-slate-800 bg-slate-950/70 px-4 py-2 text-[10px] text-slate-500">
+                    Cliquez un marqueur de décision pour ouvrir le détail Scanner → agents → Professor → Risk/PAPER dans l’Inspector.
+                  </div>
+                  <TradeTerminalBar
+                    replay={replayAtDecisionTimeframe}
+                    mode={decisionDisplayMode}
+                    selectedTradeId={selectedTrade?.trade_id ?? null}
+                    onModeChange={setDecisionDisplayMode}
+                    onSelectTrade={selectTrade}
                   />
                   <div className="h-[520px]">
                     <TradingChart
                       mode="BACKTEST"
-                      symbol={replay.data.symbol}
-                      timeframe={replay.data.timeframe}
-                      candles={replay.data.candles.slice(0, index + 1)}
-                      events={replay.data.events.filter(event => Math.floor(new Date(event.observed_at).getTime() / 1000) <= (cursorTime ?? 0))}
+                      symbol={decisionChart.data.symbol}
+                      timeframe={decisionChart.data.decision_timeframe}
+                      candles={decisionChart.data.candles}
                       analyticsOverlays={overlays.data}
                       cursorTime={cursorTime}
+                      decisionOnly
+                      decisionIndicators={decisionChart.data.indicators}
+                      trades={replay.data.trades}
+                      decisionDisplayMode={decisionDisplayMode}
+                      selectedTradeId={selectedTrade?.trade_id ?? null}
+                      selectedOpportunityId={selectedOpportunityId}
+                      selectedTradePlan={selectedTradePlan}
                       onOverlaySelect={selection => {
-                        setNavigationScopeTime(value => value ?? cursorTime);
-                        setSelectedAnalyticsObject(selection);
-                        seekTo(Math.floor(new Date(selection.navigationTimestamp).getTime() / 1000), true);
+                        const tradeId = selection.details.trade_id
+                          ?? ((selection.objectType === "ClosedTrade" || selection.objectType === "ClosedTradeEntry") ? selection.objectId : undefined);
+                        const trade = tradeId ? replay.data.trades.find(item => item.trade_id === tradeId) : undefined;
+                        setSelectedAnalyticsObject(trade ? selectionForTrade(trade, replay.data.traces) : selection);
+                        seekTo(Math.floor(new Date(selection.timestamp).getTime() / 1000));
                       }}
-                      onEventSelect={event => seekTo(Math.floor(new Date(event.observed_at).getTime() / 1000))}
                     />
                   </div>
+                  <DecisionIndicatorSummary
+                    points={decisionChart.data.indicators}
+                    cursorTime={cursorTime}
+                    thresholds={decisionChart.data.scanner_thresholds}
+                  />
                   <ReplayControls
-                    replay={replay.data}
+                    replay={replayAtDecisionTimeframe}
                     index={index}
                     setIndex={setReplayIndex}
                     playing={playing}
@@ -217,6 +252,11 @@ export function BacktestDetail({ campaignId }: { campaignId: string }) {
                   campaignId={campaignId}
                   role={role}
                   overlays={overlays.data}
+                  trades={replay.data.trades}
+                  onSelectTradeId={tradeId => {
+                    const trade = replay.data.trades.find(item => item.trade_id === tradeId);
+                    if (trade) selectTrade(trade);
+                  }}
                 />
               </div>
               <ResearchExplorer

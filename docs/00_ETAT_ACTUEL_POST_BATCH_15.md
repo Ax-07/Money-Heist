@@ -1,7 +1,7 @@
 # Money Heist — Mémoire projet / état courant
 
 **Statut :** contexte de démarrage canonique  
-**Date de synchronisation :** 2026-09-19  
+**Date de synchronisation :** 2026-09-20
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
 **Baseline intégrée auditée :** `8f707cb8f261c7c24cacba56624d9876a08e4894`
 **Dernier commit audité :** `fix(backtest): keep API responsive during post-run analysis`
@@ -204,6 +204,8 @@ Le cockpit V2 couvre notamment :
 - Research Explorer Decision Quality ;
 - Datasets locaux de campagne 1 / 3 / 6 / 9 / 12 mois, validés côté backend puis importés dans la bibliothèque V2 persistée ;
 - résultats Backtest en deux niveaux : `Résumé` opérateur par défaut et `Analyse avancée` à la demande.
+- Decision Chart d'audit au timeframe de décision canonique, avec indicateurs Feature Engine, Professor FINAL, rejets Risk et exécutions PAPER réelles ;
+- mode Terminal Pro (`Mixte / Trades / Décisions`), navigation des trades, résultat net, coûts et Trade Story `Professor → Risk → Entry → Exit` ;
 
 Le chart distingue l’ancrage géométrique de l’instant causal de connaissance :
 
@@ -459,7 +461,7 @@ Informations de handoff obligatoires après un gros lot :
 
 Cette synchronisation a audité GitHub `main` jusqu'à `8f707cb8f261c7c24cacba56624d9876a08e4894`.
 
-Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
+La référence distante auditée reste GitHub `main`; les évolutions Decision Chart / Terminal Pro décrites ci-dessus peuvent encore appartenir au working tree local tant que leur commit n'a pas été poussé. Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
 ---
 
@@ -474,3 +476,5 @@ Ce fichier doit rester une **mémoire courte**, pas un changelog exhaustif.
 3. mettre les décisions dans `10_DECISIONS_ET_CHANGELOG.md` ;
 4. mettre les travaux futurs dans `09_ROADMAP_DEVELOPPEMENT.md` ;
 5. garder ici uniquement ce qu’une nouvelle session doit savoir pour reprendre correctement le projet.
+
+<!-- DECISION_CHART_TERMINAL_PRO_20260920 -->

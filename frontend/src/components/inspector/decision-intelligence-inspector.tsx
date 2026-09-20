@@ -1,9 +1,13 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { StatusBadge } from "@/components/ui/badge";
 import type { FrontendAnalyticsOverlays } from "@/lib/api/analytics-overlay-schemas";
+import type { BacktestReplay } from "@/lib/api/schemas";
+import { netTradeReturnPct, tradeResultKind } from "@/lib/trade-result";
+import { formatTradeDurationLabel, grossMovePct, realizedRMultiple } from "@/lib/trade-story";
+import { riskReasonLabel, tradeDurationLabel } from "@/lib/trade-terminal";
 import type {
   BacktestPeriodRole,
   FrontendDecisionIntelligenceDetail,
@@ -56,10 +60,14 @@ export function DecisionIntelligenceInspector({
   campaignId,
   role,
   overlays,
+  trades,
+  onSelectTradeId,
 }: {
   campaignId: string;
   role: BacktestPeriodRole;
   overlays?: FrontendAnalyticsOverlays | null;
+  trades?: BacktestReplay["trades"];
+  onSelectTradeId?: (tradeId: string) => void;
 }) {
   const inspectorOpen = useUiStore(state => state.inspectorOpen);
   const setInspectorOpen = useUiStore(state => state.setInspectorOpen);
@@ -67,6 +75,35 @@ export function DecisionIntelligenceInspector({
   const selected = useUiStore(state => state.selectedAnalyticsObject);
 
   const detail = useDecisionIntelligence(campaignId, selectedOpportunityId, role);
+  const headerDecision = detail.data?.record ? object(detail.data.record.decision) : {};
+  const headerClosedTrade = detail.data?.record
+    ? findClosedTradeForDecision(headerDecision, trades ?? [])
+    : undefined;
+  const headerResultPct = headerClosedTrade ? netTradeReturnPct(headerClosedTrade) : null;
+  const headerResultKind = headerClosedTrade ? tradeResultKind(headerClosedTrade.net_pnl) : null;
+  const headerRisk = object(headerDecision.risk);
+  const approvedRiskAmount = Number(headerRisk.approved_risk_amount);
+  const headerNetPnl = headerClosedTrade ? Number(headerClosedTrade.net_pnl) : Number.NaN;
+  const headerR = Number.isFinite(headerNetPnl) && Number.isFinite(approvedRiskAmount) && approvedRiskAmount > 0
+    ? headerNetPnl / approvedRiskAmount
+    : null;
+  const orderedTrades = [...(trades ?? [])].sort((left, right) => Date.parse(left.opened_at) - Date.parse(right.opened_at));
+  const headerTradeIndex = headerClosedTrade
+    ? orderedTrades.findIndex(trade => trade.trade_id === headerClosedTrade.trade_id)
+    : -1;
+  const previousTradeId = headerTradeIndex > 0 ? orderedTrades[headerTradeIndex - 1]?.trade_id ?? null : null;
+  const nextTradeId = headerTradeIndex >= 0 && headerTradeIndex < orderedTrades.length - 1
+    ? orderedTrades[headerTradeIndex + 1]?.trade_id ?? null
+    : null;
+  const headerTradeResult = headerClosedTrade && headerResultPct !== null && headerResultKind
+    ? {
+        kind: headerResultKind,
+        pct: headerResultPct,
+        netPnl: headerClosedTrade.net_pnl,
+        duration: tradeDurationLabel(headerClosedTrade.opened_at, headerClosedTrade.closed_at),
+        rMultiple: headerR,
+      }
+    : null;
 
   if (!inspectorOpen) return null;
 
@@ -76,6 +113,10 @@ export function DecisionIntelligenceInspector({
         role={role}
         selection={selected}
         opportunityId={selectedOpportunityId}
+        tradeResult={headerTradeResult}
+        previousTradeId={previousTradeId}
+        nextTradeId={nextTradeId}
+        onSelectTradeId={onSelectTradeId}
         onClose={() => setInspectorOpen(false)}
       />
       {!selected ? (
@@ -87,7 +128,10 @@ export function DecisionIntelligenceInspector({
           isError={detail.isError}
           selection={selected}
           overlays={overlays}
+          trades={trades}
         />
+      ) : selected.objectType === "ClosedTrade" || selected.objectType === "ClosedTradeEntry" ? (
+        <TradeExitBody selection={selected} />
       ) : (
         <AnalyticsObjectBody selection={selected} overlays={overlays} />
       )}
@@ -109,15 +153,31 @@ export function DecisionIntelligenceInspector({
   );
 }
 
+type HeaderTradeResult = {
+  kind: "WIN" | "LOSS" | "FLAT";
+  pct: number;
+  netPnl: string;
+  duration: string;
+  rMultiple: number | null;
+};
+
 function InspectorHeader({
   role,
   selection,
   opportunityId,
+  tradeResult,
+  previousTradeId,
+  nextTradeId,
+  onSelectTradeId,
   onClose,
 }: {
   role: BacktestPeriodRole;
   selection: OverlaySelection | null;
   opportunityId: string | null;
+  tradeResult: HeaderTradeResult | null;
+  previousTradeId: string | null;
+  nextTradeId: string | null;
+  onSelectTradeId?: (tradeId: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -133,14 +193,34 @@ function InspectorHeader({
             {selection && <StatusBadge value={selection.objectType} />}
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="Fermer l'Inspector"
-          onClick={onClose}
-          className="ml-auto rounded p-2 text-slate-500 hover:bg-slate-900 hover:text-slate-200"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="ml-auto flex shrink-0 items-start gap-2">
+          {tradeResult && (
+            <div className="flex flex-col items-end gap-1 pt-0.5">
+              <div className="flex items-center gap-2">
+                <span className={`font-mono text-lg font-bold leading-none ${tradeResult.kind === "WIN" ? "text-emerald-300" : tradeResult.kind === "LOSS" ? "text-rose-300" : "text-slate-300"}`}>
+                  {tradeResult.pct > 0 ? "+" : ""}{tradeResult.pct.toFixed(2)}%
+                </span>
+                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${tradeResult.kind === "WIN" ? "border-emerald-700/70 bg-emerald-950/50 text-emerald-300" : tradeResult.kind === "LOSS" ? "border-rose-700/70 bg-rose-950/50 text-rose-300" : "border-slate-700 text-slate-400"}`}>
+                  {tradeResult.kind}
+                </span>
+              </div>
+              <span className="font-mono text-[10px] text-slate-500">
+                PnL {fmtDecimal(tradeResult.netPnl)} · {tradeResult.duration}{tradeResult.rMultiple === null ? "" : ` · ${tradeResult.rMultiple.toFixed(2)}R`}
+              </span>
+              <div className="flex items-center gap-1">
+                <button type="button" aria-label="Trade précédent" disabled={!previousTradeId || !onSelectTradeId} onClick={() => previousTradeId && onSelectTradeId?.(previousTradeId)} className="rounded border border-slate-800 p-1 text-slate-500 disabled:opacity-25">
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+                <button type="button" aria-label="Trade suivant" disabled={!nextTradeId || !onSelectTradeId} onClick={() => nextTradeId && onSelectTradeId?.(nextTradeId)} className="rounded border border-slate-800 p-1 text-slate-500 disabled:opacity-25">
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
+          <button type="button" aria-label="Fermer l'Inspector" onClick={onClose} className="rounded p-2 text-slate-500 hover:bg-slate-900 hover:text-slate-200">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       {opportunityId && (
         <p className="mt-3 break-all font-mono text-[10px] text-slate-600">
@@ -166,12 +246,14 @@ function OpportunityBody({
   isError,
   selection,
   overlays,
+  trades,
 }: {
   detail?: FrontendDecisionIntelligenceDetail;
   isLoading: boolean;
   isError: boolean;
   selection: OverlaySelection;
   overlays?: FrontendAnalyticsOverlays | null;
+  trades?: BacktestReplay["trades"];
 }) {
   if (isLoading) {
     return <div className="text-sm text-slate-500">Chargement de la Decision Intelligence…</div>;
@@ -197,12 +279,360 @@ function OpportunityBody({
   const decision = object(record.decision);
   return (
     <>
-      <ScannerSection scanner={record.scanner} />
-      <AgentsSection decision={decision} />
-      <FunnelSection stages={detail.funnel_stages} />
-      <RiskExecutionSection decision={decision} />
-      <AnalyticsSection detail={detail} selection={selection} overlays={overlays} />
+      <TradeStoryPanel decision={decision} trades={trades} />
+        <DecisionSummary scanner={record.scanner} decision={decision} trades={trades} />
+      <details className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
+        <summary className="cursor-pointer select-none text-xs font-semibold text-slate-400">
+          Détails techniques
+        </summary>
+        <div className="mt-4 space-y-5">
+          <ScannerSection scanner={record.scanner} />
+          <AgentsSection decision={decision} />
+          <FunnelSection stages={detail.funnel_stages} />
+          <RiskExecutionSection decision={decision} />
+          <AnalyticsSection detail={detail} selection={selection} overlays={overlays} />
+        </div>
+      </details>
     </>
+  );
+}
+
+type ReplayTrade = BacktestReplay["trades"][number];
+
+function closeEnough(left: number, right: number): boolean {
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+  const scale = Math.max(1, Math.abs(left), Math.abs(right));
+  return Math.abs(left - right) <= scale * 1e-9;
+}
+
+function findClosedTradeForDecision(
+  decision: JsonObject,
+  trades: readonly ReplayTrade[],
+): ReplayTrade | undefined {
+  const execution = object(decision.execution);
+  const fill = object(execution.fill);
+  const final = object(decision.professor_final);
+  const filledAt = typeof fill.filled_at === "string" ? Date.parse(fill.filled_at) : Number.NaN;
+  const fillPrice = Number(fill.price);
+  const direction = text(final.direction, "").toUpperCase();
+  if (!Number.isFinite(filledAt)) return undefined;
+  const candidates = trades.filter(trade => {
+    const openedAt = Date.parse(trade.opened_at);
+    return Number.isFinite(openedAt)
+      && Math.abs(openedAt - filledAt) <= 2000
+      && (!direction || trade.side.toUpperCase() === direction);
+  });
+  if (Number.isFinite(fillPrice)) {
+    const exact = candidates.filter(trade => closeEnough(Number(trade.entry_price), fillPrice));
+    if (exact.length === 1) return exact[0];
+  }
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function StoryMetric({
+  label,
+  value,
+  accent = "text-slate-200",
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-md border border-slate-800/80 bg-slate-950/55 px-2 py-1.5">
+      <p className="text-[9px] uppercase tracking-[.18em] text-slate-600">{label}</p>
+      <p className={`mt-1 font-mono text-xs font-semibold ${accent}`}>{value}</p>
+    </div>
+  );
+}
+
+function TimelineStep({
+  label,
+  state,
+  accent,
+}: {
+  label: string;
+  state: string;
+  accent: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${accent}`} />
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-[.14em] text-slate-600">{label}</p>
+        <p className="truncate text-[11px] text-slate-300">{state}</p>
+      </div>
+    </div>
+  );
+}
+
+function TradeStoryPanel({
+  decision,
+  trades = [],
+}: {
+  decision: JsonObject;
+  trades?: readonly ReplayTrade[];
+}) {
+  const final = object(decision.professor_final);
+  const proposal = object(decision.trade_proposal);
+  const risk = object(decision.risk);
+  const execution = object(decision.execution);
+
+  const direction = text(final.direction, "NO_TRADE");
+  const confidenceValue = Number(final.confidence);
+  const confidenceLabel = Number.isFinite(confidenceValue) ? pct(confidenceValue) : "—";
+  const riskStatus = text(risk.status, "NOT_REACHED");
+  const riskReasons = texts(risk.reason_codes);
+  const riskPrimaryReason = riskReasons[0] ? riskReasonLabel(riskReasons[0]) : "—";
+  const paperReached = Boolean(execution.reached) || text(execution.status, "").toUpperCase() === "REACHED";
+
+  const plannedEntry = text(proposal.entry_price);
+  const plannedStop = text(proposal.stop_price);
+  const plannedTargets = texts(proposal.targets);
+  const expectedRr = text(proposal.expected_rr);
+
+  const closedTrade = findClosedTradeForDecision(decision, trades);
+  const resultPct = closedTrade ? netTradeReturnPct(closedTrade) : null;
+  const resultKind = closedTrade ? tradeResultKind(closedTrade.net_pnl) : null;
+  const durationLabel = closedTrade ? formatTradeDurationLabel(closedTrade.opened_at, closedTrade.closed_at) : null;
+  const realizedR = closedTrade
+    ? realizedRMultiple({
+        side: closedTrade.side,
+        entryPrice: closedTrade.entry_price,
+        exitPrice: closedTrade.exit_price,
+        stopPrice: plannedStop,
+      })
+    : null;
+  const grossPct = closedTrade
+    ? grossMovePct({
+        side: closedTrade.side,
+        entryPrice: closedTrade.entry_price,
+        exitPrice: closedTrade.exit_price,
+      })
+    : null;
+
+  const resultAccent =
+    resultKind === "WIN"
+      ? "text-emerald-300"
+      : resultKind === "LOSS"
+        ? "text-rose-300"
+        : "text-slate-300";
+  const resultBadgeClass =
+    resultKind === "WIN"
+      ? "border-emerald-800/70 bg-emerald-950/40 text-emerald-300"
+      : resultKind === "LOSS"
+        ? "border-rose-800/70 bg-rose-950/40 text-rose-300"
+        : "border-slate-700 bg-slate-900 text-slate-300";
+
+  const professorState =
+    direction === "NO_TRADE"
+      ? "NO_TRADE"
+      : `${direction} · confiance ${confidenceLabel}`;
+
+  const riskState =
+    riskStatus === "APPROVED"
+      ? "APPROVED"
+      : riskStatus === "REJECTED"
+        ? `REJECTED · ${riskPrimaryReason}`
+        : riskStatus;
+
+  const entryState = closedTrade
+    ? `ENTRY ${closedTrade.side} @ ${fmtDecimal(closedTrade.entry_price)}`
+    : paperReached
+      ? "PAPER reached"
+      : "No entry";
+  const exitState = closedTrade
+    ? `EXIT @ ${fmtDecimal(closedTrade.exit_price)}`
+    : "Open / none";
+
+  return (
+    <section className="rounded-lg border border-slate-800/90 bg-slate-950/70 p-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">Trade story</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <StatusBadge value={direction} />
+            <span className="rounded-full border border-slate-800 px-2 py-0.5 text-[10px] text-slate-300">
+              Professor {confidenceLabel}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                riskStatus === "APPROVED"
+                  ? "border-emerald-800/70 bg-emerald-950/30 text-emerald-300"
+                  : riskStatus === "REJECTED"
+                    ? "border-rose-800/70 bg-rose-950/30 text-rose-300"
+                    : "border-slate-800 text-slate-400"
+              }`}
+            >
+              {riskStatus === "APPROVED" ? "RISK APPROVED" : riskStatus === "REJECTED" ? "RISK REJECTED" : "RISK —"}
+            </span>
+          </div>
+        </div>
+
+        <div className="min-w-[180px] text-right">
+          {resultKind && resultPct !== null ? (
+            <>
+              <div className={`font-mono text-lg font-semibold ${resultAccent}`}>
+                {resultPct > 0 ? "+" : ""}{resultPct.toFixed(2)}%
+              </div>
+              <div className="mt-1 flex flex-wrap justify-end gap-1">
+                <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wide ${resultBadgeClass}`}>
+                  {resultKind}
+                </span>
+                {durationLabel && (
+                  <span className="rounded-full border border-slate-800 px-2 py-0.5 text-[9px] text-slate-300">
+                    {durationLabel}
+                  </span>
+                )}
+                {realizedR !== null && Number.isFinite(realizedR) && (
+                  <span className="rounded-full border border-violet-800/70 bg-violet-950/30 px-2 py-0.5 text-[9px] text-violet-200">
+                    {realizedR > 0 ? "+" : ""}{realizedR.toFixed(2)}R
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-md border border-slate-800/90 bg-slate-950/60 px-3 py-2 text-[11px] text-slate-500">
+              Résultat non disponible
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 xl:grid-cols-[1.2fr,1fr]">
+        <div className="rounded-lg border border-slate-800/80 bg-slate-950/55 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">Timeline</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <TimelineStep label="Professor" state={professorState} accent="bg-violet-400" />
+            <TimelineStep
+              label="Risk"
+              state={riskState}
+              accent={riskStatus === "REJECTED" ? "bg-rose-400" : riskStatus === "APPROVED" ? "bg-emerald-400" : "bg-slate-500"}
+            />
+            <TimelineStep label="Entry" state={entryState} accent={closedTrade ? "bg-emerald-400" : "bg-slate-500"} />
+            <TimelineStep label="Exit" state={exitState} accent={closedTrade ? "bg-cyan-400" : "bg-slate-500"} />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-800/80 bg-slate-950/55 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">Prévu vs réel</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <StoryMetric label="Entry prévu" value={plannedEntry || "—"} />
+            <StoryMetric label="Entry réel" value={closedTrade ? fmtDecimal(closedTrade.entry_price) : "—"} />
+            <StoryMetric label="Stop" value={plannedStop || "—"} accent="text-rose-300" />
+            <StoryMetric label="Exit réel" value={closedTrade ? fmtDecimal(closedTrade.exit_price) : "—"} accent="text-cyan-300" />
+            <StoryMetric label="Target(s)" value={plannedTargets.length > 0 ? plannedTargets.join(" · ") : "—"} accent="text-emerald-300" />
+            <StoryMetric label="RR attendu" value={expectedRr || "—"} accent="text-violet-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-slate-800/80 bg-slate-950/55 p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-slate-500">Pourquoi ce résultat ?</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <StoryMetric
+            label="Mouvement brut"
+            value={grossPct === null ? "—" : `${grossPct > 0 ? "+" : ""}${grossPct.toFixed(2)}%`}
+            accent={grossPct !== null && grossPct < 0 ? "text-rose-300" : "text-emerald-300"}
+          />
+          <StoryMetric label="PnL brut exécution" value={closedTrade ? fmtDecimal(Number(closedTrade.net_pnl) + Number(closedTrade.fees)) : "—"} />
+          <StoryMetric label="Frais + slippage" value={closedTrade ? `${fmtDecimal(closedTrade.fees)} / ${closedTrade.slippage_cost ? fmtDecimal(closedTrade.slippage_cost) : "—"}` : "—"} />
+          <StoryMetric
+            label="PnL net"
+            value={closedTrade ? fmtDecimal(closedTrade.net_pnl) : "—"}
+            accent={closedTrade && Number(closedTrade.net_pnl) < 0 ? "text-rose-300" : "text-emerald-300"}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DecisionSummary({
+  scanner,
+  decision,
+  trades = [],
+}: {
+  scanner: NonNullable<FrontendDecisionIntelligenceDetail["record"]>["scanner"];
+  decision: JsonObject;
+  trades?: BacktestReplay["trades"];
+}) {
+  const final = object(decision.professor_final);
+  const risk = object(decision.risk);
+  const execution = object(decision.execution);
+  const order = object(execution.order);
+  const fill = object(execution.fill);
+  const riskReasons = texts(risk.reason_codes);
+  const closedTrade = findClosedTradeForDecision(decision, trades);
+
+  return (
+    <section className="rounded-lg border border-slate-800 bg-slate-950/55 p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-slate-600">Décision</p>
+        <StatusBadge value={text(final.direction, "NON_ATTEINT")} />
+        {final.confidence !== undefined && final.confidence !== null && (
+          <span className="text-xs text-slate-400">confiance {pct(final.confidence)}</span>
+        )}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <div className="rounded border border-slate-800/80 px-3 py-2">
+          <p className="text-[9px] uppercase tracking-wider text-slate-600">Scanner</p>
+          <p className="mt-1 text-xs text-slate-300">
+            {text(scanner.classification)} · score {scanner.score}
+          </p>
+        </div>
+        <div className="rounded border border-slate-800/80 px-3 py-2">
+          <p className="text-[9px] uppercase tracking-wider text-slate-600">Régime</p>
+          <p className="mt-1 text-xs text-slate-300">{text(scanner.market_regime)}</p>
+        </div>
+      </div>
+
+      <ChipList label="Déclencheurs" values={scanner.triggers ?? []} />
+      <TextList label="Pourquoi" values={texts(final.thesis)} />
+      <TextList label="Contre-évidence" values={texts(final.counter_evidence)} />
+      <TextList label="Invalidation" values={texts(final.invalidation)} />
+
+      <div className="mt-3 border-t border-slate-800 pt-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-slate-600">Risk</span>
+          <StatusBadge value={text(risk.status, risk.reached ? "REACHED" : "NOT_REACHED")} />
+          {riskReasons.length > 0 && (
+            <span className="text-xs text-slate-500">{riskReasons.map(riskReasonLabel).join(" · ")}</span>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-slate-600">PAPER</span>
+          <StatusBadge value={execution.reached ? text(order.status, "REACHED") : "NOT_REACHED"} />
+          {Boolean(execution.reached) && fill.price !== undefined && fill.price !== null && (
+            <span className="text-xs text-slate-500">fill {fmtDecimal(fill.price)}</span>
+          )}
+        </div>
+      </div>
+
+
+      {closedTrade && (
+        <div className="mt-3 rounded border border-slate-800/80 bg-slate-900/25 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[9px] uppercase tracking-wider text-slate-600">Trade PAPER fermé</span>
+            <StatusBadge value="CLOSED" />
+            <span className="text-xs text-slate-500">{tradeDurationLabel(closedTrade.opened_at, closedTrade.closed_at)}</span>
+          </div>
+          <KeyValues
+            values={[
+              ["PnL avant frais", fmtDecimal(Number(closedTrade.net_pnl) + Number(closedTrade.fees))],
+              ["Frais", fmtDecimal(closedTrade.fees)],
+              ["Slippage mesuré", fmtDecimal(closedTrade.slippage_cost)],
+              ["PnL net", fmtDecimal(closedTrade.net_pnl)],
+              ["Prix de sortie", fmtDecimal(closedTrade.exit_price)],
+            ]}
+          />
+          <p className="mt-2 text-[9px] leading-4 text-slate-600">
+            La cause exacte de sortie (STOP/TARGET/autre) n&apos;est pas exportée par closed-trades ; aucun motif n&apos;est inféré côté frontend.
+          </p>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -425,6 +855,55 @@ function AnalyticsSection({
           Attribution Analytics non exacte : {analytics.diagnostics.join(" · ") || analytics.status}
         </div>
       )}
+    </Section>
+  );
+}
+
+function TradeExitBody({ selection }: { selection: OverlaySelection }) {
+  const details = selection.details;
+  const entryView = selection.objectType === "ClosedTradeEntry";
+  const pnl = Number(details.net_pnl);
+  const pnlLabel = Number.isFinite(pnl) ? pnl.toLocaleString("fr-FR", { maximumFractionDigits: 8 }) : text(details.net_pnl);
+  const resultPct = netTradeReturnPct({
+    quantity: details.quantity,
+    entry_price: details.entry_price,
+    net_pnl: details.net_pnl,
+  });
+  const resultKind = tradeResultKind(details.net_pnl);
+  return (
+    <Section title={entryView ? "Entrée PAPER" : "Sortie PAPER"}>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge value={details.side ?? "CLOSED"} />
+        {resultKind && (
+          <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${resultKind === "WIN" ? "border-emerald-800/70 bg-emerald-950/40 text-emerald-300" : resultKind === "LOSS" ? "border-rose-800/70 bg-rose-950/40 text-rose-300" : "border-slate-700 text-slate-400"}`}>
+            {resultKind}
+          </span>
+        )}
+        {resultPct !== null && (
+          <span className={resultPct < 0 ? "text-xs font-semibold font-mono text-rose-300" : resultPct > 0 ? "text-xs font-semibold font-mono text-emerald-300" : "text-xs font-semibold font-mono text-slate-300"}>
+            {resultPct > 0 ? "+" : ""}{resultPct.toFixed(2)}%
+          </span>
+        )}
+        <span className={Number.isFinite(pnl) && pnl < 0 ? "text-xs font-mono text-rose-300" : "text-xs font-mono text-emerald-300"}>
+          PnL {pnlLabel}
+        </span>
+      </div>
+      <KeyValues
+        values={[
+          ["Trade", details.trade_id],
+          ["Quantité", details.quantity],
+          ["Entrée", details.entry_price],
+          ["Sortie", details.exit_price],
+          ["Ouvert", formatDateTime(details.opened_at)],
+          ["Fermé", formatDateTime(details.closed_at)],
+          ["Durée", tradeDurationLabel(details.opened_at ?? "", details.closed_at ?? "")],
+          ["Frais", details.fees],
+          ["Slippage", details.slippage_cost],
+        ]}
+      />
+      <p className="text-[10px] leading-4 text-slate-600">
+        Marqueur issu du trade PAPER réellement clôturé. Sur le Decision Chart, sa géométrie est alignée sur la bougie du timeframe de décision contenant closed_at.
+      </p>
     </Section>
   );
 }

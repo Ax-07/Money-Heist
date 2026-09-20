@@ -387,6 +387,65 @@ function patternSegments(
   });
 }
 
+export function buildDecisionOverlayMarkers(
+  overlays: FrontendAnalyticsOverlays | null | undefined,
+  cursorTime: number | null,
+): OverlayMarker[] {
+  if (!overlays?.analytics_available) return [];
+  const rejectedOpportunityIds = new Set(
+    overlays.funnel_stages
+      .filter(stage => {
+        const name = stage.stage.toUpperCase();
+        const result = (stage.stage_result ?? stage.stage_status ?? "").toUpperCase();
+        const knownAt = stage.operational_at ?? stage.market_as_of;
+        return stage.reached
+          && name === "RISK"
+          && result === "REJECTED"
+          && isKnownAt(knownAt, cursorTime);
+      })
+      .map(stage => stage.opportunity_id),
+  );
+  return overlays.funnel_stages.flatMap<OverlayMarker>((stage): OverlayMarker[] => {
+    const name = stage.stage.toUpperCase();
+    if (!stage.reached || (name !== "FINAL" && !name.endsWith("_FINAL"))) return [];
+    const knownAt = stage.operational_at ?? stage.market_as_of;
+    if (!isKnownAt(knownAt, cursorTime)) return [];
+    if (rejectedOpportunityIds.has(stage.opportunity_id)) return [];
+    const result = (stage.stage_result ?? stage.stage_status ?? "NO_TRADE").toUpperCase();
+    const isLong = result === "LONG";
+    const isShort = result === "SHORT";
+    const selection: OverlaySelection = {
+      objectType: "ProfessorFinal",
+      objectId: stage.record_id,
+      opportunityId: stage.opportunity_id,
+      timestamp: stage.market_as_of,
+      navigationTimestamp: knownAt,
+      label: `FINAL ${result}`,
+      details: {
+        result,
+        status: stage.stage_status ?? "—",
+        confidence: stage.confidence === null || stage.confidence === undefined ? "—" : String(stage.confidence),
+        reasons: stage.reason_codes.join(", ") || "—",
+        market_as_of: stage.market_as_of,
+        operational_at: stage.operational_at ?? "—",
+      },
+    };
+    return [{
+      marker: {
+        time: isoToChartTime(stage.market_as_of),
+        position: isShort ? "aboveBar" : "belowBar",
+        shape: isLong ? "arrowUp" : isShort ? "arrowDown" : "circle",
+        color: isLong ? "#34d399" : isShort ? "#fb7185" : "#a78bfa",
+      },
+      priority: 1000,
+      selection,
+    }];
+  }).sort(
+    (left, right) => Number(left.marker.time) - Number(right.marker.time) || right.priority - left.priority,
+  );
+}
+
+
 export function buildChartOverlayModel(
   overlays: FrontendAnalyticsOverlays | null | undefined,
   visibility: OverlayVisibility,
@@ -428,6 +487,207 @@ export function buildChartOverlayModel(
     zigzag,
     patternSegments: patternSegments(overlays.patterns, visibility, cursorTime, allowed),
   };
+}
+
+export type ClosedTradeMarkerSource = {
+  trade_id: string;
+  side: string;
+  quantity: string;
+  entry_price: string;
+  exit_price: string;
+  opened_at: string;
+  closed_at: string;
+  net_pnl: string;
+  fees: string;
+  slippage_cost?: string | null;
+};
+
+function candleTimeAtOrAfter(timestamp: string, candleTimes: readonly number[]): Time | null {
+  const observed = Number(isoToChartTime(timestamp));
+  const candle = candleTimes.find(time => time >= observed);
+  return candle === undefined ? null : candle as Time;
+}
+
+export function buildTradeExitMarkers(
+  trades: readonly ClosedTradeMarkerSource[],
+  candleTimes: readonly number[],
+): OverlayMarker[] {
+  return trades.flatMap<OverlayMarker>((trade): OverlayMarker[] => {
+    const geometryTime = candleTimeAtOrAfter(trade.closed_at, candleTimes);
+    if (geometryTime === null) return [];
+    const side = trade.side.toUpperCase();
+    const short = side === "SHORT";
+    const selection: OverlaySelection = {
+      objectType: "ClosedTrade",
+      objectId: trade.trade_id,
+      opportunityId: null,
+      timestamp: trade.closed_at,
+      navigationTimestamp: trade.closed_at,
+      label: `Sortie ${side}`,
+      details: {
+        trade_id: trade.trade_id,
+        side,
+        quantity: trade.quantity,
+        entry_price: trade.entry_price,
+        exit_price: trade.exit_price,
+        opened_at: trade.opened_at,
+        closed_at: trade.closed_at,
+        net_pnl: trade.net_pnl,
+        fees: trade.fees,
+        slippage_cost: trade.slippage_cost ?? "—",
+        chart_candle_time: String(Number(geometryTime)),
+      },
+    };
+    return [{
+      marker: {
+        time: geometryTime,
+        position: short ? "belowBar" : "aboveBar",
+        shape: "square",
+        color: "#f59e0b",
+      },
+      // Professor FINAL remains the click priority if both objects share a candle.
+      priority: 900,
+      selection,
+    }];
+  }).sort(
+    (left, right) => Number(left.marker.time) - Number(right.marker.time) || right.priority - left.priority,
+  );
+}
+
+export function buildTradeEntryMarkers(
+  trades: readonly ClosedTradeMarkerSource[],
+  candleTimes: readonly number[],
+): OverlayMarker[] {
+  return trades.flatMap<OverlayMarker>((trade): OverlayMarker[] => {
+    const geometryTime = candleTimeAtOrAfter(trade.opened_at, candleTimes);
+    if (geometryTime === null) return [];
+    const side = trade.side.toUpperCase();
+    const short = side === "SHORT";
+    return [{
+      marker: {
+        time: geometryTime,
+        position: short ? "aboveBar" : "belowBar",
+        shape: short ? "arrowDown" : "arrowUp",
+        color: "#38bdf8",
+      },
+      priority: 950,
+      selection: {
+        objectType: "ClosedTradeEntry",
+        objectId: trade.trade_id,
+        opportunityId: null,
+        timestamp: trade.opened_at,
+        navigationTimestamp: trade.opened_at,
+        label: `Entrée ${side}`,
+        details: {
+          trade_id: trade.trade_id,
+          side,
+          quantity: trade.quantity,
+          entry_price: trade.entry_price,
+          exit_price: trade.exit_price,
+          opened_at: trade.opened_at,
+          closed_at: trade.closed_at,
+          net_pnl: trade.net_pnl,
+          fees: trade.fees,
+          slippage_cost: trade.slippage_cost ?? "—",
+        },
+      },
+    }];
+  });
+}
+
+export type TradeLinkSegment = {
+  tradeId: string;
+  entryTime: Time;
+  exitTime: Time;
+  entryTimestamp: number;
+  exitTimestamp: number;
+  entryPrice: number;
+  exitPrice: number;
+  profitable: boolean;
+};
+
+export type RiskRejectedPoint = {
+  time: Time;
+  direction: string;
+  selection: OverlaySelection;
+};
+
+export function buildTradeLinkSegments(
+  trades: readonly ClosedTradeMarkerSource[],
+  candleTimes: readonly number[],
+): TradeLinkSegment[] {
+  return trades.flatMap<TradeLinkSegment>((trade): TradeLinkSegment[] => {
+    const entryTime = candleTimeAtOrAfter(trade.opened_at, candleTimes);
+    const exitTime = candleTimeAtOrAfter(trade.closed_at, candleTimes);
+    const entryTimestamp = Number(isoToChartTime(trade.opened_at));
+    const exitTimestamp = Number(isoToChartTime(trade.closed_at));
+    const entryPrice = Number(trade.entry_price);
+    const exitPrice = Number(trade.exit_price);
+    const netPnl = Number(trade.net_pnl);
+    if (
+      entryTime === null
+      || exitTime === null
+      || !Number.isFinite(entryTimestamp)
+      || !Number.isFinite(exitTimestamp)
+      || !Number.isFinite(entryPrice)
+      || !Number.isFinite(exitPrice)
+      || !Number.isFinite(netPnl)
+    ) return [];
+    return [{
+      tradeId: trade.trade_id,
+      entryTime,
+      exitTime,
+      entryTimestamp,
+      exitTimestamp,
+      entryPrice,
+      exitPrice,
+      profitable: netPnl > 0,
+    }];
+  });
+}
+
+export function buildRiskRejectedPoints(
+  overlays: FrontendAnalyticsOverlays | null | undefined,
+  candleTimes: readonly number[],
+): RiskRejectedPoint[] {
+  if (!overlays?.analytics_available) return [];
+  const finalDirections = new Map<string, string>();
+  for (const stage of overlays.funnel_stages) {
+    const name = stage.stage.toUpperCase();
+    if (!stage.reached || (name !== "FINAL" && !name.endsWith("_FINAL"))) continue;
+    finalDirections.set(
+      stage.opportunity_id,
+      (stage.stage_result ?? stage.stage_status ?? "UNKNOWN").toUpperCase(),
+    );
+  }
+  return overlays.funnel_stages.flatMap<RiskRejectedPoint>((stage): RiskRejectedPoint[] => {
+    if (!stage.reached || stage.stage.toUpperCase() !== "RISK") return [];
+    const result = (stage.stage_result ?? stage.stage_status ?? "").toUpperCase();
+    if (result !== "REJECTED") return [];
+    const time = candleTimeAtOrAfter(stage.market_as_of, candleTimes);
+    if (time === null) return [];
+    const knownAt = stage.operational_at ?? stage.market_as_of;
+    const direction = finalDirections.get(stage.opportunity_id) ?? "UNKNOWN";
+    return [{
+      time,
+      direction,
+      selection: {
+        objectType: "RiskDecision",
+        objectId: stage.record_id,
+        opportunityId: stage.opportunity_id,
+        timestamp: stage.market_as_of,
+        navigationTimestamp: knownAt,
+        label: "Risk REJECTED",
+        details: {
+          status: "REJECTED",
+          direction,
+          reasons: stage.reason_codes.join(", ") || "—",
+          market_as_of: stage.market_as_of,
+          operational_at: stage.operational_at ?? "—",
+        },
+      },
+    }];
+  }).sort((left, right) => Number(left.time) - Number(right.time));
 }
 
 export function selectionAtTime(markers: OverlayMarker[], time: Time): OverlaySelection | null {

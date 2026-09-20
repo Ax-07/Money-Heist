@@ -1254,3 +1254,55 @@ Une campagne longue pouvait entrer en finalisation synchrone pendant plusieurs m
 - les fonctions de calcul, artefacts, règles de trading et fingerprints métier restent inchangés ;
 - aucune autorité Scanner, Professor, Risk, PAPER ou LIVE n'est déplacée ;
 - augmenter artificiellement le timeout du proxy n'est pas la solution retenue.
+
+<!-- DECISION_CHART_V1 -->
+## Décision frontend — Decision Chart aligné sur le contexte de décision
+
+Décision : le replay avancé doit montrer le marché tel qu’il était vu au point de décision. Le timeframe source reste une donnée de provenance/lifecycle, mais il ne pilote plus l’échelle visuelle du chart décisionnel. Les indicateurs affichés proviennent du `FeatureEngine` backend et les marqueurs sont limités aux décisions finales ; leur détail reste servi par Decision Intelligence. Le Decision Chart charge l’historique complet du rôle sélectionné : le curseur est une position d’inspection et ne doit pas servir de gate de chargement des bougies, indicateurs ou décisions post-run. Toute incohérence de reconstruction des `FeatureSnapshot` provoque une indisponibilité fail-closed du Decision Chart plutôt qu’un affichage approximatif.
+
+
+<!-- DECISION_CHART_TERMINAL_PRO_20260920 -->
+
+### ADR-051 — Decision Chart / Terminal Pro comme projection d'audit PAPER read-only
+
+**Date :** 2026-09-20
+**Statut :** ACCEPTED
+
+**Décision :**
+Le Decision Chart du Backtest Cockpit est une projection d'audit frontend construite à partir d'artefacts canoniques déjà produits. Il peut reconstruire l'affichage des candles et indicateurs au timeframe de décision, puis superposer les décisions Professor FINAL, les rejets du Risk Engine et les trades PAPER réellement fermés.
+
+Les règles suivantes sont contractuelles :
+
+- un marker `LONG` / `SHORT` représente la décision Professor FINAL, pas un fill ;
+- un rejet Risk reste distinct de la décision Professor qui l'a précédé ;
+- une ligne entrée → sortie et son résultat utilisent exclusivement un closed trade PAPER réel ;
+- le résultat net affiché est `net_pnl / (abs(quantity) * entry_price)` ; il ne s'agit ni d'un Forward Outcome ni d'un PnL contrefactuel ;
+- `NO_TRADE`, Risk REJECTED, trade encore ouvert ou rapprochement ambigu n'affichent aucun résultat fabriqué ;
+- le rapprochement Decision Intelligence → closed trade reste fail-closed et s'appuie sur l'exécution PAPER causale disponible ;
+- stop et targets affichés pour le trade sélectionné proviennent de la TradeProposal persistée, jamais d'une reconstruction post-hoc ;
+- l'export closed-trades courant ne portant pas la cause terminale STOP/TARGET, l'UI utilise `CLOSED` et n'invente aucune cause de sortie ;
+- le PnL brut d'exécution de présentation peut être dérivé de `net_pnl + fees` lorsque le contrat ReplayTrade n'expose pas directement `execution_gross_pnl` ;
+- le focus visuel accentue le trade actif sans masquer les autres markers, afin de conserver le contexte décisionnel.
+
+L'Inspector peut présenter une Trade Story `Professor → Risk → Entry → Exit`, un bloc `Prévu vs réel`, la durée, le multiple R réalisé lorsque calculable et la décomposition coûts/PnL. Ces calculs sont de présentation et n'entrent dans aucune autorité métier.
+
+**Raison :**
+Le replay contenait séparément décisions, Risk, trades, Analytics et traces. La projection transactionnelle permet à l'opérateur de comprendre en quelques secondes ce qui était proposé, autorisé et réellement exécuté sans confondre décision IA, autorisation déterministe, exécution PAPER et recherche post-hoc.
+
+**Conséquences :**
+- aucune sortie LLM ne gagne d'autorité d'exécution ;
+- aucune donnée future n'est réinjectée dans `DecisionContext` ;
+- Forward Outcomes restent distincts des résultats de trades PAPER ;
+- DESIGN / VALIDATION / OOS restent séparés ;
+- aucun résultat du chart ne constitue une promotion LIVE ;
+- les couches Decision Chart / Trade Story restent UI/read-only.
+
+## Changelog documentation — 2026-09-20 — Consolidation Decision Chart / Terminal Pro
+
+- Decision Chart aligné sur le timeframe de décision et le Feature Engine canonique ;
+- markers Professor FINAL, Risk REJECTED et trades PAPER distingués sémantiquement ;
+- entrées/sorties PAPER, résultat net, coûts, durée et navigation trade consolidés ;
+- Inspector enrichi par Trade Story et comparaison `Prévu vs réel` ;
+- focus visuel rééquilibré afin de garder les markers non sélectionnés lisibles ;
+- tests frontend ciblés validés jusqu'à 5 fichiers / 20 tests ;
+- aucune autorité Scanner/Agents/Risk/PAPER/LIVE modifiée.

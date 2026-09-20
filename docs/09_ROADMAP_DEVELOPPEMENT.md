@@ -728,3 +728,34 @@ La prochaine phase utile n'est pas un assouplissement automatique des règles. E
 4. formulation d'hypothèses uniquement depuis les données de conception ;
 5. validation hors échantillon avant toute modification de seuil/prompt/Risk ;
 6. poursuite PAPER/SHADOW et maintien du LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
+
+
+<!-- DECISION_CHART_TERMINAL_PRO_20260920 -->
+
+## Consolidation 2026-09-20 — Decision Chart / Terminal Pro
+
+**État : lot frontend local validé, en attente d'intégration GitHub.**
+
+Le cockpit d'analyse avancée dispose désormais d'une lecture transactionnelle du replay sans modifier le comportement du backtest :
+
+- candles et indicateurs au timeframe de décision canonique ;
+- markers Professor FINAL, rejets Risk et trades PAPER fermés ;
+- entrée/sortie PAPER reliées par le résultat réel, avec SL/targets issus uniquement de la TradeProposal sélectionnée ;
+- modes `Mixte`, `Trades`, `Décisions` ;
+- résumé de session et navigation trade précédent/suivant ;
+- Inspector enrichi par une Trade Story `Professor → Risk → Entry → Exit`, `Prévu vs réel` et décomposition des coûts ;
+- résultat net en pourcentage calculé depuis le `net_pnl` réel rapporté au notionnel d'entrée ;
+- rapprochement décision ↔ closed trade fail-closed : aucune ambiguïté n'est transformée en résultat artificiel ;
+- focus visuel du trade sélectionné sans disparition des autres markers.
+
+Cette évolution est observationnelle. Elle ne change ni Scanner, ni prompts, ni Risk Engine, ni PAPER, ni Forward Outcomes, ni business fingerprint.
+
+### Suite recommandée
+
+La priorité redevient l'exploitation empirique des campagnes 3/6/9/12 mois avec configuration comportementale figée :
+
+1. inspection visuelle courte du Decision Chart sur WIN, LOSS, NO_TRADE et Risk REJECTED ;
+2. campagnes longues multi-régimes ;
+3. analyse DESIGN / VALIDATION / OOS séparée ;
+4. formulation des hypothèses depuis DESIGN uniquement ;
+5. validation hors échantillon avant toute évolution comportementale.

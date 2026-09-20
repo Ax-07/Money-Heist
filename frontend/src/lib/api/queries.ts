@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { api } from "./client";
 import { frontendAnalyticsOverlaysSchema } from "./analytics-overlay-schemas";
+import { frontendDecisionChartSchema } from "./decision-chart-schemas";
 import {
   frontendDecisionQualityResearchSchema,
   researchEvidencePageSchema,
@@ -43,6 +44,7 @@ export const campaignProgressQuery = (id: string) => api.get(`/api/frontend/v2/b
 export const cancelBacktest = (id: string) => api.post(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/cancel`, campaignProgressSchema, {});
 export const campaignConfigurationQuery = (id: string) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/configuration`, campaignConfigurationSchema);
 export const replayQuery = (id: string, role: "DESIGN" | "VALIDATION" | "OOS") => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/replay?role=${role}`, replaySchema);
+export const decisionChartQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/decision-chart?role=${role}`, frontendDecisionChartSchema);
 export const analyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics?role=${role}`, frontendAnalyticsProjectionSchema);
 export const scannerAnalyticsQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/scanner?role=${role}`, frontendScannerAnalyticsProjectionSchema);
 export const analyticsOverlaysQuery = (id: string, role: BacktestPeriodRole) => api.get(`/api/frontend/v2/backtests/runs/${encodeURIComponent(id)}/analytics/overlays?role=${role}`, frontendAnalyticsOverlaysSchema);

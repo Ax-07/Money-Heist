@@ -418,3 +418,95 @@ Cette couche complète Decision Intelligence 24C mais ne modifie aucune autorit�
 Le Backtest Cockpit expose la capacité directionnelle du marché dans les contraintes de campagne. Les presets Spot BTC/USDC et les contraintes publiques Kraken utilisent `SPOT_LONG_ONLY` par défaut. L’opérateur voit explicitement `SPOT · LONG ONLY` dans la configuration et la revue finale. `LONG_SHORT` reste sélectionnable uniquement pour une expérience dont le marché sous-jacent le permet réellement.
 
 Le frontend ne filtre aucun trade après coup : il transmet la capability au backend, qui reste l’autorité sur Professor/Risk/PAPER.
+
+<!-- DECISION_CHART_V1 -->
+## Decision Chart — replay au timeframe de décision
+
+L’analyse avancée des backtests utilise désormais une projection `money-heist.frontend-decision-chart.v1` :
+
+- les bougies affichées sont celles du `decision_timeframe` réellement lié au run (`1h` pour le runtime MTF issu de `1m` / `5m` / `15m`, sinon le timeframe source) ;
+- les indicateurs sont reconstruits côté backend avec le `FeatureEngine` canonique à partir du dataset immuable, puis chaque timestamp Scanner doit retrouver le `FeatureSnapshot.snapshot_id` persisté ; en cas d’écart la projection échoue fermée ;
+- les entrées Scanner visibles couvrent notamment RSI 14, ADX 14, spread EMA 12/26, expansion ATR, ratio de volume et distances au range 20 ; EMA 12/26 et bornes du range 20 sont superposées au prix ;
+- le graphe de replay avancé charge toute la série du rôle sélectionné au `decision_timeframe` ; le curseur de replay sert à inspecter un instant sans tronquer les bougies, les courbes d’indicateurs ni les marqueurs déjà persistés ;
+- il n’affiche plus les labels texte, événements PAPER, pivots ou patterns : seuls les marqueurs `Professor FINAL` sont rendus ;
+- le clic sur un marqueur sélectionne l’opportunité canonique et réutilise `DecisionIntelligenceInspector` pour expliquer Scanner, spécialistes, Professor, Risk et PAPER ;
+- cette projection reste strictement observationnelle et ne recalcule aucune décision ni aucun ordre.
+
+
+<!-- DECISION_CHART_TERMINAL_PRO_20260920 -->
+
+## Addendum 2026-09-20 — Decision Chart, Terminal Pro et Trade Story
+
+L'Analyse avancée du Backtest Cockpit possède désormais un Decision Chart spécialisé. Il ne remplace pas les artefacts backend : il les projette dans une narration transactionnelle.
+
+### Sources affichées
+
+```text
+dataset immuable
+→ candles resamplées au decision_timeframe
+→ Feature Engine canonique pour les indicateurs du chart
+→ Professor FINAL pour LONG / SHORT / NO_TRADE
+→ Funnel / Risk pour les rejets déterministes
+→ replay.trades pour les closed trades PAPER
+→ Decision Intelligence / TradeProposal pour stop, targets et contexte
+```
+
+La projection fail-closed vérifie l'identité des snapshots Scanner disponibles avant d'accepter une reconstruction d'indicateurs. Aucun Forward Outcome n'est utilisé comme trade hypothétique.
+
+### Sémantique visuelle
+
+- `LONG` / `SHORT` : décision Professor FINAL ;
+- croix Risk : proposition rejetée déterministiquement ;
+- entrée/sortie reliées : trade PAPER réellement exécuté et fermé ;
+- `NO_TRADE` : décision valide sans exécution ;
+- SL/TP : niveaux de la TradeProposal du trade sélectionné uniquement ;
+- `CLOSED` : sortie réelle lorsque la cause STOP/TARGET n'est pas persistée dans le contrat disponible.
+
+Trois modes de lecture sont proposés : `Mixte`, `Trades` et `Décisions`. Le trade sélectionné est renforcé, mais les autres markers conservent leur couleur et une visibilité suffisante ; le focus ne devient pas un mode solo implicite.
+
+### Résultat du trade
+
+Pour un closed trade PAPER associé sans ambiguïté :
+
+```text
+rendement net % = net_pnl / (abs(quantity) × entry_price) × 100
+```
+
+L'UI distingue `WIN`, `LOSS` et `FLAT`. Une valeur manquante, un NO_TRADE, un rejet Risk, un trade ouvert ou un matching ambigu n'est jamais transformé en faux `FLAT`.
+
+Le PnL brut d'exécution affichable à partir du contrat ReplayTrade est dérivé de `net_pnl + fees`. Le slippage est présenté séparément lorsqu'il est disponible.
+
+### Trade Story Inspector
+
+L'en-tête de l'Inspector privilégie la lecture opérateur : direction, confiance Professor, statut Risk, rendement net, durée et R réalisé lorsque le stop planifié permet ce calcul.
+
+La section Trade Story synthétise :
+
+```text
+Professor
+→ Risk
+→ Entry
+→ Exit
+```
+
+Puis compare `Entry prévu / Entry réel`, stop, targets, exit réel et RR attendu. Le bloc `Pourquoi ce résultat ?` expose mouvement brut, PnL brut d'exécution, frais/slippage et PnL net.
+
+Les détails Agents, Palermo, Funnel et Analytics restent accessibles mais ne dominent plus la première lecture.
+
+### Navigation et contexte
+
+Le cockpit expose un résumé de session et des actions trade précédent/suivant. La sélection reste UI-only et ne modifie jamais les artefacts de campagne.
+
+Le focus visuel respecte la règle suivante : **accentuer le trade choisi sans effacer les autres décisions**. Les markers non sélectionnés restent pleinement identifiables, tandis que les lignes et endpoints secondaires sont seulement modérément atténués.
+
+### Validation locale ciblée
+
+Validation fournie le 2026-09-20 après consolidation Trade Story et rééquilibrage du focus :
+
+```text
+pnpm typecheck → OK
+Vitest ciblé   → 5 fichiers / 20 tests OK
+git diff --check → aucune erreur whitespace ; warnings LF→CRLF Windows uniquement
+```
+
+Cette validation ciblée ne remplace pas la suite frontend/backend complète à exécuter avant intégration.
