@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-20
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `17869df76afc54e904cdfb24e1faaeea33426c0a`
-**Dernier commit audité :** `feat(frontend): add decision chart trade story terminal`
+**Baseline intégrée auditée :** `3a966d2695b72944dd087236a0162609ba17537f`
+**Dernier commit audité :** Shadow Attention v0 + Semantic v1 candidate
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -363,9 +363,35 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ---
 
+
+### Shadow Attention — état validé
+
+La recherche Scanner ↔ Analytics a confirmé un biais de sélection Scanner vers `RANGE_BREAK`
+et un fort volume d'observations Analytics ignorées par la gate historique. Une couche
+**Shadow Attention** a donc été ajoutée uniquement au post-run, sans autorité métier.
+
+État figé au commit `3a966d2695b72944dd087236a0162609ba17537f` :
+
+- **Shadow Attention v0** : projection observation-only des impulsions causales issues des
+  `Technical Events`, confirmations ZigZag et transitions de patterns ;
+- **Semantic v1 candidate** : `WAKE` si, au même instant causal, il existe soit au moins
+  deux familles techniques distinctes, soit `Technical Event + ZigZag confirmé`, soit une
+  transition de pattern mature `CONFIRMED / FAILED / INVALIDATED` ;
+- la structure seule reste du contexte et ne réveille pas la candidate ;
+- aucune direction de trade, aucun score, aucun cooldown, aucun Forward Outcome et aucun
+  résultat MOCK n'entrent dans la policy ;
+- v0 et v1 restent **SHADOW / observation-only** et ne modifient ni Scanner, ni Agents,
+  ni Risk, ni PAPER, ni LIVE ;
+- la campagne 3 mois utilisée pour concevoir cette candidate est désormais exploratoire
+  et ne constitue plus un holdout de validation.
+
+La suite complète locale a été exécutée après intégration de la candidate :
+`uv run pytest -q` passe avec 3 skips attendus. Ruff ciblé et `git diff --check`
+sont également propres.
+
 ## 14. Baseline intégrée récente
 
-La baseline applicative auditée pour cette synchronisation est `17869df76afc54e904cdfb24e1faaeea33426c0a`.
+La baseline applicative auditée pour cette synchronisation est `3a966d2695b72944dd087236a0162609ba17537f`.
 
 Chaîne récente utile :
 
@@ -409,27 +435,24 @@ Aucune couche Analytics/Research ne ferme automatiquement cette gate.
 
 ## 16. Priorité de développement après cette synchronisation
 
-La construction 24D est suffisamment avancée pour passer de « construire les instruments de mesure » à « exploiter proprement les preuves ». La préparation opérateur est désormais en place avec le dataset canonique BTC/USDC 1m annuel, ses préfixes locaux 1/3/6/9/12 mois, leur sélection dans le cockpit V2, la capacité Spot long-only explicite et un écran de résultats séparant Résumé et Analyse avancée.
+La phase de recherche Shadow Attention est désormais figée sur une candidate sémantique
+**observation-only**. Il ne faut plus ajuster cette policy sur la campagne 3 mois qui a servi
+à sa conception.
 
-Le premier run 1 mois exécuté avant `b384852e` contenait des SHORT et reste un smoke technique uniquement. La campagne locale `4647d6c0-f563-43cf-aec3-79e911fffd04`, exécutée en MOCK + `SPOT_LONG_ONLY`, a été auditée comme première baseline économique Spot : aucun Professor FINAL SHORT et aucun trade SHORT ; les anciennes directions bearish deviennent `NO_TRADE`.
+Priorités :
 
-Priorités de recherche :
+1. conserver la policy Semantic v1 inchangée ;
+2. choisir une **nouvelle période fraîche** qui n'a pas servi aux audits de conception ;
+3. exécuter Shadow v0 et Semantic v1 sur cette période sans modifier Scanner, prompts, Risk
+   ou exécution ;
+4. vérifier stabilité de charge, couverture causale, qualité des joins et coût théorique ;
+5. seulement après cette validation, décider s'il existe une justification pour un batch
+   comportemental séparé ;
+6. préserver un véritable OOS pour toute promotion ultérieure ;
+7. maintenir PAPER / SHADOW avant toute discussion LIVE.
 
-1. redémarrer backend/frontend sur `8f707cb8` et lancer un run de contrôle court ;
-2. vérifier que `/progress` et `/capabilities` restent réactifs pendant `MEASUREMENT_23A` et `FINALIZING` ;
-3. contrôler visuellement la campagne 1 mois dans la nouvelle vue Résumé / Analyse avancée ;
-4. lancer ensuite la campagne 3 mois avec la même configuration comportementale et `SPOT_LONG_ONLY` ;
-5. étendre ensuite aux campagnes 6/9/12 mois sans changer arbitrairement les paramètres ;
-6. analyser séparément DESIGN / VALIDATION / OOS ;
-7. vérifier couverture et qualité des joins avant interprétation ;
-8. formuler les hypothèses de modification à partir de DESIGN seulement ;
-9. valider toute hypothèse sur des données non utilisées pour la concevoir ;
-10. comparer coûts IA / qualité décisionnelle / pertes du funnel ;
-11. maintenir le LIVE non promu tant que les gates opérateur ne sont pas satisfaites.
-
-Aucune modification de threshold Scanner, prompt, Risk ou exécution ne doit être déduite automatiquement d’un rapport descriptif.
-
----
+Aucune métrique de cette campagne exploratoire ne constitue une autorisation pour remplacer
+Scanner v1 dans le pipeline comportemental.
 
 ## 17. Handoff pour une nouvelle conversation
 
@@ -459,9 +482,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'à `8f707cb8f261c7c24cacba56624d9876a08e4894`.
-
-Le lot Decision Chart / Terminal Pro est figé dans le commit applicatif local `17869df` ; il devient intégré à GitHub `main` uniquement après push de ce commit et du commit documentaire de synchronisation. Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
+Cette synchronisation a audité GitHub `main` jusqu'au commit `3a966d2695b72944dd087236a0162609ba17537f`. Elle ne décrit pas automatiquement de futures modifications locales non commités ; un handoff local doit toujours signaler explicitement un working tree sale avant de considérer ce fichier comme exhaustif.
 
 ---
 
