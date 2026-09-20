@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-20
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `8f707cb8f261c7c24cacba56624d9876a08e4894`
-**Dernier commit audité :** `fix(backtest): keep API responsive during post-run analysis`
+**Baseline intégrée auditée :** `17869df76afc54e904cdfb24e1faaeea33426c0a`
+**Dernier commit audité :** `feat(frontend): add decision chart trade story terminal`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -365,7 +365,7 @@ Aucun rapport 24D ne peut recommander automatiquement un threshold, classer auto
 
 ## 14. Baseline intégrée récente
 
-La baseline auditée pour cette synchronisation est `8f707cb8f261c7c24cacba56624d9876a08e4894`.
+La baseline applicative auditée pour cette synchronisation est `17869df76afc54e904cdfb24e1faaeea33426c0a`.
 
 Chaîne récente utile :
 
@@ -461,7 +461,7 @@ Informations de handoff obligatoires après un gros lot :
 
 Cette synchronisation a audité GitHub `main` jusqu'à `8f707cb8f261c7c24cacba56624d9876a08e4894`.
 
-La référence distante auditée reste GitHub `main`; les évolutions Decision Chart / Terminal Pro décrites ci-dessus peuvent encore appartenir au working tree local tant que leur commit n'a pas été poussé. Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
+Le lot Decision Chart / Terminal Pro est figé dans le commit applicatif local `17869df` ; il devient intégré à GitHub `main` uniquement après push de ce commit et du commit documentaire de synchronisation. Elle ne décrit pas automatiquement les modifications non commités présentes sur une machine locale après cette baseline. Un handoff local doit donc signaler explicitement un working tree sale ou des correctifs en cours avant de considérer ce fichier comme exhaustif.
 
 ---
 

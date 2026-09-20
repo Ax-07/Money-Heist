@@ -734,7 +734,7 @@ La prochaine phase utile n'est pas un assouplissement automatique des règles. E
 
 ## Consolidation 2026-09-20 — Decision Chart / Terminal Pro
 
-**État : lot frontend local validé, en attente d'intégration GitHub.**
+**État : lot frontend validé et figé dans `17869df`, en attente de push GitHub.**
 
 Le cockpit d'analyse avancée dispose désormais d'une lecture transactionnelle du replay sans modifier le comportement du backtest :
 
