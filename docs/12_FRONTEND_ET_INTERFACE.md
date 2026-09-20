@@ -131,6 +131,31 @@ Lorsqu'un opérateur sélectionne une durée, le backend relit le fichier local,
 SHA-256 contre le manifeste, le revalide avec `BacktestDashboardService`, puis l’enregistre dans la
 bibliothèque V2 canonique avant tout lancement. L'upload CSV manuel reste disponible comme fallback.
 
+<!-- BACKTEST_CALENDAR_WINDOW_20260920 -->
+### Fenêtre calendaire de campagne
+
+Le cockpit sépare désormais la **durée de campagne** de sa **date de début**.
+
+L'opérateur sélectionne une source historique suffisamment longue, puis choisit :
+
+- une date de début ;
+- une durée de 1 / 3 / 6 / 9 / 12 mois calendaires ;
+- le split DESIGN / VALIDATION / OOS reste 60 / 20 / 20 à l'intérieur de cette fenêtre.
+
+La fin est calculée en mois calendaires réels et non en nombre fixe de jours. Le navigateur
+utilise l'axe `candle_close_ms` fourni par le backend pour convertir la fenêtre en indices.
+Le backend revalide ensuite les `SplitInput` comme auparavant.
+
+Le dataset source n'est pas tronqué au début de la fenêtre : Historical Replay conserve les
+candles antérieures à `period_start` comme contexte causal / warm-up. Pour une fenêtre datée
+arbitraire, l'opérateur doit donc privilégier la source locale la plus longue qui couvre la
+période, actuellement le dataset canonique 12 mois. Les préfixes 1/3/6/9 mois restent
+compatibles mais ne sont plus nécessaires pour définir la durée d'une campagne.
+
+Si la fenêtre dépasse la couverture disponible, le frontend échoue explicitement et demande
+une source plus longue ; il ne fabrique pas de candles et ne télécharge aucune donnée
+implicitement.
+
 ## 12. Historical Replay
 
 Le replay V2 assemble, après exécution :

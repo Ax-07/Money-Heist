@@ -20,11 +20,16 @@ import {
 } from "@/lib/api/queries";
 import type { DatasetCatalogItem, DatasetPreview, LocalCampaignDataset, OpenAiModel, SplitIndices } from "@/lib/api/schemas";
 import {
+  CAMPAIGN_DURATION_MONTHS,
+  calendarWindowBounds,
+  calendarWindowPlan,
+  type CampaignDurationMonths,
+} from "./backtest-calendar-window";
+import {
   buildCampaignConfig,
   canonicalDerivativesIdentity,
   defaultBacktestForm,
   detectHistoricalDatasetIdentity,
-  durationPresetSplit,
   fullDatasetSplit,
   HISTORICAL_DATASET_SYMBOLS,
   HISTORICAL_DATASET_TIMEFRAMES,
@@ -57,6 +62,8 @@ export function BacktestLauncher() {
   const [selectedDatasetId,setSelectedDatasetId]=useState("");
   const [preview,setPreview]=useState<DatasetPreview|null>(null);
   const [splitIndices,setSplitIndices]=useState<SplitIndices|null>(null);
+  const [windowStartDate,setWindowStartDate]=useState("");
+  const [windowDurationMonths,setWindowDurationMonths]=useState<CampaignDurationMonths>(3);
   const [form,setForm]=useState<BacktestFormState>(()=>defaultBacktestForm());
   const marketSymbol=preview?.symbol??symbol;
   const historicalPreset=historicalMarketPreset(marketSymbol);
@@ -85,7 +92,23 @@ export function BacktestLauncher() {
   },[form.aiMode,form.modelId,openAiCatalog.data?.models]);
 
   const selectPreview=(next:DatasetPreview)=>{
-    setPreview(next); setSelectedDatasetId(next.dataset_id); setSymbol(next.symbol); setTimeframe(next.timeframe); setSplitIndices(initialSplitIndices(next));
+    setPreview(next);
+    setSelectedDatasetId(next.dataset_id);
+    setSymbol(next.symbol);
+    setTimeframe(next.timeframe);
+    setSplitIndices(initialSplitIndices(next));
+    // DatasetPreview.start_at est l'open_time canonique de la première candle.
+    // C'est la bonne borne de date opérateur, quel que soit le timeframe.
+    const firstDate = next.start_at.slice(0, 10);
+    setWindowStartDate(current => {
+      if (!current) return firstDate;
+      try {
+        calendarWindowPlan(next, current, windowDurationMonths);
+        return current;
+      } catch {
+        return firstDate;
+      }
+    });
     const preset=historicalMarketPreset(next.symbol);
     if(preset){
       setForm(current=>({...current,qtyStep:preset.qtyStep,minQty:preset.minQty,minNotional:preset.minNotional,maxQty:preset.maxQty,marketMaxLeverage:preset.maxLeverage,positioningMode:preset.positioningMode}));
@@ -133,7 +156,15 @@ export function BacktestLauncher() {
       </TabsList></div>
       <div className="p-5">
         <TabsContent value="dataset"><DatasetStep datasets={datasets.data??[]} localDatasets={localCampaignDatasets.data??[]} localLoading={localCampaignDatasets.isLoading} localError={localCampaignDatasets.isError} localImporting={importLocalDatasetMutation.isPending} onSelectLocal={months=>importLocalDatasetMutation.mutate(months)} selectedDatasetId={selectedDatasetId} onSelectDataset={id=>{setSelectedDatasetId(id);if(id)loadDatasetMutation.mutate(id);}} datasetLoading={loadDatasetMutation.isPending} datasetFile={datasetFile} setDatasetFile={setDatasetFile} fileName={fileName} setFileName={setFileName} symbol={symbol} setSymbol={value=>{setSymbol(value);setPreview(null);setSelectedDatasetId("");}} timeframe={timeframe} setTimeframe={value=>{setTimeframe(value);setPreview(null);setSelectedDatasetId("");}} symbols={Array.from(new Set([...HISTORICAL_DATASET_SYMBOLS,...(front.data?.market_symbols??[])]))} timeframes={[...HISTORICAL_DATASET_TIMEFRAMES]} savePending={saveMutation.isPending} onSave={()=>saveMutation.mutate()} preview={preview}/></TabsContent>
-        <TabsContent value="periods">{preview&&<PeriodsStep preview={preview} indices={splitIndices} setIndices={setSplitIndices}/>}</TabsContent>
+        <TabsContent value="periods">{preview&&<PeriodsStep
+          preview={preview}
+          indices={splitIndices}
+          setIndices={setSplitIndices}
+          startDate={windowStartDate}
+          setStartDate={setWindowStartDate}
+          durationMonths={windowDurationMonths}
+          setDurationMonths={setWindowDurationMonths}
+        />}</TabsContent>
         <TabsContent value="risk">{preview&&<RiskStep form={form} setField={setField} constraintsStatus={historicalPreset?"HISTORICAL PRESET":constraints.data?"KRAKEN PUBLIC":constraints.isError?"MANUEL":"CHARGEMENT"}/>}</TabsContent>
         <TabsContent value="ai"><AiStep form={form} setField={setField} modes={(caps.data?.modes??["MOCK","CACHED","LIVE_EVAL"]) as AiMode[]} liveEvalAvailable={caps.data?.live_eval_available??false} onMode={changeAiMode} models={openAiCatalog.data?.models??[]} catalogLoading={openAiCatalog.isLoading} catalogError={openAiCatalog.isError}/></TabsContent>
         <TabsContent value="execution"><ExecutionStep form={form} setField={setField}/></TabsContent>
@@ -153,13 +184,212 @@ function DatasetStep({datasets,localDatasets,localLoading,localError,localImport
 
 function DatasetSummary({preview}:{preview:DatasetPreview}){return <div className="grid gap-3 rounded-lg border border-slate-800 bg-slate-950/60 p-4 sm:grid-cols-2 xl:grid-cols-6"><Metric label="Dataset" value={preview.dataset_id}/><Metric label="Symbol / TF" value={`${preview.symbol} · ${preview.timeframe}`}/><Metric label="Bougies" value={String(preview.candle_count)}/><Metric label="Période" value={`${preview.start_at.slice(0,10)} → ${preview.end_at.slice(0,10)}`}/><Metric label="Qualité" value={preview.is_valid?`VALID · ${preview.gap_count} gaps`:"INVALID"}/><Metric label="SHA-256" value={preview.content_sha256.slice(0,16)}/></div>}
 
-function PeriodsStep({preview,indices,setIndices}:{preview:DatasetPreview;indices:SplitIndices|null;setIndices:(value:SplitIndices)=>void}){
- const [presetError,setPresetError]=useState("");
- if(!indices)return <p className="text-sm text-amber-200">Le backend n’a pas fourni assez d’information pour découper ce dataset.</p>;
- const applyPreset=(factory:()=>SplitIndices)=>{try{setIndices(factory());setPresetError("");}catch(error){setPresetError(error instanceof Error?error.message:String(error));}};
- const update=(key:keyof SplitIndices,value:string)=>{setPresetError("");setIndices({...indices,[key]:Number(value)});};
- const count=(start:number,end:number)=>Math.max(0,end-start+1);
- return <div className="space-y-5"><Block title="DESIGN / VALIDATION / OOS" description="Raccourcis opérateur hérités de l’ancien cockpit. Les presets calendaires utilisent les timestamps réels du dataset puis répartissent la fenêtre en 60 / 20 / 20."><div className="mb-5 flex flex-wrap gap-2"><Button size="sm" variant="secondary" onClick={()=>applyPreset(()=>quickTestSplit(preview))}>Test rapide</Button><Button size="sm" variant="secondary" onClick={()=>applyPreset(()=>durationPresetSplit(preview,30))}>1 mois</Button><Button size="sm" variant="secondary" onClick={()=>applyPreset(()=>durationPresetSplit(preview,90))}>3 mois</Button><Button size="sm" variant="secondary" onClick={()=>applyPreset(()=>durationPresetSplit(preview,365))}>1 an</Button><Button size="sm" variant="secondary" onClick={()=>applyPreset(()=>fullDatasetSplit(preview))}>Tout le dataset</Button><Button size="sm" variant="ghost" onClick={()=>applyPreset(()=>{const reset=initialSplitIndices(preview);if(!reset)throw new Error("Impossible de calculer le split 60 / 20 / 20 pour ce dataset.");return reset;})}>Réinitialiser 60 / 20 / 20</Button></div>{presetError&&<p className="mb-4 rounded-lg border border-rose-900/50 bg-rose-950/20 p-3 text-xs text-rose-300">{presetError}</p>}<div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-[11px] leading-5 text-slate-500"><span className="font-semibold text-slate-300">Test rapide</span> : 35 bougies de warm-up puis 100 bougies max. <span className="font-semibold text-slate-300">1 mois / 3 mois / 1 an</span> : 30 / 90 / 365 jours calendaires après le warm-up, avec clamp automatique à l’historique disponible.</div><div className="grid gap-4 lg:grid-cols-3"><PeriodCard title="DESIGN" start={indices.design_start} end={indices.design_end} max={preview.candle_count-1} onStart={v=>update("design_start",v)} onEnd={v=>update("design_end",v)} count={count(indices.design_start,indices.design_end)} preview={preview}/><PeriodCard title="VALIDATION" start={indices.validation_start} end={indices.validation_end} max={preview.candle_count-1} onStart={v=>update("validation_start",v)} onEnd={v=>update("validation_end",v)} count={count(indices.validation_start,indices.validation_end)} preview={preview}/><PeriodCard title="OOS · OUT-OF-SAMPLE" start={indices.oos_start} end={indices.oos_end} max={preview.candle_count-1} onStart={v=>update("oos_start",v)} onEnd={v=>update("oos_end",v)} count={count(indices.oos_start,indices.oos_end)} preview={preview}/></div></Block><p className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200/80">OOS doit rester hors échantillon : évite d’ajuster la stratégie après avoir consulté ses résultats. Le moteur conserve les rapports DESIGN, VALIDATION et OOS séparés.</p></div>
+function PeriodsStep({
+  preview,
+  indices,
+  setIndices,
+  startDate,
+  setStartDate,
+  durationMonths,
+  setDurationMonths,
+}: {
+  preview: DatasetPreview;
+  indices: SplitIndices | null;
+  setIndices: (value: SplitIndices) => void;
+  startDate: string;
+  setStartDate: (value: string) => void;
+  durationMonths: CampaignDurationMonths;
+  setDurationMonths: (value: CampaignDurationMonths) => void;
+}) {
+  const [presetError,setPresetError]=useState("");
+  const [windowError,setWindowError]=useState("");
+
+  let bounds: ReturnType<typeof calendarWindowBounds> | null = null;
+  let plan: ReturnType<typeof calendarWindowPlan> | null = null;
+  try {
+    bounds = calendarWindowBounds(preview, durationMonths);
+    if (startDate) plan = calendarWindowPlan(preview, startDate, durationMonths);
+  } catch {
+    plan = null;
+    bounds = null;
+  }
+
+  useEffect(() => {
+    if (!startDate) return;
+    try {
+      const next = calendarWindowPlan(preview, startDate, durationMonths);
+      setIndices(next.split);
+      setWindowError("");
+    } catch (error) {
+      setWindowError(error instanceof Error ? error.message : String(error));
+    }
+  }, [preview, startDate, durationMonths, setIndices]);
+
+  if(!indices) {
+    return <p className="text-sm text-amber-200">
+      Le backend n’a pas fourni assez d’information pour découper ce dataset.
+    </p>;
+  }
+
+  const applyPreset=(factory:()=>SplitIndices)=>{
+    try {
+      setIndices(factory());
+      setStartDate("");
+      setPresetError("");
+    } catch(error) {
+      setPresetError(error instanceof Error?error.message:String(error));
+    }
+  };
+  const update=(key:keyof SplitIndices,value:string)=>{
+    const parsed=Number(value);
+    if(Number.isInteger(parsed)){
+      setIndices({...indices,[key]:parsed});
+      setStartDate("");
+    }
+  };
+  const count=(start:number,end:number)=>Math.max(0,end-start+1);
+  const currentWindowError = windowError || (
+    startDate && !plan ? "La fenêtre demandée n’est pas couverte par ce dataset." : ""
+  );
+
+  return <div className="space-y-5">
+    <Block
+      title="Fenêtre calendaire de campagne"
+      description="Choisis quand commence la campagne et conserve une durée fixe en mois calendaires. Le dataset long reste intact afin de fournir tout l’historique antérieur nécessaire au warm-up."
+    >
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <label className="text-xs text-slate-400">
+          Date de début
+          <input
+            type="date"
+            className={`${fieldClass} mt-1 w-full`}
+            value={startDate}
+            min={bounds?.minStartDate}
+            max={bounds?.maxStartDate}
+            onChange={event=>setStartDate(event.target.value)}
+          />
+        </label>
+        <label className="text-xs text-slate-400">
+          Durée
+          <select
+            className={`${fieldClass} mt-1 w-full`}
+            value={durationMonths}
+            onChange={event=>setDurationMonths(Number(event.target.value) as CampaignDurationMonths)}
+          >
+            {CAMPAIGN_DURATION_MONTHS.map(value=>
+              <option key={value} value={value}>{value} mois</option>
+            )}
+          </select>
+        </label>
+        <Metric label="Fin exclusive" value={plan?.endExclusiveDate??"—"}/>
+        <Metric
+          label="Warm-up disponible"
+          value={plan?`${plan.warmupBars.toLocaleString("fr-FR")} bars`:"—"}
+        />
+      </div>
+
+      {bounds&&<p className="mt-3 text-[11px] leading-5 text-slate-500">
+        Couverture source : {bounds.coverageStartDate} → {bounds.coverageEndExclusiveDate} exclusif.
+        Pour {durationMonths} mois, le dernier début possible est {bounds.maxStartDate}.
+      </p>}
+      {plan&&<p className="mt-2 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3 text-xs leading-5 text-emerald-200/80">
+        ✓ Fenêtre couverte · {plan.windowBars.toLocaleString("fr-FR")} bars évaluées ·
+        historique antérieur conservé pour les indicateurs et le contexte MTF.
+      </p>}
+      {currentWindowError&&<p className="mt-2 rounded-lg border border-rose-900/50 bg-rose-950/20 p-3 text-xs leading-5 text-rose-300">
+        {currentWindowError} Sélectionne un dataset plus long, par exemple la source locale 12 mois,
+        si la période voulue existe dans les données disponibles.
+      </p>}
+      <p className="mt-3 text-[11px] leading-5 text-slate-600">
+        Modifier la date de début ne change pas la durée sélectionnée. La fin et le split
+        DESIGN / VALIDATION / OOS sont recalculés automatiquement.
+      </p>
+    </Block>
+
+    <Block
+      title="DESIGN / VALIDATION / OOS"
+      description="La fenêtre calendaire ci-dessus est répartie automatiquement en 60 / 20 / 20. Les contrôles manuels restent disponibles pour les audits et cas particuliers."
+    >
+      <div className="mb-5 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={()=>applyPreset(()=>quickTestSplit(preview))}
+        >
+          Test rapide
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={()=>applyPreset(()=>fullDatasetSplit(preview))}
+        >
+          Tout le dataset
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={()=>applyPreset(()=>{
+            const reset=initialSplitIndices(preview);
+            if(!reset)throw new Error(
+              "Impossible de calculer le split 60 / 20 / 20 pour ce dataset."
+            );
+            return reset;
+          })}
+        >
+          Réinitialiser 60 / 20 / 20
+        </Button>
+      </div>
+
+      {presetError&&<p className="mb-4 rounded-lg border border-rose-900/50 bg-rose-950/20 p-3 text-xs text-rose-300">
+        {presetError}
+      </p>}
+
+      <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-[11px] leading-5 text-slate-500">
+        <span className="font-semibold text-slate-300">Fenêtre calendaire</span> :
+        la date de début et la durée sont les contrôles principaux.
+        <span className="font-semibold text-slate-300"> Test rapide</span> conserve le preset
+        historique de 35 bougies de warm-up puis 100 bougies max.
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <PeriodCard
+          title="DESIGN"
+          start={indices.design_start}
+          end={indices.design_end}
+          max={preview.candle_count-1}
+          onStart={v=>update("design_start",v)}
+          onEnd={v=>update("design_end",v)}
+          count={count(indices.design_start,indices.design_end)}
+          preview={preview}
+        />
+        <PeriodCard
+          title="VALIDATION"
+          start={indices.validation_start}
+          end={indices.validation_end}
+          max={preview.candle_count-1}
+          onStart={v=>update("validation_start",v)}
+          onEnd={v=>update("validation_end",v)}
+          count={count(indices.validation_start,indices.validation_end)}
+          preview={preview}
+        />
+        <PeriodCard
+          title="OOS · OUT-OF-SAMPLE"
+          start={indices.oos_start}
+          end={indices.oos_end}
+          max={preview.candle_count-1}
+          onStart={v=>update("oos_start",v)}
+          onEnd={v=>update("oos_end",v)}
+          count={count(indices.oos_start,indices.oos_end)}
+          preview={preview}
+        />
+      </div>
+    </Block>
+
+    <p className="rounded-lg border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200/80">
+      OOS doit rester hors échantillon : évite d’ajuster la stratégie après avoir consulté
+      ses résultats. Le moteur conserve les rapports DESIGN, VALIDATION et OOS séparés.
+    </p>
+  </div>;
 }
 
 function PeriodCard({title,start,end,max,onStart,onEnd,count,preview}:{title:string;start:number;end:number;max:number;onStart:(v:string)=>void;onEnd:(v:string)=>void;count:number;preview:DatasetPreview}){const at=(index:number)=>preview.candle_close_ms[index]?new Date(preview.candle_close_ms[index]).toISOString():"—";return <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-slate-200">{title}</p><span className="text-[10px] text-slate-500">{count} bars</span></div><div className="mt-3 grid grid-cols-2 gap-2"><NumberField label="Start index" value={String(start)} min={0} max={max} onChange={onStart}/><NumberField label="End index" value={String(end)} min={0} max={max} onChange={onEnd}/></div><p className="mt-3 break-all font-mono text-[10px] text-slate-600">{at(start)}<br/>→ {at(end)}</p></div>}

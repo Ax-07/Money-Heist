@@ -207,9 +207,9 @@ export function initialSplitIndices(preview: DatasetPreview): SplitIndices | nul
 }
 
 const PRESET_WARMUP_BARS = 35;
-const PRESET_MIN_TEST_BARS = 6;
+export const PRESET_MIN_TEST_BARS = 6;
 
-function splitWindow60_20_20(start: number, end: number): SplitIndices {
+export function splitWindow60_20_20(start: number, end: number): SplitIndices {
   const testBars = end - start + 1;
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || testBars < PRESET_MIN_TEST_BARS) {
     throw new Error(`La fenêtre de backtest doit contenir au moins ${PRESET_MIN_TEST_BARS} bougies.`);

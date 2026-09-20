@@ -1346,3 +1346,23 @@ désormais entièrement explorée, la règle est figée avant toute nouvelle don
 nouvelle période invaliderait cette période comme validation. Une promotion vers
 un chemin comportemental nécessitera un batch séparé, une VALIDATION fraîche, un
 OOS intact puis PAPER/SHADOW. Voir `docs/SHADOW_ATTENTION_SEMANTIC_V1.md`.
+
+<!-- ADR_BACKTEST_CALENDAR_WINDOW_20260920 -->
+### ADR — Fenêtre calendaire sur dataset canonique long
+
+**Date :** 2026-09-20
+**Statut :** ACCEPTED
+
+Décision : la durée d'une campagne historique est séparée de l'identité du dataset. Pour les
+fenêtres datées, le cockpit utilise une source historique longue et transforme
+`date_debut + durée_mois` en bornes DESIGN / VALIDATION / OOS. Il ne génère pas un nouveau
+CSV tronqué au début de chaque fenêtre.
+
+Raison : les candles antérieures à `period_start` doivent rester disponibles comme historique
+causal pour les indicateurs récursifs et le contexte MTF. Une découpe physique au début de la
+fenêtre pourrait modifier cet état. Les datasets préfixes historiques restent supportés comme
+compatibilité et pour les campagnes bornées depuis l'origine canonique.
+
+La création ou l'extension de données reste une opération explicite de Market Data lorsque la
+source disponible ne couvre pas la fenêtre. Le frontend ne synthétise ni ne télécharge de
+candles implicitement.

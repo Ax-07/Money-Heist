@@ -791,3 +791,20 @@ réveil. La candidate reste post-run et sans autorité Agents/Risk/PAPER/LIVE.
 La campagne 3 mois actuelle est exploratoire. La policy ne doit plus être modifiée
 à partir de cette campagne avant son essai sur une période fraîche. Voir
 `docs/SHADOW_ATTENTION_SEMANTIC_V1.md`.
+
+<!-- BACKTEST_CALENDAR_WINDOW_ROADMAP_20260920 -->
+## Frontend V2 — fenêtre calendaire de campagne
+
+**État :** contrôle opérateur ajouté pour préparer les campagnes de validation fraîche.
+
+- date de début indépendante de la durée ;
+- durées 1 / 3 / 6 / 9 / 12 mois calendaires ;
+- conservation de la durée lorsqu'on déplace la date de début ;
+- conversion en indices sur l'axe temporel canonique du dataset ;
+- split 60 / 20 / 20 automatique dans la fenêtre ;
+- historique antérieur conservé comme warm-up par Historical Replay ;
+- fail-closed lorsque la source ne couvre pas toute la fenêtre.
+
+Cette évolution ne modifie ni Scanner, Agents, Risk, PAPER, Shadow Attention ni LIVE. Elle
+sert notamment à sélectionner une nouvelle fenêtre temporelle non chevauchante pour tester
+une policy Shadow figée.
