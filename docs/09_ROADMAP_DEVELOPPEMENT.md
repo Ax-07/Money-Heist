@@ -759,3 +759,35 @@ La priorité redevient l'exploitation empirique des campagnes 3/6/9/12 mois avec
 3. analyse DESIGN / VALIDATION / OOS séparée ;
 4. formulation des hypothèses depuis DESIGN uniquement ;
 5. validation hors échantillon avant toute évolution comportementale.
+
+<!-- SHADOW_ATTENTION_GATE_V0 -->
+## Expérimentation post-24D — Shadow Attention Gate v0
+
+**Statut : candidate observation-only, validation locale requise.**
+
+La prochaine expérimentation ne remplace pas Scanner v1. Elle matérialise post-run une comparaison `Scanner wake` vs `Shadow Attention wake` à partir des attributions Analytics exactes déjà produites. V0 autorise comme raisons d'attention uniquement les Technical Events, confirmations ZigZag et transitions de patterns disponibles exactement à T ; la structure reste contexte-only. Aucun score, threshold, cooldown tuné, direction ou setup de trading n'est introduit.
+
+Après validation technique, toute hypothèse comportementale devra être figée depuis DESIGN puis testée sur une nouvelle VALIDATION et un nouvel OOS non utilisés pour concevoir la gate. Voir `docs/SHADOW_ATTENTION_GATE_V0.md`.
+
+<!-- SHADOW_ATTENTION_SEMANTIC_V1 -->
+## Expérimentation post-24D — Shadow Attention Semantic v1 candidate
+
+**Statut : hypothèse figée / SHADOW observation-only.**
+
+Après les audits Scanner bias, Attention Gap, densité, Policy Matrix, épisodes,
+duty cycle et impulsions, la candidate Semantic v1 est figée sans tuning
+supplémentaire sur la campagne exploratoire 3 mois.
+
+La gate réveille une observation uniquement au même instant causal lorsque :
+
+- au moins deux familles de `TECHNICAL_EVENT` distinctes coexistent ; ou
+- au moins un `TECHNICAL_EVENT` coexiste avec une confirmation ZigZag ; ou
+- un pattern passe à `CONFIRMED`, `FAILED` ou `INVALIDATED`.
+
+`FORMING`, la direction LONG/SHORT, les états de structure, les Forward Outcomes,
+les scores Scanner et les résultats de trade n'entrent pas dans la décision de
+réveil. La candidate reste post-run et sans autorité Agents/Risk/PAPER/LIVE.
+
+La campagne 3 mois actuelle est exploratoire. La policy ne doit plus être modifiée
+à partir de cette campagne avant son essai sur une période fraîche. Voir
+`docs/SHADOW_ATTENTION_SEMANTIC_V1.md`.

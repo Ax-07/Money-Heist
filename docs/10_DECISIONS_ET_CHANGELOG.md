@@ -1306,3 +1306,43 @@ Le replay contenait séparément décisions, Risk, trades, Analytics et traces. 
 - focus visuel rééquilibré afin de garder les markers non sélectionnés lisibles ;
 - tests frontend ciblés validés jusqu'à 5 fichiers / 20 tests ;
 - aucune autorité Scanner/Agents/Risk/PAPER/LIVE modifiée.
+
+<!-- ADR052_SHADOW_ATTENTION_GATE_V0 -->
+### ADR-052 — Shadow Attention Gate v0 observation-only avant toute évolution comportementale du Scanner
+
+**Date :** 2026-09-20
+**Statut :** CANDIDATE — validation locale requise
+
+**Décision :** introduire une Shadow Attention Gate v0 exclusivement post-run. Elle compare les `CandidateOpportunity` réellement produites par Scanner v1 à une attention causale dérivée des artefacts Analytics déjà calculés, sans réexécuter Scanner, agents, Risk ou PAPER/LIVE. Les seules causes de réveil v0 sont les Technical Events, confirmations ZigZag et transitions de patterns disponibles exactement au `as_of` de l'évaluation Scanner. Les états/changements de structure restent du contexte et ne réveillent pas v0 seuls.
+
+La v0 n'a aucun score, poids, seuil, cooldown tuné, direction LONG/SHORT, setup ou autorité de trading. Plusieurs raisons au même T sont coalescées en une observation unique. Une attribution Analytics absente produit `UNAVAILABLE` et reste fail-closed.
+
+**Raison :** les audits exploratoires ont montré simultanément un biais de sélection de Scanner v1 vers `RANGE_BREAK` et une densité Analytics trop forte pour utiliser « tout changement Analytics » comme déclencheur. Une couche shadow permet de mesurer la couverture et la charge théorique avant toute modification comportementale.
+
+**Conséquence :** la campagne 3 mois déjà inspectée devient un dataset d'exploration ; elle ne constitue plus un OOS vierge pour valider une future Attention Gate comportementale. Voir `docs/SHADOW_ATTENTION_GATE_V0.md`.
+
+<!-- ADR053_SHADOW_ATTENTION_SEMANTIC_V1 -->
+### ADR-053 — Candidate Shadow Attention Semantic v1 figée avant données fraîches
+
+**Date :** 2026-09-20
+**Statut :** CANDIDATE / SHADOW observation-only
+
+**Décision :** figer une candidate d'attention sémantique same-bar dérivée de
+Shadow Attention v0. Elle réveille uniquement sur au moins deux familles
+Technical distinctes, sur la co-occurrence Technical + confirmation ZigZag, ou
+sur une transition de pattern mature (`CONFIRMED`, `FAILED`, `INVALIDATED`).
+
+La direction des événements n'est pas une condition de wake. `FORMING`, les
+états/changements de structure, les scores Scanner, les Forward Outcomes, PnL et
+résultats de trade sont exclus de la policy. V1 reste une projection post-run et
+ne remplace pas Scanner v1.
+
+**Raison :** les épisodes persistants atteignaient 95–99 % de duty cycle et ont
+été rejetés. Les impulsions same-bar sémantiques réduisent la charge sans
+maintenir artificiellement un état d'attention. La campagne de conception étant
+désormais entièrement explorée, la règle est figée avant toute nouvelle donnée.
+
+**Conséquence :** toute modification de cette policy après observation d'une
+nouvelle période invaliderait cette période comme validation. Une promotion vers
+un chemin comportemental nécessitera un batch séparé, une VALIDATION fraîche, un
+OOS intact puis PAPER/SHADOW. Voir `docs/SHADOW_ATTENTION_SEMANTIC_V1.md`.

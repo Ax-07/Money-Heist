@@ -44,6 +44,14 @@ from app.evaluation.decision_quality.evidence import (
     funnel_decision_quality_export_name,
     scanner_filtering_quality_export_name,
 )
+from app.evaluation.shadow_attention import (
+    SemanticAttentionReport,
+    ShadowAttentionReport,
+    build_semantic_attention_v1_report,
+    build_shadow_attention_report,
+    semantic_attention_v1_export_name,
+    shadow_attention_export_name,
+)
 from app.market.multitimeframe import HistoricalMultiTimeframeCursor
 from app.market.structure import build_market_structure_context
 from app.services.backtest.analytics_lab import (
@@ -80,6 +88,8 @@ class FrontendPostRunProjection:
     scanner_filtering_quality: ScannerFilteringQualityReport | None = None
     funnel_decision_quality: FunnelDecisionQualityReport | None = None
     evidence_index: DecisionQualityEvidenceIndex | None = None
+    shadow_attention: ShadowAttentionReport | None = None
+    semantic_attention_v1: SemanticAttentionReport | None = None
 
     def exports(self) -> dict[str, tuple[str, str]]:
         geometry_json = json.dumps(
@@ -98,6 +108,16 @@ class FrontendPostRunProjection:
                 geometry_json,
             ),
         }
+        if self.shadow_attention is not None:
+            exports[shadow_attention_export_name(self.decision_bundle.role)] = (
+                "application/json",
+                self.shadow_attention.to_json(),
+            )
+        if self.semantic_attention_v1 is not None:
+            exports[semantic_attention_v1_export_name(self.decision_bundle.role)] = (
+                "application/json",
+                self.semantic_attention_v1.to_json(),
+            )
         research = (
             self.decision_quality,
             self.scanner_filtering_quality,
@@ -516,6 +536,12 @@ def build_frontend_postrun_projection(
         analytics_run_id=analytics_run.analytics_run_id,
         analytics_snapshots=snapshots,
     )
+    shadow_attention = build_shadow_attention_report(
+        period_role=role_value,
+        scanner_projection=decision_bundle.scanner,
+        geometry=geometry,
+    )
+    semantic_attention_v1 = build_semantic_attention_v1_report(shadow_attention)
 
     decision_quality = None
     scanner_filtering_quality = None
@@ -553,6 +579,8 @@ def build_frontend_postrun_projection(
         scanner_filtering_quality=scanner_filtering_quality,
         funnel_decision_quality=funnel_decision_quality,
         evidence_index=evidence_index,
+        shadow_attention=shadow_attention,
+        semantic_attention_v1=semantic_attention_v1,
     )
 
 
