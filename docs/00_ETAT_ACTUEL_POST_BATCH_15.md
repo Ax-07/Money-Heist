@@ -3,8 +3,8 @@
 **Statut :** contexte de démarrage canonique  
 **Date de synchronisation :** 2026-09-20
 **Référence distante auditée :** GitHub `Ax-07/Money-Heist`, branche `main`  
-**Baseline intégrée auditée :** `3a966d2695b72944dd087236a0162609ba17537f`
-**Dernier commit audité :** Shadow Attention v0 + Semantic v1 candidate
+**Baseline intégrée auditée :** `fe19a24eb85b7e06605ceb05147c80e81a72d6a8`
+**Dernier commit audité :** `feat(frontend): add calendar backtest windows`
 **Nom de fichier conservé :** `00_ETAT_ACTUEL_POST_BATCH_15.md` pour compatibilité avec les références existantes.
 
 > Ce document doit rester court. Il sert à reconstruire rapidement le contexte du projet dans une nouvelle session. Les détails de domaine restent dans les documents spécialisés.
@@ -203,6 +203,7 @@ Le cockpit V2 couvre notamment :
 - filtres et navigation causale ;
 - Research Explorer Decision Quality ;
 - Datasets locaux de campagne 1 / 3 / 6 / 9 / 12 mois, validés côté backend puis importés dans la bibliothèque V2 persistée ;
+- fenêtre calendaire de campagne : date de début indépendante + durée 1 / 3 / 6 / 9 / 12 mois, calculée sur le dataset long canonique avec historique antérieur conservé comme warm-up ;
 - résultats Backtest en deux niveaux : `Résumé` opérateur par défaut et `Analyse avancée` à la demande.
 - Decision Chart d'audit au timeframe de décision canonique, avec indicateurs Feature Engine, Professor FINAL, rejets Risk et exécutions PAPER réelles ;
 - mode Terminal Pro (`Mixte / Trades / Décisions`), navigation des trades, résultat net, coûts et Trade Story `Professor → Risk → Entry → Exit` ;
@@ -391,11 +392,14 @@ sont également propres.
 
 ## 14. Baseline intégrée récente
 
-La baseline applicative auditée pour cette synchronisation est `3a966d2695b72944dd087236a0162609ba17537f`.
+La baseline applicative auditée pour cette synchronisation est `fe19a24eb85b7e06605ceb05147c80e81a72d6a8`.
 
 Chaîne récente utile :
 
 ```text
+fe19a24e  feat(frontend): add calendar backtest windows
+a34c66d8  docs: sync project memory after shadow attention
+3a966d26  feat(research): add shadow attention semantic candidate
 b384852e  feat(backtest): enforce spot long-only campaigns
 871a3d3f  feat(frontend): simplify backtest campaign results
 bc6136ee  docs: sync project memory after backtest UX
@@ -442,7 +446,7 @@ La phase de recherche Shadow Attention est désormais figée sur une candidate s
 Priorités :
 
 1. conserver la policy Semantic v1 inchangée ;
-2. choisir une **nouvelle période fraîche** qui n'a pas servi aux audits de conception ;
+2. choisir via la fenêtre calendaire du cockpit une **nouvelle période fraîche** qui n'a pas servi aux audits de conception, en conservant la durée sélectionnée ;
 3. exécuter Shadow v0 et Semantic v1 sur cette période sans modifier Scanner, prompts, Risk
    ou exécution ;
 4. vérifier stabilité de charge, couverture causale, qualité des joins et coût théorique ;
@@ -482,7 +486,7 @@ Informations de handoff obligatoires après un gros lot :
 
 ## 18. Limite de cette synchronisation
 
-Cette synchronisation a audité GitHub `main` jusqu'au commit `3a966d2695b72944dd087236a0162609ba17537f`. Elle ne décrit pas automatiquement de futures modifications locales non commités ; un handoff local doit toujours signaler explicitement un working tree sale avant de considérer ce fichier comme exhaustif.
+Cette synchronisation a audité GitHub `main` jusqu'au commit `fe19a24eb85b7e06605ceb05147c80e81a72d6a8`. Elle ne décrit pas automatiquement de futures modifications locales non commités ; un handoff local doit toujours signaler explicitement un working tree sale avant de considérer ce fichier comme exhaustif.
 
 ---
 
